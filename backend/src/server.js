@@ -1,5 +1,6 @@
 import "./config/env.js";
 import "./config/redis.js";
+import "./queues/workers/email.worker.js";
 
 import app from "./app.js";
 import connectDB from "./config/db.js";
