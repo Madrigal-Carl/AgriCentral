@@ -688,7 +688,7 @@ export default function HomePage() {
             viewport={{ once: true, amount: 0.15 }}
             className="rounded-[5px] border border-zinc-200 bg-white p-6 lg:p-10"
           >
-            <div className="flex flex-col md:flex-row gap-8 md:gap-0">
+            <div className="flex flex-col md:grid md:grid-cols-2 lg:flex lg:flex-row">
               {workflow.map((s, i) => (
                 <WorkflowStep
                   key={s.title}
@@ -713,7 +713,7 @@ export default function HomePage() {
             initial="hidden"
             whileInView="show"
             viewport={{ once: true, amount: 0.1 }}
-            className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3"
+            className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3"
           >
             {modules.map((m) => (
               <ModuleCard key={m.title} {...m} />
