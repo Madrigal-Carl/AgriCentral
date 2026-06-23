@@ -1,8 +1,7 @@
 import { Worker } from "bullmq";
-import redis from "../../config/redis.js";
+import { bullRedisConnection } from "../../config/redis.js";
 import { sendEmail } from "../../services/email.service.js";
 import { EMAIL_JOBS } from "../email.jobs.js";
-
 import { accountApprovedTemplate } from "../../templates/email/account-approved.template.js";
 
 const emailWorker = new Worker(
@@ -15,9 +14,7 @@ const emailWorker = new Worker(
         return sendEmail({
           to: data.to,
           subject: "Your Account Has Been Approved",
-          html: accountApprovedTemplate({
-            name: data.name,
-          }),
+          html: accountApprovedTemplate({ name: data.name }),
         });
       },
     };
@@ -31,7 +28,7 @@ const emailWorker = new Worker(
     return handler();
   },
   {
-    connection: redis,
+    connection: bullRedisConnection,
   },
 );
 
