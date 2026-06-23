@@ -2,7 +2,6 @@ import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
-  Leaf,
   Menu,
   X,
   ArrowRight,
@@ -33,6 +32,7 @@ import {
   FaGithub,
 } from "react-icons/fa6";
 
+import logoAsset from "@/assets/logo.png";
 import barnAsset from "@/assets/images/barn.jpg";
 import farmAerialAsset from "@/assets/images/farm-aerial.jpg";
 import farmerFieldAsset from "@/assets/images/farmer-field.jpg";
@@ -46,41 +46,22 @@ const fadeUp = {
     transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
   },
 };
-
-const stagger = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.07 } },
-};
+const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.07 } } };
 
 const links = [
-  {
-    label: "Challenges",
-    to: "#challenges",
-  },
-  {
-    label: "Solutions",
-    to: "#solutions",
-  },
-  {
-    label: "Features",
-    to: "#features",
-  },
-  {
-    label: "Resource Tracking",
-    to: "#resource-tracking",
-  },
-  {
-    label: "Reporting",
-    to: "#reporting",
-  },
+  { label: "Challenges", to: "#challenges" },
+  { label: "Solutions", to: "#solutions" },
+  { label: "Features", to: "#features" },
+  { label: "Resource Tracking", to: "#resource-tracking" },
+  { label: "Reporting", to: "#reporting" },
 ];
 
 function SectionLabel({ children }) {
   return (
-    <div className="inline-flex items-center gap-2 font-mono text-[11px] tracking-[0.16em] text-[#6F7478] uppercase">
-      <span className="text-[#0F1112]">[</span>
+    <div className="inline-flex items-center gap-2 font-mono text-[11px] tracking-[0.16em] text-ink-muted uppercase">
+      <span className="text-ink">[</span>
       {children}
-      <span className="text-[#0F1112]">]</span>
+      <span className="text-ink">]</span>
     </div>
   );
 }
@@ -88,10 +69,12 @@ function SectionLabel({ children }) {
 function Brand() {
   return (
     <div className="flex items-center gap-2.5">
-      <div className="grid h-8 w-8 place-items-center bg-black rounded-[3px]">
-        <Leaf className="h-4 w-4 text-[#00A36C]" strokeWidth={2.5} />
-      </div>
-      <span className="text-[17px] font-semibold tracking-tight text-[#0F1112]">
+      <img
+        src={logoAsset}
+        alt="AgriCentral"
+        className="h-8 w-8 object-contain"
+      />
+      <span className="text-[17px] font-semibold tracking-tight text-ink">
         AgriCentral
       </span>
     </div>
@@ -106,46 +89,41 @@ function Navbar() {
       <header className="sticky top-0 z-50 w-full backdrop-blur-md bg-white/85 border-b border-zinc-200 transition-colors">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 lg:px-8">
           <Brand />
-
           <nav className="hidden lg:flex items-center gap-8">
             {links.map((l) => (
               <a
                 key={l.label}
                 href={l.to}
-                className="text-[13.5px] text-[#4c4e50] hover:text-[#0F1112] transition-colors"
+                className="text-[13.5px] text-[#4c4e50] hover:text-ink transition-colors"
               >
                 {l.label}
               </a>
             ))}
           </nav>
-
           <div className="hidden lg:flex items-center gap-2">
             <Link
               to="/auth"
-              className="px-3 py-2 text-[13.5px] text-[#3F4448] hover:text-[#0F1112] transition-colors"
+              className="px-3 py-2 text-[13.5px] text-[#3F4448] hover:text-ink transition-colors"
             >
               Login
             </Link>
             <Link
               to="/auth"
-              className="inline-flex items-center gap-1.5 rounded-[5px] bg-[#0F1112] px-3.5 py-2 text-[13.5px] font-medium text-white hover:bg-black transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-[5px] bg-ink px-3.5 py-2 text-[13.5px] font-medium text-white hover:bg-black transition-colors"
             >
-              Get Started
-              <ArrowRight className="h-3.5 w-3.5" />
+              Get Started <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
-
           <button
             aria-label="Open menu"
             onClick={() => setOpen(true)}
             className="lg:hidden grid h-9 w-9 place-items-center rounded-[5px] border border-zinc-200"
           >
-            <Menu className="h-4.5 w-4.5 text-[#0F1112]" />
+            <Menu className="h-4.5 w-4.5 text-ink" />
           </button>
         </div>
       </header>
 
-      {/* Drawer and overlay live outside <header> to avoid stacking context issues */}
       <motion.div
         initial={false}
         animate={{ x: open ? 0 : "100%" }}
@@ -168,7 +146,7 @@ function Navbar() {
               key={l.label}
               href={l.to}
               onClick={() => setOpen(false)}
-              className="px-3 py-3 text-[15px] text-[#0F1112] rounded-[5px] hover:bg-zinc-50"
+              className="px-3 py-3 text-[15px] text-ink rounded-[5px] hover:bg-zinc-50"
             >
               {l.label}
             </a>
@@ -176,19 +154,18 @@ function Navbar() {
           <div className="h-px bg-zinc-200 my-3" />
           <Link
             to="/auth"
-            className="px-3 py-3 text-[15px] text-[#0F1112] rounded-[5px] hover:bg-zinc-50"
+            className="px-3 py-3 text-[15px] text-ink rounded-[5px] hover:bg-zinc-50"
           >
             Login
           </Link>
           <Link
             to="/auth"
-            className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-[5px] bg-[#0F1112] px-3.5 py-3 text-[14px] font-medium text-white"
+            className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-[5px] bg-ink px-3.5 py-3 text-[14px] font-medium text-white"
           >
             Get Started <ArrowRight className="h-4 w-4" />
           </Link>
         </nav>
       </motion.div>
-
       {open && (
         <div
           onClick={() => setOpen(false)}
@@ -216,9 +193,8 @@ function Hero() {
         >
           <motion.div variants={fadeUp}>
             <span className="inline-flex items-center gap-2 font-mono text-[11px] tracking-[0.16em] text-white/70 uppercase">
-              <span className="text-white">[</span>
-              AGRICULTURAL INTELLIGENCE PLATFORM
-              <span className="text-white">]</span>
+              <span className="text-white">[</span>AGRICULTURAL INTELLIGENCE
+              PLATFORM<span className="text-white">]</span>
             </span>
           </motion.div>
           <motion.h1
@@ -237,28 +213,27 @@ function Hero() {
           </motion.p>
           <motion.div
             variants={fadeUp}
-            className="mt-8 flex flex-wrap items-center justify-center gap-2.5"
+            className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3"
           >
             <a
               href="#get-started"
-              className="inline-flex items-center gap-1.5 rounded-[5px] bg-white px-4 py-2.5 text-[13.5px] font-medium text-[#0F1112] hover:bg-white/90 transition-colors"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-[5px] bg-white px-5 py-3 text-[14px] font-medium text-ink hover:bg-white/90 transition-colors"
             >
               Get Started <ArrowRight className="h-4 w-4" />
             </a>
             <a
               href="#challenges"
-              className="inline-flex items-center gap-1.5 rounded-[5px] border border-white/30 bg-white/10 px-4 py-2.5 text-[13.5px] font-medium text-white hover:bg-white/20 transition-colors"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-[5px] border border-white/30 bg-white/10 px-5 py-3 text-[14px] font-medium text-white hover:bg-white/20 transition-colors"
             >
               Explore Platform
             </a>
           </motion.div>
-
           <motion.div
             variants={fadeUp}
             className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 font-mono text-[10.5px] tracking-[0.14em] text-white/60 uppercase"
           >
             <span className="inline-flex items-center gap-1.5">
-              <Circle className="h-2 w-2 fill-[#00A36C] text-[#00A36C]" />{" "}
+              <Circle className="h-2 w-2 fill-accent-agri text-accent-agri" />{" "}
               System Operational
             </span>
           </motion.div>
@@ -272,9 +247,9 @@ function Section({ id, label, title, description, children, className = "" }) {
   return (
     <section
       id={id}
-      className={`py-24 lg:py-32 border-t border-zinc-200 ${className}`}
+      className={`py-20 lg:py-32 border-t border-zinc-200 ${className}`}
     >
-      <div className="mx-auto max-w-7xl px-5 lg:px-8">
+      <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <motion.div
           variants={stagger}
           initial="hidden"
@@ -287,7 +262,7 @@ function Section({ id, label, title, description, children, className = "" }) {
           </motion.div>
           <motion.h2
             variants={fadeUp}
-            className="mt-4 text-[1.85rem] sm:text-[2.15rem] lg:text-[2.5rem] leading-[1.1] tracking-[-0.02em] font-medium text-[#0F1112]"
+            className="mt-4 text-[1.65rem] sm:text-[2.15rem] lg:text-[2.5rem] leading-[1.12] tracking-[-0.02em] font-medium text-ink"
           >
             {title}
           </motion.h2>
@@ -300,7 +275,7 @@ function Section({ id, label, title, description, children, className = "" }) {
             </motion.p>
           )}
         </motion.div>
-        <div className="mt-12 lg:mt-16">{children}</div>
+        <div className="mt-10 lg:mt-16">{children}</div>
       </div>
     </section>
   );
@@ -315,14 +290,14 @@ function ProblemCard({ icon: Icon, n, title, desc }) {
       className="group rounded-[5px] border border-zinc-200 bg-white p-6 hover:border-zinc-300 hover:shadow-[0_12px_30px_-20px_rgba(15,17,18,0.15)] transition-all"
     >
       <div className="flex items-center justify-between">
-        <div className="grid h-10 w-10 place-items-center rounded-[5px] bg-[#FAFAF8] border border-zinc-200">
-          <Icon className="h-4.5 w-4.5 text-[#0F1112]" />
+        <div className="grid h-10 w-10 place-items-center rounded-[5px] bg-canvas border border-zinc-200">
+          <Icon className="h-4.5 w-4.5 text-ink" />
         </div>
-        <span className="font-mono text-[10px] tracking-[0.14em] text-[#6F7478]">
+        <span className="font-mono text-[10px] tracking-[0.14em] text-ink-muted">
           0{n}
         </span>
       </div>
-      <h3 className="mt-5 text-[15px] font-semibold text-[#0F1112]">{title}</h3>
+      <h3 className="mt-5 text-[15px] font-semibold text-ink">{title}</h3>
       <p className="mt-2 text-[13.5px] leading-relaxed text-[#3F4448]">
         {desc}
       </p>
@@ -337,16 +312,14 @@ function FeatureRow({ icon: Icon, title, desc, mono }) {
       className="group p-6 border border-transparent hover:border-zinc-200 hover:bg-white rounded-[5px] transition-colors"
     >
       <div className="flex items-start gap-4">
-        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-[3px] bg-[#0F1112]">
-          <Icon className="h-4 w-4 text-[#00A36C]" strokeWidth={2.25} />
+        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-[3px] bg-ink">
+          <Icon className="h-4 w-4 text-accent-agri" strokeWidth={2.25} />
         </div>
         <div className="min-w-0">
-          <div className="font-mono text-[10px] tracking-[0.14em] text-[#6F7478] uppercase">
+          <div className="font-mono text-[10px] tracking-[0.14em] text-ink-muted uppercase">
             {mono}
           </div>
-          <h3 className="mt-1 text-[15px] font-semibold text-[#0F1112]">
-            {title}
-          </h3>
+          <h3 className="mt-1 text-[15px] font-semibold text-ink">{title}</h3>
           <p className="mt-1.5 text-[13.5px] leading-relaxed text-[#3F4448]">
             {desc}
           </p>
@@ -358,37 +331,40 @@ function FeatureRow({ icon: Icon, title, desc, mono }) {
 
 function WorkflowStep({ icon: Icon, n, title, desc, last }) {
   return (
-    <motion.div variants={fadeUp} className="relative flex-1 min-w-[140px]">
+    <motion.div variants={fadeUp} className="relative flex-1">
       <div className="flex items-center">
         <div className="relative z-10 grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white border border-zinc-300">
-          <Icon className="h-4 w-4 text-[#0F1112]" />
+          <Icon className="h-4 w-4 text-ink" />
         </div>
         {!last && (
-          <div className="hidden md:block flex-1 h-px bg-zinc-200 relative">
+          <div className="hidden lg:block flex-1 h-px bg-zinc-200 relative">
             <motion.div
               initial={{ scaleX: 0 }}
               whileInView={{ scaleX: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: n * 0.08 }}
               style={{ transformOrigin: "left" }}
-              className="absolute inset-0 bg-[#0F1112]"
+              className="absolute inset-0 bg-ink"
             />
           </div>
         )}
       </div>
-      <div className="mt-3 pr-4">
-        <div className="font-mono text-[10px] tracking-[0.14em] text-[#6F7478]">
+      <div className="mt-3 pr-2 lg:pr-4">
+        <div className="font-mono text-[10px] tracking-[0.14em] text-ink-muted">
           STEP 0{n}
         </div>
-        <div className="mt-1 text-[13.5px] font-medium text-[#0F1112] leading-snug">
+        <div className="mt-1 text-[13.5px] font-medium text-ink leading-snug">
           {title}
         </div>
         {desc && (
-          <p className="mt-1.5 text-[12px] leading-relaxed text-[#6F7478]">
+          <p className="mt-1.5 text-[12px] leading-relaxed text-ink-muted">
             {desc}
           </p>
         )}
       </div>
+      {!last && (
+        <div className="md:hidden absolute left-5 top-10 w-px h-6 bg-zinc-200" />
+      )}
     </motion.div>
   );
 }
@@ -401,8 +377,8 @@ function ModuleCard({ icon: Icon, title, desc }) {
       transition={{ duration: 0.2 }}
       className="rounded-[5px] border border-zinc-200 bg-white p-5 hover:border-zinc-300 hover:shadow-[0_12px_30px_-20px_rgba(15,17,18,0.15)] transition-all"
     >
-      <Icon className="h-4.5 w-4.5 text-[#0F1112]" />
-      <h3 className="mt-4 text-[14px] font-semibold text-[#0F1112]">{title}</h3>
+      <Icon className="h-4.5 w-4.5 text-ink" />
+      <h3 className="mt-4 text-[14px] font-semibold text-ink">{title}</h3>
       <p className="mt-1.5 text-[12.5px] leading-relaxed text-[#3F4448]">
         {desc}
       </p>
@@ -426,16 +402,14 @@ function BenefitCard({ icon: Icon, n, title, desc, img }) {
       </div>
       <div className="p-6">
         <div className="flex items-center justify-between">
-          <div className="grid h-9 w-9 place-items-center rounded-[3px] bg-[#0F1112]">
-            <Icon className="h-4 w-4 text-[#00A36C]" strokeWidth={2.25} />
+          <div className="grid h-9 w-9 place-items-center rounded-[3px] bg-ink">
+            <Icon className="h-4 w-4 text-accent-agri" strokeWidth={2.25} />
           </div>
-          <span className="font-mono text-[10px] tracking-[0.14em] text-[#6F7478]">
+          <span className="font-mono text-[10px] tracking-[0.14em] text-ink-muted">
             0{n}
           </span>
         </div>
-        <h3 className="mt-4 text-[16px] font-semibold text-[#0F1112]">
-          {title}
-        </h3>
+        <h3 className="mt-4 text-[16px] font-semibold text-ink">{title}</h3>
         <p className="mt-2 text-[13.5px] leading-relaxed text-[#3F4448]">
           {desc}
         </p>
@@ -615,7 +589,7 @@ export default function HomePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8] text-[#0F1112] font-sans antialiased selection:bg-[#0F1112] selection:text-white">
+    <div className="min-h-screen bg-canvas text-ink font-sans antialiased selection:bg-ink selection:text-white">
       <Navbar />
 
       <main>
@@ -632,7 +606,7 @@ export default function HomePage() {
             initial="hidden"
             whileInView="show"
             viewport={{ once: true, amount: 0.15 }}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
           >
             {problems.map((p, i) => (
               <ProblemCard key={p.title} {...p} n={i + 1} />
@@ -650,7 +624,7 @@ export default function HomePage() {
             initial="hidden"
             whileInView="show"
             viewport={{ once: true, amount: 0.1 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-4"
+            className="grid grid-cols-1 md:grid-cols-3 gap-5"
           >
             {benefits.map((b, i) => (
               <BenefitCard key={b.title} {...b} n={i + 1} />
@@ -688,7 +662,7 @@ export default function HomePage() {
             viewport={{ once: true, amount: 0.15 }}
             className="rounded-[5px] border border-zinc-200 bg-white p-6 lg:p-10"
           >
-            <div className="flex flex-col md:grid md:grid-cols-2 lg:flex lg:flex-row">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:flex lg:flex-row gap-6 md:gap-6 lg:gap-0">
               {workflow.map((s, i) => (
                 <WorkflowStep
                   key={s.title}
@@ -723,9 +697,9 @@ export default function HomePage() {
 
         <section
           id="get-started"
-          className="py-24 lg:py-32 border-t border-zinc-200"
+          className="py-20 lg:py-32 border-t border-zinc-200"
         >
-          <div className="mx-auto max-w-7xl px-5 lg:px-8">
+          <div className="mx-auto max-w-7xl px-6 lg:px-8">
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -734,23 +708,23 @@ export default function HomePage() {
               className="rounded-[8px] border border-zinc-200 bg-white p-8 sm:p-12 lg:p-16 text-center"
             >
               <SectionLabel>GET STARTED</SectionLabel>
-              <h2 className="mt-5 text-[1.85rem] sm:text-[2.15rem] lg:text-[2.5rem] leading-[1.1] tracking-[-0.02em] font-medium text-[#0F1112] max-w-2xl mx-auto">
+              <h2 className="mt-5 text-[1.65rem] sm:text-[2.15rem] lg:text-[2.5rem] leading-[1.12] tracking-[-0.02em] font-medium text-ink max-w-2xl mx-auto">
                 Transform Agricultural Resource Management
               </h2>
               <p className="mt-4 text-[0.98rem] leading-relaxed text-[#3F4448] max-w-xl mx-auto">
                 Give agricultural offices complete visibility over farms,
                 livestock, equipment, reports, and disaster response operations.
               </p>
-              <div className="mt-8 flex flex-wrap items-center justify-center gap-2.5">
+              <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
                 <a
                   href="#demo"
-                  className="inline-flex items-center gap-1.5 rounded-[5px] bg-[#0F1112] px-4 py-2.5 text-[13.5px] font-medium text-white hover:bg-black transition-colors"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-[5px] bg-ink px-5 py-3 text-[14px] font-medium text-white hover:bg-black transition-colors"
                 >
                   Request Demo <ArrowRight className="h-4 w-4" />
                 </a>
                 <Link
                   to="/auth"
-                  className="inline-flex items-center gap-1.5 rounded-[5px] border border-zinc-200 bg-white px-4 py-2.5 text-[13.5px] font-medium text-[#0F1112] hover:border-zinc-300 transition-colors"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-[5px] border border-zinc-200 bg-white px-5 py-3 text-[14px] font-medium text-ink hover:border-zinc-300 transition-colors"
                 >
                   Get Started
                 </Link>
@@ -761,7 +735,7 @@ export default function HomePage() {
       </main>
 
       <footer className="border-t border-zinc-200 bg-white">
-        <div className="mx-auto max-w-7xl px-5 lg:px-8 py-14">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8 py-14">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
             <div>
               <Brand />
@@ -769,12 +743,11 @@ export default function HomePage() {
                 Agricultural intelligence platform for resource management and
                 disaster response.
               </p>
-              <div className="mt-5 font-mono text-[10px] tracking-[0.14em] text-[#6F7478] uppercase">
+              <div className="mt-5 font-mono text-[10px] tracking-[0.14em] text-ink-muted uppercase">
                 System Status · Operational
               </div>
             </div>
-
-            <div className="md:justify-self-center text-[#6F7478]">
+            <div className="md:justify-self-center text-ink-muted">
               <div className="font-mono text-[10px] tracking-[0.14em] uppercase">
                 Navigation
               </div>
@@ -783,47 +756,42 @@ export default function HomePage() {
                   <a
                     href={l.to}
                     key={l.label}
-                    className="hover:text-[#0F1112] transition-colors"
+                    className="hover:text-ink transition-colors"
                   >
                     {l.label}
                   </a>
                 ))}
               </nav>
             </div>
-            <div className="md:justify-self-end text-[#6F7478]">
+            <div className="md:justify-self-end text-ink-muted">
               <div className="font-mono text-[10px] tracking-[0.14em] uppercase">
                 Social
               </div>
-
-              <nav className="flex gap-4 p-5 text-[#6F7478]">
+              <nav className="flex gap-4 p-5">
                 <a href="https://facebook.com" target="_blank" rel="noreferrer">
-                  <FaFacebookF className="hover:text-[#0F1112] transition-colors" />
+                  <FaFacebookF className="hover:text-ink transition-colors" />
                 </a>
-
                 <a
                   href="https://instagram.com"
                   target="_blank"
                   rel="noreferrer"
                 >
-                  <FaInstagram className="hover:text-[#0F1112] transition-colors" />
+                  <FaInstagram className="hover:text-ink transition-colors" />
                 </a>
-
                 <a href="https://x.com" target="_blank" rel="noreferrer">
-                  <FaXTwitter className="hover:text-[#0F1112] transition-colors" />
+                  <FaXTwitter className="hover:text-ink transition-colors" />
                 </a>
-
                 <a href="https://github.com" target="_blank" rel="noreferrer">
-                  <FaGithub className="hover:text-[#0F1112] transition-colors" />
+                  <FaGithub className="hover:text-ink transition-colors" />
                 </a>
               </nav>
             </div>
           </div>
-
           <div className="mt-12 pt-6 border-t border-zinc-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <p className="font-mono text-[10.5px] tracking-[0.12em] text-[#6F7478] uppercase">
+            <p className="font-mono text-[10.5px] tracking-[0.12em] text-ink-muted uppercase">
               © 2026 AgriCentral. All rights reserved.
             </p>
-            <p className="font-mono text-[10.5px] tracking-[0.12em] text-[#6F7478] uppercase">
+            <p className="font-mono text-[10.5px] tracking-[0.12em] text-ink-muted uppercase">
               Build 2026.06 · Region 4B
             </p>
           </div>
