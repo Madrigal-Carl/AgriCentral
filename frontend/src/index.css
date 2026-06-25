@@ -91,6 +91,17 @@
   }
 }
 
+input::-ms-reveal,
+input::-ms-clear,
+input::-webkit-credentials-auto-fill-button,
+input::-webkit-strong-password-auto-fill-button {
+  display: none !important;
+  visibility: hidden;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+}
+
 /* ─── Dashboard (new — scoped, no conflict with :root above) ──── */
 @layer base {
   .dashboard {

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 
 import logoAsset from "@/assets/logo.png";
 import barnAsset from "@/assets/images/barn.jpg";
@@ -13,6 +13,7 @@ import useAuth from "@/hooks/useAuth";
 export default function AuthPage() {
   const [mode, setMode] = useState("signin");
   const [info, setInfo] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
   const { login, register: registerUser } = useAuth();
 
   const {
@@ -28,6 +29,7 @@ export default function AuthPage() {
   function switchMode(nextMode) {
     setMode(nextMode);
     setInfo(null);
+    setShowPassword(false);
     reset();
   }
 
@@ -128,16 +130,31 @@ export default function AuthPage() {
               >
                 Password
               </label>
-              <input
-                id="password"
-                type="password"
-                autoComplete={
-                  mode === "signin" ? "current-password" : "new-password"
-                }
-                {...register("password")}
-                className="rounded-[5px] border border-zinc-300 bg-white px-3 py-2.5 text-[14px] text-ink outline-none focus:border-ink transition-colors"
-                placeholder="••••••••"
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete={
+                    mode === "signin" ? "current-password" : "new-password"
+                  }
+                  {...register("password")}
+                  className="w-full rounded-[5px] border border-zinc-300 bg-white px-3 py-2.5 pr-10 text-[14px] text-ink outline-none focus:border-ink transition-colors"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute inset-y-0 right-0 flex items-center px-3 text-ink-muted hover:text-ink transition-colors"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  tabIndex={-1}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
               {errors.password && (
                 <p className="text-[12px] text-red-600">
                   {errors.password.message}
