@@ -5,7 +5,7 @@ import AuthPage from "@/pages/public/AuthPage";
 
 import DashboardLayout from "@/layouts/DashboardLayout";
 
-// import AuthPage from "@/pages/public/AuthPage";
+import OverviewPage from "@/pages/public/OverviewPage";
 
 import UnauthorizedPage from "@/pages/shared/UnauthorizedPage";
 
@@ -40,10 +40,7 @@ export default function AppRouter() {
         {/* FAR ONLY */}
         <Route element={<ProtectedRoute allowedRoles={[ROLES.FAR]} />}>
           <Route path="/far" element={<DashboardLayout />}>
-            <Route
-              path="overview"
-              element={<h1 className="text-3xl">Far Overview Page</h1>}
-            />
+            <Route path="overview" element={<OverviewPage />} />
             <Route
               path="farmers"
               element={<h1 className="text-3xl">Far Farmer Page</h1>}
