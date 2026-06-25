@@ -387,14 +387,6 @@ function FarmerModal({ mode, initial, onClose, onSave }) {
                 placeholder="Street, City"
               />
             </Field>
-            {mode === "add" && (
-              <Field label="Attachments" full>
-                <FileUploader
-                  value={form.files}
-                  onChange={(v) => set("files", v)}
-                />
-              </Field>
-            )}
 
             {mode === "edit" && (
               <>
@@ -427,6 +419,13 @@ function FarmerModal({ mode, initial, onClose, onSave }) {
                 </Field>
               </>
             )}
+
+            <Field label="Attachments" full>
+              <FileUploader
+                value={form.files}
+                onChange={(v) => set("files", v)}
+              />
+            </Field>
           </div>
         </form>
 
