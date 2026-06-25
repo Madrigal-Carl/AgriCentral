@@ -92,7 +92,7 @@ const blankForm = {
 };
 
 /* ---------------- Page ---------------- */
-export default function FarmersPage() {
+export function FarmersPage() {
   const [rows, setRows] = useState(FARMERS);
   const [modal, setModal] = useState(null);
   const [drawer, setDrawer] = useState(null);

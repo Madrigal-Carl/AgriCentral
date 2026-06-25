@@ -94,7 +94,7 @@ function buildActivities() {
     .map((e) => ({ ...e, time: relativeTime(e.date) }));
 }
 
-export default function OverviewPage() {
+export function OverviewPage() {
   const FARM_DISTRIBUTION = buildFarmDistribution();
   const LIVESTOCK_STATUS = buildLivestockStatus();
   const ACTIVITIES = buildActivities();

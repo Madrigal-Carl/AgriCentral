@@ -17,7 +17,7 @@ import {
   StatusPill,
 } from "@/components/public";
 import { Button, Select } from "@/components/ui";
-import { EQUIPMENTS } from "@/constants/data";
+import { LIVESTOCKS } from "@/constants/data";
 
 const FARMERS = [
   "Lina Okoro",
@@ -32,62 +32,71 @@ const FARMERS = [
   "Ravi Patel",
 ];
 
-const CONDITION_OPTIONS = [
-  { value: "excellent", label: "Excellent" },
-  { value: "good", label: "Good" },
-  { value: "maintenance", label: "Maintenance" },
-  { value: "damaged", label: "Damaged" },
+const ANIMAL_OPTIONS = [
+  { value: "Cow", label: "Cow" },
+  { value: "Goat", label: "Goat" },
+  { value: "Sheep", label: "Sheep" },
+  { value: "Pig", label: "Pig" },
+  { value: "Chicken", label: "Chicken" },
+];
+const GENDER_OPTIONS = [
+  { value: "male", label: "Male" },
+  { value: "female", label: "Female" },
+];
+const HEALTH_OPTIONS = [
+  { value: "healthy", label: "Healthy" },
+  { value: "observation", label: "Under Observation" },
+  { value: "sick", label: "Sick" },
 ];
 const STATUS_OPTIONS = [
-  { value: "available", label: "Available" },
-  { value: "assigned", label: "Assigned" },
-  { value: "repair", label: "Repair" },
+  { value: "active", label: "Active" },
+  { value: "sold", label: "Sold" },
+  { value: "quarantine", label: "Quarantine" },
 ];
 
-const condTone = {
-  excellent: "success",
-  good: "info",
-  maintenance: "warning",
-  damaged: "danger",
+const healthTone = {
+  healthy: "success",
+  observation: "warning",
+  sick: "danger",
 };
-const statusTone = {
-  available: "success",
-  assigned: "info",
-  repair: "warning",
-};
-const condLabel = {
-  excellent: "Excellent",
-  good: "Good",
-  maintenance: "Maintenance",
-  damaged: "Damaged",
+const statusTone = { active: "info", sold: "neutral", quarantine: "warning" };
+const healthLabel = {
+  healthy: "Healthy",
+  observation: "Under Observation",
+  sick: "Sick",
 };
 const statusLabel = {
-  available: "Available",
-  assigned: "Assigned",
-  repair: "Repair",
+  active: "Active",
+  sold: "Sold",
+  quarantine: "Quarantine",
 };
 
 const blankForm = {
   id: "",
-  name: "",
-  condition: "excellent",
-  status: "available",
+  animal: "Cow",
+  breed: "",
+  gender: "female",
+  dob: "",
+  color: "",
+  weight: "",
   farmer: "",
+  health: "healthy",
+  status: "active",
   acquisitionDate: "",
 };
 
-export function EquipmentsPage() {
-  const [rows, setRows] = useState(EQUIPMENTS);
-  const [modal, setModal] = useState(null);
-  const [drawer, setDrawer] = useState(null);
-  const [confirmDelete, setConfirmDelete] = useState(null);
+export function LivestocksPage() {
+  const [rows, setRows] = useState(LIVESTOCKS);
+  const [modal, setModal] = useState(null); // { mode: 'add' | 'edit', data }
+  const [drawer, setDrawer] = useState(null); // row
+  const [confirmDelete, setConfirmDelete] = useState(null); // row
 
   const openAdd = () =>
     setModal({
       mode: "add",
       data: {
         ...blankForm,
-        id: `EQ-${String(rows.length + 1).padStart(3, "0")}`,
+        id: `LS-${String(rows.length + 1).padStart(3, "0")}`,
       },
     });
   const openEdit = (row) => setModal({ mode: "edit", data: { ...row } });
@@ -108,12 +117,13 @@ export function EquipmentsPage() {
             ? {
                 ...x,
                 ...data,
+                weight: Number(data.weight) || 0,
                 history:
-                  x.name !== data.name && data.name
+                  x.farmer !== data.farmer && data.farmer
                     ? [
                         ...(x.history || []),
                         {
-                          name: data.name,
+                          farmer: data.farmer,
                           date:
                             data.acquisitionDate ||
                             new Date().toISOString().slice(0, 10),
@@ -128,10 +138,11 @@ export function EquipmentsPage() {
         ...r,
         {
           ...data,
-          history: data.name
+          weight: Number(data.weight) || 0,
+          history: data.farmer
             ? [
                 {
-                  name: data.name,
+                  farmer: data.farmer,
                   date:
                     data.acquisitionDate ||
                     new Date().toISOString().slice(0, 10),
@@ -147,23 +158,23 @@ export function EquipmentsPage() {
   return (
     <div>
       <PageHeader
-        title="Equipment"
-        subtitle="Fleet & tools across all farms."
+        title="Livestock"
+        subtitle="Animal welfare and inventory."
         action={
           <Button variant="primary" onClick={openAdd}>
-            <Plus className="h-4 w-4" /> Add Equipment
+            <Plus className="h-4 w-4" /> Add Livestock
           </Button>
         }
       />
       <DataTable
-        searchPlaceholder="Search equipment…"
+        searchPlaceholder="Search animal…"
         data={rows}
         filters={[
           {
-            key: "condition",
-            label: "Condition",
-            options: CONDITION_OPTIONS,
-            predicate: (r, v) => r.condition === v,
+            key: "health",
+            label: "Health",
+            options: HEALTH_OPTIONS,
+            predicate: (r, v) => r.health === v,
           },
           {
             key: "status",
@@ -175,12 +186,14 @@ export function EquipmentsPage() {
         columns={[
           {
             key: "id",
-            header: "Equipment ID",
+            header: "Livestock ID",
             sortable: true,
             cell: (r) => (
               <div>
                 <div className="font-semibold text-foreground">{r.id}</div>
-                <div className="text-xs text-secondary">{r.name}</div>
+                <div className="text-xs text-secondary">
+                  {r.animal} · {r.breed}
+                </div>
               </div>
             ),
           },
@@ -191,11 +204,11 @@ export function EquipmentsPage() {
             cell: (r) => r.farmer || "—",
           },
           {
-            key: "condition",
-            header: "Condition",
+            key: "health",
+            header: "Health",
             cell: (r) => (
-              <StatusPill tone={condTone[r.condition]}>
-                {condLabel[r.condition]}
+              <StatusPill tone={healthTone[r.health]}>
+                {healthLabel[r.health]}
               </StatusPill>
             ),
           },
@@ -224,7 +237,7 @@ export function EquipmentsPage() {
       />
 
       {modal && (
-        <EquipmentModal
+        <LivestockModal
           mode={modal.mode}
           initial={modal.data}
           onClose={() => setModal(null)}
@@ -232,12 +245,13 @@ export function EquipmentsPage() {
         />
       )}
       {drawer && (
-        <EquipmentDrawer row={drawer} onClose={() => setDrawer(null)} />
+        <LivestockDrawer row={drawer} onClose={() => setDrawer(null)} />
       )}
       {confirmDelete && (
         <DeleteConfirmModal
           id={confirmDelete.id}
-          name={confirmDelete.name}
+          animal={confirmDelete.animal}
+          breed={confirmDelete.breed}
           onCancel={() => setConfirmDelete(null)}
           onConfirm={confirmRemove}
         />
@@ -247,7 +261,7 @@ export function EquipmentsPage() {
 }
 
 /* ---------------- Modal ---------------- */
-function EquipmentModal({ mode, initial, onClose, onSave }) {
+function LivestockModal({ mode, initial, onClose, onSave }) {
   const [form, setForm] = useState(initial);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -259,7 +273,7 @@ function EquipmentModal({ mode, initial, onClose, onSave }) {
 
   const submit = (e) => {
     e.preventDefault();
-    if (!form.name) return;
+    if (!form.animal) return;
     onSave(form);
   };
 
@@ -274,9 +288,9 @@ function EquipmentModal({ mode, initial, onClose, onSave }) {
       >
         <div className="flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
           <div>
-            <div className="label-eyebrow mb-1">Equipment</div>
+            <div className="label-eyebrow mb-1">Livestock</div>
             <h2 className="font-display text-xl tracking-tight text-foreground">
-              {mode === "add" ? "Add New Equipment" : `Edit ${initial.id}`}
+              {mode === "add" ? "Add New Livestock" : `Edit ${initial.id}`}
             </h2>
           </div>
           <button
@@ -290,25 +304,67 @@ function EquipmentModal({ mode, initial, onClose, onSave }) {
 
         <form onSubmit={submit} className="flex-1 overflow-y-auto px-6 py-5">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Equipment ID">
+            <Field label="Livestock ID">
               <TextInput
                 value={form.id}
                 onChange={(v) => set("id", v)}
-                placeholder="EQ-001"
+                placeholder="LS-001"
               />
             </Field>
-            <Field label="Name">
-              <TextInput
-                value={form.name}
-                onChange={(v) => set("name", v)}
-                placeholder="Tractor T-204"
-              />
-            </Field>
-            <Field label="Condition">
+            <Field label="Animal">
               <FullSelect
-                value={form.condition}
-                onChange={(v) => set("condition", v)}
-                options={CONDITION_OPTIONS}
+                value={form.animal}
+                onChange={(v) => set("animal", v)}
+                options={ANIMAL_OPTIONS}
+              />
+            </Field>
+            <Field label="Breed">
+              <TextInput
+                value={form.breed}
+                onChange={(v) => set("breed", v)}
+                placeholder="Friesian"
+              />
+            </Field>
+            <Field label="Gender">
+              <FullSelect
+                value={form.gender}
+                onChange={(v) => set("gender", v)}
+                options={GENDER_OPTIONS}
+              />
+            </Field>
+            <Field label="Date of Birth">
+              <TextInput
+                type="date"
+                value={form.dob}
+                onChange={(v) => set("dob", v)}
+              />
+            </Field>
+            <Field label="Color">
+              <TextInput
+                value={form.color}
+                onChange={(v) => set("color", v)}
+                placeholder="Black & White"
+              />
+            </Field>
+            <Field label="Weight (kg)">
+              <TextInput
+                type="number"
+                value={form.weight}
+                onChange={(v) => set("weight", v)}
+                placeholder="0"
+              />
+            </Field>
+            <Field label="Assign Farmer" full>
+              <FarmerSelect
+                value={form.farmer}
+                onChange={(v) => set("farmer", v)}
+              />
+            </Field>
+            <Field label="Health">
+              <FullSelect
+                value={form.health}
+                onChange={(v) => set("health", v)}
+                options={HEALTH_OPTIONS}
               />
             </Field>
             <Field label="Status">
@@ -316,12 +372,6 @@ function EquipmentModal({ mode, initial, onClose, onSave }) {
                 value={form.status}
                 onChange={(v) => set("status", v)}
                 options={STATUS_OPTIONS}
-              />
-            </Field>
-            <Field label="Assigned Farmer" full>
-              <FarmerSelect
-                value={form.farmer}
-                onChange={(v) => set("farmer", v)}
               />
             </Field>
             <Field label="Acquisition Date" full>
@@ -339,7 +389,7 @@ function EquipmentModal({ mode, initial, onClose, onSave }) {
             Cancel
           </Button>
           <Button variant="primary" onClick={submit} type="submit">
-            {mode === "add" ? "Add Equipment" : "Save Changes"}
+            {mode === "add" ? "Add Livestock" : "Save Changes"}
           </Button>
         </div>
       </div>
@@ -348,7 +398,7 @@ function EquipmentModal({ mode, initial, onClose, onSave }) {
 }
 
 /* ---------------- Delete Confirmation Modal ---------------- */
-function DeleteConfirmModal({ id, name, onCancel, onConfirm }) {
+function DeleteConfirmModal({ id, animal, breed, onCancel, onConfirm }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-foreground-40 p-4"
@@ -362,12 +412,12 @@ function DeleteConfirmModal({ id, name, onCancel, onConfirm }) {
           <AlertTriangle className="h-6 w-6" />
         </div>
         <h3 className="font-display text-lg tracking-tight text-foreground mb-1">
-          Delete Equipment?
+          Delete Livestock?
         </h3>
         <p className="text-sm text-secondary mb-6">
           Are you sure you want to delete{" "}
           <strong className="text-foreground">
-            {id} ({name})
+            {id} ({animal} · {breed})
           </strong>
           ? This action cannot be undone.
         </p>
@@ -488,7 +538,7 @@ function FarmerSelect({ value, onChange }) {
 }
 
 /* ---------------- Drawer (view) ---------------- */
-function EquipmentDrawer({ row, onClose }) {
+function LivestockDrawer({ row, onClose }) {
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
@@ -502,16 +552,20 @@ function EquipmentDrawer({ row, onClose }) {
         className="absolute inset-y-0 right-0 flex w-full max-w-xl flex-col bg-surface border-l border-border shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Header */}
         <div className="border-b border-border px-6 py-5">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <div className="label-eyebrow mb-1">Equipment · {row.id}</div>
+              <div className="label-eyebrow mb-1">Livestock · {row.id}</div>
               <h2 className="font-display text-xl tracking-tight text-foreground truncate">
-                {row.name}
+                {row.animal} · {row.breed}
               </h2>
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <StatusPill tone={condTone[row.condition]}>
-                  {condLabel[row.condition]}
+                <span className="inline-flex items-center gap-1.5 border border-border bg-muted px-2.5 py-1 text-xs font-semibold text-foreground">
+                  {row.animal}
+                </span>
+                <StatusPill tone={healthTone[row.health]}>
+                  {healthLabel[row.health]}
                 </StatusPill>
                 <StatusPill tone={statusTone[row.status]}>
                   {statusLabel[row.status]}
@@ -528,14 +582,19 @@ function EquipmentDrawer({ row, onClose }) {
           </div>
         </div>
 
+        {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
           <Section icon={Info} title="Basic Information">
             <DefList
               items={[
-                ["Equipment ID", row.id],
-                ["Name", row.name],
-                ["Condition", condLabel[row.condition]],
-                ["Status", statusLabel[row.status]],
+                ["Livestock ID", row.id],
+                ["Tag / Name", row.tag],
+                ["Animal", row.animal],
+                ["Breed", row.breed || "—"],
+                ["Gender", row.gender === "male" ? "Male" : "Female"],
+                ["Date of Birth", fmtDate(row.dob)],
+                ["Color", row.color || "—"],
+                ["Weight", row.weight ? `${row.weight} kg` : "—"],
                 ["Acquisition Date", fmtDate(row.acquisitionDate)],
               ]}
             />
@@ -561,10 +620,10 @@ function EquipmentDrawer({ row, onClose }) {
             )}
           </Section>
 
-          <Section icon={Activity} title="Condition Records">
+          <Section icon={Activity} title="Health Records">
             <DefList
               items={[
-                ["Current Condition", condLabel[row.condition]],
+                ["Current Health", healthLabel[row.health]],
                 ["Status", statusLabel[row.status]],
                 [
                   "Last Updated",
@@ -581,10 +640,10 @@ function EquipmentDrawer({ row, onClose }) {
                   <li key={i} className="relative pl-5 pb-4 last:pb-0">
                     <span className="absolute -left-[5px] top-1.5 h-2.5 w-2.5 bg-accent" />
                     <div className="font-semibold text-sm text-foreground">
-                      {h.name}
+                      {h.farmer}
                     </div>
                     <div className="text-xs text-secondary">
-                      Acquired · {fmtDate(h.date)}
+                      Assigned · {fmtDate(h.date)}
                     </div>
                   </li>
                 ))}

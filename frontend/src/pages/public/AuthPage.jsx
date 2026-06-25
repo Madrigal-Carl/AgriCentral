@@ -10,7 +10,7 @@ import barnAsset from "@/assets/images/barn.jpg";
 import { authSchema } from "@/schemas/auth.schema";
 import useAuth from "@/hooks/useAuth";
 
-export default function AuthPage() {
+export function AuthPage() {
   const [mode, setMode] = useState("signin");
   const [info, setInfo] = useState(null);
   const [showPassword, setShowPassword] = useState(false);

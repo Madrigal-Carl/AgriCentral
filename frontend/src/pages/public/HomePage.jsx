@@ -418,7 +418,7 @@ function BenefitCard({ icon: Icon, n, title, desc, img }) {
   );
 }
 
-export default function HomePage() {
+export function HomePage() {
   const problems = [
     {
       icon: AlertTriangle,
