@@ -28,7 +28,6 @@ export const farNavSections = [
         label: "Records",
         items: [
             { to: "/far/reports", label: "Report", icon: FileText },
-            { to: "/far/members", label: "Member", icon: UserCircle2 },
         ],
     },
     {
@@ -45,7 +44,6 @@ const farBreadcrumbs = {
     "/far/livestocks": { group: "Resources", label: "Livestock" },
     "/far/farm-maps": { group: "Mapping", label: "Farm Maps" },
     "/far/reports": { group: "Records", label: "Report" },
-    "/far/members": { group: "Records", label: "Member" },
     "/far/settings": { group: "Settings", label: "Settings" },
 };
 

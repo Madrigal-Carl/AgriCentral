@@ -69,10 +69,6 @@ export default function AppRouter() {
               element={<h1 className="text-3xl">Far Report Page</h1>}
             />
             <Route
-              path="members"
-              element={<h1 className="text-3xl">Far Member Page</h1>}
-            />
-            <Route
               path="settings"
               element={<h1 className="text-3xl">Far Settings Page</h1>}
             />
