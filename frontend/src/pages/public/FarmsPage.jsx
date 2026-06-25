@@ -346,6 +346,7 @@ function FarmModal({ mode, initial, onClose, onSave }) {
               <MultiSelect
                 values={cropNames}
                 onChange={onCropsChange}
+                allowCreate={true}
                 options={CROP_OPTIONS}
                 placeholder="Select crops…"
                 searchPlaceholder="Search crop…"
@@ -462,6 +463,8 @@ function MultiSelect({
   options,
   placeholder,
   searchPlaceholder,
+  allowCreate = false,
+  onCreate,
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -477,9 +480,21 @@ function MultiSelect({
     () => options.filter((o) => o.toLowerCase().includes(q.toLowerCase())),
     [q, options],
   );
+  const trimmed = q.trim();
+  const exactMatch = useMemo(
+    () => options.some((o) => o.toLowerCase() === trimmed.toLowerCase()),
+    [options, trimmed],
+  );
+  const canCreate = allowCreate && trimmed.length > 0 && !exactMatch;
   const toggle = (o) => {
     if (values.includes(o)) onChange(values.filter((v) => v !== o));
     else onChange([...values, o]);
+  };
+  const handleCreate = () => {
+    if (!canCreate) return;
+    onCreate?.(trimmed);
+    if (!values.includes(trimmed)) onChange([...values, trimmed]);
+    setQ("");
   };
   const remove = (o) => onChange(values.filter((v) => v !== o));
 
@@ -527,12 +542,18 @@ function MultiSelect({
               autoFocus
               value={q}
               onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && canCreate) {
+                  e.preventDefault();
+                  handleCreate();
+                }
+              }}
               placeholder={searchPlaceholder}
               className="w-full bg-surface py-2.5 pl-9 pr-3 text-sm outline-none"
             />
           </div>
           <ul className="max-h-56 overflow-auto">
-            {filtered.length === 0 ? (
+            {filtered.length === 0 && !canCreate ? (
               <li className="px-3 py-3 text-sm text-secondary">No results.</li>
             ) : (
               filtered.map((o) => {
@@ -552,6 +573,18 @@ function MultiSelect({
                   </li>
                 );
               })
+            )}
+            {canCreate && (
+              <li className="border-t border-border">
+                <button
+                  type="button"
+                  onClick={handleCreate}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-semibold text-accent hover:bg-muted"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add &ldquo;{trimmed}&rdquo;
+                </button>
+              </li>
             )}
           </ul>
         </div>
