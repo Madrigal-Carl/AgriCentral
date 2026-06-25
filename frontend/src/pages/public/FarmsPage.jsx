@@ -25,7 +25,13 @@ import {
 } from "@/components/public";
 import { Button, Select } from "@/components/ui";
 
-import { FARMS } from "@/constants/data";
+import {
+  FARMS,
+  BOAC_CENTER,
+  CROP_OPTIONS,
+  CROP_STATUS_TONE,
+  CROP_STATUS_LABEL,
+} from "@/constants/data";
 
 /* ---------------- Reference data ---------------- */
 const FARMER_OPTIONS = [
@@ -37,39 +43,12 @@ const FARMER_OPTIONS = [
   "FR-006 · Mariam Diallo",
 ];
 
-export const CROP_OPTIONS = [
-  "Rice",
-  "Maize",
-  "Wheat",
-  "Vegetables",
-  "Coffee",
-  "Cocoa",
-  "Cassava",
-  "Sorghum",
-];
-
 const CROP_STATUS_OPTIONS = [
   { value: "planted", label: "Planted" },
   { value: "growing", label: "Growing" },
   { value: "harvested", label: "Harvested" },
   { value: "fallow", label: "Fallow" },
 ];
-
-export const cropStatusTone = {
-  planted: "info",
-  growing: "success",
-  harvested: "neutral",
-  fallow: "warning",
-};
-export const cropStatusLabel = {
-  planted: "Planted",
-  growing: "Growing",
-  harvested: "Harvested",
-  fallow: "Fallow",
-};
-
-/* ---------------- Initial rows ---------------- */
-export const BOAC_CENTER = { lat: 13.4456, lng: 121.8403 };
 
 const blankForm = {
   id: "",

@@ -245,3 +245,28 @@ export const EQUIPMENTS = [
         history: [{ name: "Sprayer S-31", date: "2023-01-20" }],
     },
 ];
+
+export const BOAC_CENTER = { lat: 13.4456, lng: 121.8403 };
+
+export const CROP_OPTIONS = [
+    "Rice",
+    "Maize",
+    "Wheat",
+    "Vegetables",
+    "Coffee",
+    "Cocoa",
+    "Cassava",
+    "Sorghum",
+];
+export const CROP_STATUS_TONE = {
+    planted: "info",
+    growing: "success",
+    harvested: "neutral",
+    fallow: "warning",
+};
+export const CROP_STATUS_LABEL = {
+    planted: "Planted",
+    growing: "Growing",
+    harvested: "Harvested",
+    fallow: "Fallow",
+};
