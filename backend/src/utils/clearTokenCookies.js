@@ -4,7 +4,7 @@ export const clearTokenCookies = (res) => {
   const cookieOptions = {
     httpOnly: true,
     secure: isProduction,
-    sameSite: "strict",
+    sameSite: isProduction ? "none" : "lax",
   };
 
   res.clearCookie("accessToken", cookieOptions);
