@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Base ───────────────────────────────────────────────────── */
+/* ─── Landing page (current — untouched) ───────────────────────── */
 @layer base {
   :root {
     --radius: 0.625rem;
@@ -88,5 +88,67 @@
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--color-foreground));
+  }
+}
+
+/* ─── Dashboard (new — scoped, no conflict with :root above) ──── */
+@layer base {
+  .dashboard {
+    --radius: 0.375rem;
+    --background: #f1f3f5;
+    --surface: #ffffff;
+    --foreground: #0e1016;
+    --primary: #0e1016;
+    --primary-foreground: #ffffff;
+    --secondary: #5b6270;
+    --secondary-foreground: #ffffff;
+    --muted: #f1f3f5;
+    --muted-foreground: #5b6270;
+    --accent: #00a86b;
+    --accent-foreground: #ffffff;
+    --accent-soft: #d3f3e3;
+    --destructive: #e53935;
+    --destructive-foreground: #ffffff;
+    --success: #00a86b;
+    --warning: #f59e0b;
+    --border: #e4e7eb;
+    --input: #e4e7eb;
+    --ring: #0e1016;
+
+    background-color: var(--background);
+    color: var(--foreground);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .dark .dashboard {
+    --background: #0e1016;
+    --surface: #181b22;
+    --foreground: #f1f3f5;
+    --primary: #f1f3f5;
+    --primary-foreground: #0e1016;
+    --secondary: #9aa1ad;
+    --secondary-foreground: #0e1016;
+    --muted: #1c1f27;
+    --muted-foreground: #9aa1ad;
+    --accent: #1cb87a;
+    --accent-foreground: #0e1016;
+    --accent-soft: #133526;
+    --border: #2a2e38;
+    --input: #2a2e38;
+    --ring: #f1f3f5;
+  }
+
+  .font-display {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .label-eyebrow {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
   }
 }

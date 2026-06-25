@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { Leaf, X } from "lucide-react";
+import logoAsset from "@/assets/logo.png";
 
 import { farNavSections } from "@/constants/navigation";
 import useAuth from "@/hooks/useAuth";
@@ -28,14 +29,16 @@ export function Sidebar({ open, onClose }) {
       >
         {/* Logo */}
         <div className="flex h-16 items-center justify-between gap-2 border-b border-border px-5">
-          <Link to="/" className="flex items-center gap-2.5" onClick={onClose}>
-            <div className="grid h-8 w-8 place-items-center bg-primary">
-              <Leaf className="h-4 w-4 text-accent" strokeWidth={2.5} />
-            </div>
-            <span className="font-display text-[17px] tracking-tight text-foreground">
+          <div className="flex items-center gap-2 sm:gap-2.5" onClick={onClose}>
+            <img
+              src={logoAsset}
+              alt="AgriCentral"
+              className="h-5 w-5 object-contain sm:h-6 sm:w-6"
+            />
+            <span className="text-[15px] font-semibold tracking-tight text-ink sm:text-[17px]">
               AgriCentral
             </span>
-          </Link>
+          </div>
           <button
             className="text-secondary hover:text-foreground lg:hidden"
             onClick={onClose}
@@ -94,10 +97,10 @@ export function Sidebar({ open, onClose }) {
             </div>
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-semibold text-foreground">
-                {user?.fullname}
+                {user?.email}
               </div>
               <div className="truncate text-[11px] text-secondary">
-                {user?.role} · {user?.email}
+                {user?.role}
               </div>
             </div>
           </div>

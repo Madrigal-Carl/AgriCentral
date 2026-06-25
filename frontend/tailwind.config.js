@@ -18,13 +18,11 @@ export default {
         "4xl": "calc(var(--radius) + 16px)",
       },
       colors: {
-        // Brand
         "accent-agri": "#00A36C",
         ink: "#0F1112",
         "ink-muted": "#6F7478",
         canvas: "#FAFAF8",
 
-        // Semantic tokens (mapped to CSS vars)
         background: "var(--background)",
         foreground: "var(--foreground)",
         card: {
@@ -75,8 +73,11 @@ export default {
           border: "var(--sidebar-border)",
           ring: "var(--sidebar-ring)",
         },
+
+        // Dashboard-only
+        surface: "var(--surface)",
+        "accent-soft": "var(--accent-soft)",
       },
     },
   },
 }
-

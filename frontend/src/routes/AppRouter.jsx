@@ -42,7 +42,39 @@ export default function AppRouter() {
           <Route path="/far" element={<DashboardLayout />}>
             <Route
               path="overview"
-              element={<h1 className="text-3xl">Far Page</h1>}
+              element={<h1 className="text-3xl">Far Overview Page</h1>}
+            />
+            <Route
+              path="farmers"
+              element={<h1 className="text-3xl">Far Farmer Page</h1>}
+            />
+            <Route
+              path="farms"
+              element={<h1 className="text-3xl">Far Farm Page</h1>}
+            />
+            <Route
+              path="equipments"
+              element={<h1 className="text-3xl">Far Equipment Page</h1>}
+            />
+            <Route
+              path="livestocks"
+              element={<h1 className="text-3xl">Far Livestock Page</h1>}
+            />
+            <Route
+              path="farm-maps"
+              element={<h1 className="text-3xl">Far Farm Maps Page</h1>}
+            />
+            <Route
+              path="reports"
+              element={<h1 className="text-3xl">Far Report Page</h1>}
+            />
+            <Route
+              path="members"
+              element={<h1 className="text-3xl">Far Member Page</h1>}
+            />
+            <Route
+              path="settings"
+              element={<h1 className="text-3xl">Far Settings Page</h1>}
             />
           </Route>
         </Route>

@@ -16,8 +16,8 @@ export const farNavSections = [
     {
         label: "Resources",
         items: [
-            { to: "/far/equipment", label: "Equipment", icon: Tractor },
-            { to: "/far/livestock", label: "Livestock", icon: Beef },
+            { to: "/far/equipments", label: "Equipment", icon: Tractor },
+            { to: "/far/livestocks", label: "Livestock", icon: Beef },
         ],
     },
     {
@@ -41,8 +41,8 @@ const farBreadcrumbs = {
     "/far/overview": { group: "Dashboard", label: "Overview" },
     "/far/farmers": { group: "Management", label: "Farmer" },
     "/far/farms": { group: "Management", label: "Farm" },
-    "/far/equipment": { group: "Resources", label: "Equipment" },
-    "/far/livestock": { group: "Resources", label: "Livestock" },
+    "/far/equipments": { group: "Resources", label: "Equipment" },
+    "/far/livestocks": { group: "Resources", label: "Livestock" },
     "/far/farm-maps": { group: "Mapping", label: "Farm Maps" },
     "/far/reports": { group: "Records", label: "Report" },
     "/far/members": { group: "Records", label: "Member" },
