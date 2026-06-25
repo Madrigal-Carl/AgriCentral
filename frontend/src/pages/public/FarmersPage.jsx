@@ -775,7 +775,7 @@ function FarmerDrawer({ row, onClose }) {
               </div>
               <div className="min-w-0">
                 <div className="label-eyebrow mb-1">Farmer · {row.id}</div>
-                <h2 className="font-display text-2xl tracking-tight text-foreground truncate">
+                <h2 className="font-display text-xl tracking-tight text-foreground truncate">
                   {row.name}
                 </h2>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
