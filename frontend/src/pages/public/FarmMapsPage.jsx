@@ -39,7 +39,15 @@ function escapeHtml(s) {
   );
 }
 
+// farmers are stored like "FR-001 · Lina Okoro" — strip the id, keep the name
+function farmerName(entry) {
+  const parts = String(entry).split("·");
+  return (parts[1] || parts[0]).trim();
+}
+
 function popupHtml(farm) {
+  const farmerNames = (farm.farmers || []).map(farmerName);
+
   const crops = farm.crops
     .map((c) => {
       const color = TONE_COLOR[CROP_STATUS_TONE[c.status]] || "#64748b";
@@ -59,6 +67,18 @@ function popupHtml(farm) {
       </div>
       <div style="font-size:11px;color:#64748b;margin-bottom:8px;">
         ${escapeHtml(farm.id)} · ${farm.size} ha
+      </div>
+      <div style="border-top:1px solid #e2e8f0;padding-top:6px;margin-bottom:6px;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#64748b;margin-bottom:2px;">
+          ${farmerNames.length > 1 ? "Farmers" : "Farmer"}
+        </div>
+        <div style="font-size:13px;font-weight:600;color:#0f172a;">
+          ${
+            farmerNames.length
+              ? farmerNames.map(escapeHtml).join(", ")
+              : '<span style="font-weight:400;color:#64748b;">Unassigned</span>'
+          }
+        </div>
       </div>
       <div style="border-top:1px solid #e2e8f0;padding-top:6px;margin-bottom:6px;">
         <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#64748b;margin-bottom:2px;">
@@ -204,7 +224,7 @@ export function FarmMapsPage() {
     <div>
       <PageHeader
         title="Farm Maps"
-        subtitle="Geospatial view of all farms. Hover a pin to see yielded crops and status."
+        subtitle="Geospatial view of all farms. Hover a pin to see the farmer, yielded crops, and status."
       />
 
       <div className="mb-4 grid grid-cols-1 gap-3 border border-border bg-surface px-4 py-3 sm:flex sm:flex-wrap sm:items-center">
