@@ -4,7 +4,7 @@ import { ChevronDown, LogOut, Menu, Settings, User } from "lucide-react";
 
 import { useCrumbs } from "@/utils/useCrumbs";
 import useAuth from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui";
 
 function LogoutConfirmModal({ onCancel, onConfirm }) {
   return (
