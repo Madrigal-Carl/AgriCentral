@@ -9,6 +9,10 @@ import {
   Activity,
   Info,
   AlertTriangle,
+  Eye,
+  UserPlus,
+  RefreshCw,
+  Undo2,
 } from "lucide-react";
 import {
   PageHeader,
@@ -16,7 +20,8 @@ import {
   RowActions,
   StatusPill,
 } from "@/components/public";
-import { Button, Select } from "@/components/ui";
+import { Button, IconButton, Select } from "@/components/ui";
+
 import { EQUIPMENTS } from "@/constants/data";
 
 const FARMERS = [
@@ -32,12 +37,26 @@ const FARMERS = [
   "Ravi Patel",
 ];
 
+const EQUIPMENT_CATALOG = [
+  "Tractor T-204",
+  "Harvester H-12",
+  "Plow P-08",
+  "Sprayer S-31",
+  "Seeder SD-15",
+  "Rotavator RV-09",
+  "Cultivator C-22",
+  "Baler B-17",
+  "Irrigation Pump IP-05",
+  "Thresher TR-11",
+];
+
 const CONDITION_OPTIONS = [
   { value: "excellent", label: "Excellent" },
   { value: "good", label: "Good" },
   { value: "maintenance", label: "Maintenance" },
   { value: "damaged", label: "Damaged" },
 ];
+
 const STATUS_OPTIONS = [
   { value: "available", label: "Available" },
   { value: "assigned", label: "Assigned" },
@@ -67,81 +86,67 @@ const statusLabel = {
   repair: "Repair",
 };
 
-const blankForm = {
-  id: "",
-  name: "",
-  condition: "excellent",
-  status: "available",
-  farmer: "",
-  acquisitionDate: "",
-};
-
 export function EquipmentsPage() {
   const [rows, setRows] = useState(EQUIPMENTS);
-  const [modal, setModal] = useState(null);
+  const [catalog, setCatalog] = useState(EQUIPMENT_CATALOG);
+  const [addModal, setAddModal] = useState(false);
+  const [assignRow, setAssignRow] = useState(null);
+  const [statusRow, setStatusRow] = useState(null);
+  const [returnRow, setReturnRow] = useState(null);
   const [drawer, setDrawer] = useState(null);
-  const [confirmDelete, setConfirmDelete] = useState(null);
 
-  const openAdd = () =>
-    setModal({
-      mode: "add",
-      data: {
-        ...blankForm,
-        id: `EQ-${String(rows.length + 1).padStart(3, "0")}`,
+  const nextId = () => `EQ-${String(rows.length + 1).padStart(3, "0")}`;
+
+  const handleAdd = (data) => {
+    if (data.name && !catalog.includes(data.name)) {
+      setCatalog((c) => [...c, data.name]);
+    }
+    setRows((r) => [
+      ...r,
+      {
+        id: nextId(),
+        name: data.name,
+        condition: "excellent",
+        status: data.status,
+        farmer: "",
+        acquisitionDate: data.acquisitionDate,
+        history: [
+          {
+            name: data.name,
+            date: data.acquisitionDate || new Date().toISOString().slice(0, 10),
+          },
+        ],
       },
-    });
-  const openEdit = (row) => setModal({ mode: "edit", data: { ...row } });
-  const openView = (row) => setDrawer(row);
-  const askDelete = (row) => setConfirmDelete(row);
-  const confirmRemove = () => {
-    if (!confirmDelete) return;
-    setRows((r) => r.filter((x) => x.id !== confirmDelete.id));
-    setConfirmDelete(null);
+    ]);
+    setAddModal(false);
   };
 
-  const handleSave = (data) => {
-    setRows((r) => {
-      const exists = r.some((x) => x.id === data.id);
-      if (exists) {
-        return r.map((x) =>
-          x.id === data.id
-            ? {
-                ...x,
-                ...data,
-                history:
-                  x.name !== data.name && data.name
-                    ? [
-                        ...(x.history || []),
-                        {
-                          name: data.name,
-                          date:
-                            data.acquisitionDate ||
-                            new Date().toISOString().slice(0, 10),
-                        },
-                      ]
-                    : x.history,
-              }
-            : x,
-        );
-      }
-      return [
-        ...r,
-        {
-          ...data,
-          history: data.name
-            ? [
-                {
-                  name: data.name,
-                  date:
-                    data.acquisitionDate ||
-                    new Date().toISOString().slice(0, 10),
-                },
-              ]
-            : [],
-        },
-      ];
-    });
-    setModal(null);
+  const handleAssign = (farmer) => {
+    if (!assignRow) return;
+    setRows((r) =>
+      r.map((x) =>
+        x.id === assignRow.id ? { ...x, farmer, status: "assigned" } : x,
+      ),
+    );
+    setAssignRow(null);
+  };
+
+  const handleStatusUpdate = (condition) => {
+    if (!statusRow) return;
+    setRows((r) =>
+      r.map((x) => (x.id === statusRow.id ? { ...x, condition } : x)),
+    );
+    setStatusRow(null);
+  };
+
+  const handleReturn = () => {
+    if (!returnRow) return;
+    setRows((r) =>
+      r.map((x) =>
+        x.id === returnRow.id ? { ...x, farmer: "", status: "available" } : x,
+      ),
+    );
+    setReturnRow(null);
   };
 
   return (
@@ -150,7 +155,7 @@ export function EquipmentsPage() {
         title="Equipment"
         subtitle="Fleet & tools across all farms."
         action={
-          <Button variant="primary" onClick={openAdd}>
+          <Button variant="primary" onClick={() => setAddModal(true)}>
             <Plus className="h-4 w-4" /> Add Equipment
           </Button>
         }
@@ -213,70 +218,98 @@ export function EquipmentsPage() {
             header: "",
             align: "right",
             cell: (r) => (
-              <RowActions
-                onView={() => openView(r)}
-                onEdit={() => openEdit(r)}
-                onDelete={() => askDelete(r)}
-              />
+              <div className="flex items-center justify-end gap-1">
+                <IconButton
+                  icon={Eye}
+                  label="View"
+                  onClick={() => setDrawer(r)}
+                />
+                <IconButton
+                  icon={UserPlus}
+                  label="Assign"
+                  onClick={() => setAssignRow(r)}
+                />
+                <IconButton
+                  icon={RefreshCw}
+                  label="Update Status"
+                  onClick={() => setStatusRow(r)}
+                />
+                <IconButton
+                  icon={Undo2}
+                  label="Return"
+                  tone="danger"
+                  onClick={() => setReturnRow(r)}
+                />
+              </div>
             ),
           },
         ]}
       />
 
-      {modal && (
-        <EquipmentModal
-          mode={modal.mode}
-          initial={modal.data}
-          onClose={() => setModal(null)}
-          onSave={handleSave}
+      {addModal && (
+        <AddEquipmentModal
+          nextId={nextId()}
+          catalog={catalog}
+          onClose={() => setAddModal(false)}
+          onSave={handleAdd}
+        />
+      )}
+      {assignRow && (
+        <AssignModal
+          row={assignRow}
+          onClose={() => setAssignRow(null)}
+          onSave={handleAssign}
+        />
+      )}
+      {statusRow && (
+        <StatusUpdateModal
+          row={statusRow}
+          onClose={() => setStatusRow(null)}
+          onSave={handleStatusUpdate}
+        />
+      )}
+      {returnRow && (
+        <ReturnConfirmModal
+          row={returnRow}
+          onCancel={() => setReturnRow(null)}
+          onConfirm={handleReturn}
         />
       )}
       {drawer && (
         <EquipmentDrawer row={drawer} onClose={() => setDrawer(null)} />
       )}
-      {confirmDelete && (
-        <DeleteConfirmModal
-          id={confirmDelete.id}
-          name={confirmDelete.name}
-          onCancel={() => setConfirmDelete(null)}
-          onConfirm={confirmRemove}
-        />
-      )}
     </div>
   );
 }
 
-/* ---------------- Modal ---------------- */
-function EquipmentModal({ mode, initial, onClose, onSave }) {
-  const [form, setForm] = useState(initial);
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-
+/* ---------------- Modal Shell ---------------- */
+function ModalShell({
+  title,
+  eyebrow,
+  onClose,
+  children,
+  footer,
+  maxWidth = "max-w-lg",
+}) {
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
-
-  const submit = (e) => {
-    e.preventDefault();
-    if (!form.name) return;
-    onSave(form);
-  };
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-foreground-40 p-4"
       onClick={onClose}
     >
       <div
-        className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden bg-surface border border-border shadow-xl"
+        className={`relative flex max-h-[90vh] w-full ${maxWidth} flex-col overflow-hidden bg-surface border border-border shadow-xl`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
           <div>
-            <div className="label-eyebrow mb-1">Equipment</div>
+            {eyebrow && <div className="label-eyebrow mb-1">{eyebrow}</div>}
             <h2 className="font-display text-xl tracking-tight text-foreground">
-              {mode === "add" ? "Add New Equipment" : `Edit ${initial.id}`}
+              {title}
             </h2>
           </div>
           <button
@@ -287,68 +320,152 @@ function EquipmentModal({ mode, initial, onClose, onSave }) {
             <X className="h-4 w-4" />
           </button>
         </div>
-
-        <form onSubmit={submit} className="flex-1 overflow-y-auto px-6 py-5">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Equipment ID">
-              <TextInput
-                value={form.id}
-                onChange={(v) => set("id", v)}
-                placeholder="EQ-001"
-              />
-            </Field>
-            <Field label="Name">
-              <TextInput
-                value={form.name}
-                onChange={(v) => set("name", v)}
-                placeholder="Tractor T-204"
-              />
-            </Field>
-            <Field label="Condition">
-              <FullSelect
-                value={form.condition}
-                onChange={(v) => set("condition", v)}
-                options={CONDITION_OPTIONS}
-              />
-            </Field>
-            <Field label="Status">
-              <FullSelect
-                value={form.status}
-                onChange={(v) => set("status", v)}
-                options={STATUS_OPTIONS}
-              />
-            </Field>
-            <Field label="Assigned Farmer" full>
-              <FarmerSelect
-                value={form.farmer}
-                onChange={(v) => set("farmer", v)}
-              />
-            </Field>
-            <Field label="Acquisition Date" full>
-              <TextInput
-                type="date"
-                value={form.acquisitionDate}
-                onChange={(v) => set("acquisitionDate", v)}
-              />
-            </Field>
+        <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
+        {footer && (
+          <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-muted/40 px-6 py-4">
+            {footer}
           </div>
-        </form>
-
-        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-muted/40 px-6 py-4">
-          <Button variant="outline" onClick={onClose} type="button">
-            Cancel
-          </Button>
-          <Button variant="primary" onClick={submit} type="submit">
-            {mode === "add" ? "Add Equipment" : "Save Changes"}
-          </Button>
-        </div>
+        )}
       </div>
     </div>
   );
 }
 
-/* ---------------- Delete Confirmation Modal ---------------- */
-function DeleteConfirmModal({ id, name, onCancel, onConfirm }) {
+/* ---------------- Add Equipment Modal ---------------- */
+function AddEquipmentModal({ nextId, catalog, onClose, onSave }) {
+  const [name, setName] = useState("");
+  const [status, setStatus] = useState("available");
+  const [acquisitionDate, setAcquisitionDate] = useState("");
+
+  const submit = (e) => {
+    e.preventDefault();
+    if (!name) return;
+    onSave({ name, status, acquisitionDate });
+  };
+
+  return (
+    <ModalShell
+      eyebrow={`Equipment · ${nextId}`}
+      title="Add New Equipment"
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose} type="button">
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={submit} type="submit">
+            Add Equipment
+          </Button>
+        </>
+      }
+    >
+      <form onSubmit={submit} className="space-y-4">
+        <Field label="Equipment">
+          <SearchableSelect
+            value={name}
+            onChange={setName}
+            options={catalog}
+            placeholder="Select equipment…"
+            searchPlaceholder="Search or add equipment…"
+            allowCreate
+          />
+        </Field>
+        <Field label="Status">
+          <FullSelect
+            value={status}
+            onChange={setStatus}
+            options={STATUS_OPTIONS}
+          />
+        </Field>
+        <Field label="Acquisition Date">
+          <TextInput
+            type="date"
+            value={acquisitionDate}
+            onChange={setAcquisitionDate}
+          />
+        </Field>
+      </form>
+    </ModalShell>
+  );
+}
+
+/* ---------------- Assign Modal ---------------- */
+function AssignModal({ row, onClose, onSave }) {
+  const [farmer, setFarmer] = useState(row.farmer || "");
+  const submit = (e) => {
+    e.preventDefault();
+    if (!farmer) return;
+    onSave(farmer);
+  };
+  return (
+    <ModalShell
+      eyebrow={`Equipment · ${row.id}`}
+      title={`Assign ${row.name}`}
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose} type="button">
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={submit} type="submit">
+            Assign
+          </Button>
+        </>
+      }
+    >
+      <form onSubmit={submit}>
+        <Field label="Assigned Farmer">
+          <SearchableSelect
+            value={farmer}
+            onChange={setFarmer}
+            options={FARMERS}
+            placeholder="Select farmer…"
+            searchPlaceholder="Search farmer…"
+          />
+        </Field>
+      </form>
+    </ModalShell>
+  );
+}
+
+/* ---------------- Status Update Modal ---------------- */
+function StatusUpdateModal({ row, onClose, onSave }) {
+  const [condition, setCondition] = useState(row.condition);
+  const submit = (e) => {
+    e.preventDefault();
+    onSave(condition);
+  };
+  return (
+    <ModalShell
+      eyebrow={`Equipment · ${row.id}`}
+      title={`Update Status — ${row.name}`}
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose} type="button">
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={submit} type="submit">
+            Save Changes
+          </Button>
+        </>
+      }
+    >
+      <form onSubmit={submit}>
+        <Field label="Condition">
+          <FullSelect
+            value={condition}
+            onChange={setCondition}
+            options={CONDITION_OPTIONS}
+          />
+        </Field>
+      </form>
+    </ModalShell>
+  );
+}
+
+/* ---------------- Return Confirm Modal ---------------- */
+function ReturnConfirmModal({ row, onCancel, onConfirm }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-foreground-40 p-4"
@@ -358,25 +475,26 @@ function DeleteConfirmModal({ id, name, onCancel, onConfirm }) {
         className="w-full max-w-sm bg-surface border border-border shadow-xl p-6 text-center"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mx-auto mb-4 grid h-12 w-12 place-items-center bg-danger/10 text-danger">
-          <AlertTriangle className="h-6 w-6" />
+        <div className="mx-auto mb-4 grid h-12 w-12 place-items-center bg-warning/10 text-warning">
+          <Undo2 className="h-6 w-6" />
         </div>
         <h3 className="font-display text-lg tracking-tight text-foreground mb-1">
-          Delete Equipment?
+          Return Equipment?
         </h3>
         <p className="text-sm text-secondary mb-6">
-          Are you sure you want to delete{" "}
+          Have you already returned{" "}
           <strong className="text-foreground">
-            {id} ({name})
-          </strong>
-          ? This action cannot be undone.
+            {row.id} ({row.name})
+          </strong>{" "}
+          ? It will be removed from your inventory and returned to the
+          coordinator.
         </p>
         <div className="flex items-center justify-center gap-2">
           <Button variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button variant="danger" onClick={onConfirm}>
-            Delete
+          <Button variant="primary" onClick={onConfirm}>
+            Confirm Return
           </Button>
         </div>
       </div>
@@ -384,6 +502,7 @@ function DeleteConfirmModal({ id, name, onCancel, onConfirm }) {
   );
 }
 
+/* ---------------- Field helpers ---------------- */
 function Field({ label, children, full }) {
   return (
     <div className={full ? "sm:col-span-2" : ""}>
@@ -413,8 +532,15 @@ function FullSelect({ value, onChange, options }) {
   );
 }
 
-/* ---------------- Farmer searchable select ---------------- */
-function FarmerSelect({ value, onChange }) {
+/* ---------------- Searchable Select (with optional create) ---------------- */
+function SearchableSelect({
+  value,
+  onChange,
+  options,
+  placeholder = "Select…",
+  searchPlaceholder = "Search…",
+  allowCreate = false,
+}) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const ref = useRef(null);
@@ -426,9 +552,20 @@ function FarmerSelect({ value, onChange }) {
     return () => window.removeEventListener("mousedown", h);
   }, []);
   const filtered = useMemo(
-    () => FARMERS.filter((f) => f.toLowerCase().includes(q.toLowerCase())),
-    [q],
+    () => options.filter((f) => f.toLowerCase().includes(q.toLowerCase())),
+    [q, options],
   );
+  const canCreate =
+    allowCreate &&
+    q.trim().length > 0 &&
+    !options.some((o) => o.toLowerCase() === q.trim().toLowerCase());
+
+  const pick = (v) => {
+    onChange(v);
+    setOpen(false);
+    setQ("");
+  };
+
   return (
     <div ref={ref} className="relative w-full">
       <button
@@ -437,7 +574,7 @@ function FarmerSelect({ value, onChange }) {
         className="flex w-full items-center justify-between border border-border bg-surface px-3 py-2.5 text-left text-sm hover:border-foreground/30"
       >
         <span className={value ? "text-foreground" : "text-secondary"}>
-          {value || "Select farmer…"}
+          {value || placeholder}
         </span>
         <ChevronDown
           className={`h-4 w-4 text-secondary transition-transform ${open ? "rotate-180" : ""}`}
@@ -451,34 +588,50 @@ function FarmerSelect({ value, onChange }) {
               autoFocus
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search farmer…"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && canCreate) {
+                  e.preventDefault();
+                  pick(q.trim());
+                }
+              }}
+              placeholder={searchPlaceholder}
               className="w-full bg-surface py-2.5 pl-9 pr-3 text-sm outline-none"
             />
           </div>
           <ul className="max-h-56 overflow-auto">
-            {filtered.length === 0 ? (
-              <li className="px-3 py-3 text-sm text-secondary">
-                No farmers found.
-              </li>
+            {filtered.length === 0 && !canCreate ? (
+              <li className="px-3 py-3 text-sm text-secondary">No results.</li>
             ) : (
-              filtered.map((f) => (
-                <li key={f}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onChange(f);
-                      setOpen(false);
-                      setQ("");
-                    }}
-                    className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted ${
-                      f === value ? "bg-accent-soft font-semibold" : ""
-                    }`}
-                  >
-                    {f}
-                    {f === value && <span className="h-1.5 w-1.5 bg-accent" />}
-                  </button>
-                </li>
-              ))
+              <>
+                {filtered.map((f) => (
+                  <li key={f}>
+                    <button
+                      type="button"
+                      onClick={() => pick(f)}
+                      className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted ${
+                        f === value ? "bg-accent-soft font-semibold" : ""
+                      }`}
+                    >
+                      {f}
+                      {f === value && (
+                        <span className="h-1.5 w-1.5 bg-accent" />
+                      )}
+                    </button>
+                  </li>
+                ))}
+                {canCreate && (
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => pick(q.trim())}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
+                    >
+                      <Plus className="h-3.5 w-3.5 text-accent" />
+                      Add &ldquo;{q.trim()}&rdquo;
+                    </button>
+                  </li>
+                )}
+              </>
             )}
           </ul>
         </div>
