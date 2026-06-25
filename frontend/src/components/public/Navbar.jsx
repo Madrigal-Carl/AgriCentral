@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, ChevronDown, LogOut, Menu, Settings, User } from "lucide-react";
+import { ChevronDown, LogOut, Menu, Settings, User } from "lucide-react";
 
 import { useCrumbs } from "@/utils/useCrumbs";
 import useAuth from "@/hooks/useAuth";
@@ -54,12 +54,6 @@ export function Navbar({ onMenu }) {
       </div>
 
       <div className="flex items-center gap-2">
-        <button
-          className="hidden h-9 w-9 place-items-center text-secondary hover:bg-muted hover:text-foreground sm:grid"
-          aria-label="Notifications"
-        >
-          <Bell className="h-4 w-4" />
-        </button>
         <div className="relative" ref={ref}>
           <button
             onClick={() => setOpen((o) => !o)}
