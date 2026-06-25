@@ -293,7 +293,7 @@ function FarmModal({ mode, initial, onClose, onSave }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground-40 p-4"
       onClick={onClose}
     >
       <div
@@ -414,7 +414,7 @@ function FarmModal({ mode, initial, onClose, onSave }) {
 function DeleteConfirmModal({ id, name, onCancel, onConfirm }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground-40 p-4"
       onClick={onCancel}
     >
       <div
@@ -591,7 +591,7 @@ function FarmDrawer({ row, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50" onClick={onClose}>
-      <div className="absolute inset-0 bg-foreground/40" />
+      <div className="absolute inset-0 bg-foreground-40" />
       <aside
         className="absolute inset-y-0 right-0 flex w-full max-w-xl flex-col bg-surface border-l border-border shadow-2xl"
         onClick={(e) => e.stopPropagation()}
