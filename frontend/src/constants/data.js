@@ -246,6 +246,49 @@ export const EQUIPMENTS = [
     },
 ];
 
+export const REPORTS = [
+    {
+        id: "RP-001",
+        title: "Maize leaf blight outbreak",
+        type: "crop",
+        reportedBy: "Lina Okoro",
+        severity: "high",
+        status: "open",
+        date: "2025-06-18",
+        details: "Yellow-brown lesions spreading across the south plot. Affects approximately 1.2 hectares.",
+    },
+    {
+        id: "RP-002",
+        title: "Tractor hydraulic leak",
+        type: "equipment",
+        reportedBy: "Samuel Mwangi",
+        severity: "medium",
+        status: "in_review",
+        date: "2025-06-15",
+        details: "John Deere 5055E losing hydraulic fluid from the front loader cylinder.",
+    },
+    {
+        id: "RP-003",
+        title: "Goat showing fever symptoms",
+        type: "livestock",
+        reportedBy: "Aisha Bello",
+        severity: "critical",
+        status: "open",
+        date: "2025-06-20",
+        details: "Goat #G-12 has elevated temperature and reduced feeding. Vet visit scheduled.",
+    },
+    {
+        id: "RP-004",
+        title: "Irrigation pump failure",
+        type: "equipment",
+        reportedBy: "Chidi Okafor",
+        severity: "low",
+        status: "resolved",
+        date: "2025-05-30",
+        details: "Pump motor replaced. System back online.",
+    },
+];
+
 export const BOAC_CENTER = { lat: 13.4456, lng: 121.8403 };
 
 export const CROP_OPTIONS = [
@@ -258,12 +301,14 @@ export const CROP_OPTIONS = [
     "Cassava",
     "Sorghum",
 ];
+
 export const CROP_STATUS_TONE = {
     planted: "info",
     growing: "success",
     harvested: "neutral",
     fallow: "warning",
 };
+
 export const CROP_STATUS_LABEL = {
     planted: "Planted",
     growing: "Growing",

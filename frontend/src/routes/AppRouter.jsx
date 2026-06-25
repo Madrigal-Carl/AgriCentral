@@ -9,6 +9,7 @@ import {
   EquipmentsPage,
   LivestocksPage,
   FarmMapsPage,
+  ReportsPage,
 } from "@/pages/public";
 
 import DashboardLayout from "@/layouts/DashboardLayout";
@@ -52,10 +53,7 @@ export default function AppRouter() {
             <Route path="equipments" element={<EquipmentsPage />} />
             <Route path="livestocks" element={<LivestocksPage />} />
             <Route path="farm-maps" element={<FarmMapsPage />} />
-            <Route
-              path="reports"
-              element={<h1 className="text-3xl">Far Report Page</h1>}
-            />
+            <Route path="reports" element={<ReportsPage />} />
             <Route
               path="settings"
               element={<h1 className="text-3xl">Far Settings Page</h1>}
