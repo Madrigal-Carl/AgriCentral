@@ -10,6 +10,7 @@ import {
   LivestocksPage,
   FarmMapsPage,
   ReportsPage,
+  RequestsPage,
   SettingsPage,
 } from "@/pages/public";
 
@@ -54,6 +55,7 @@ export default function AppRouter() {
             <Route path="equipments" element={<EquipmentsPage />} />
             <Route path="livestocks" element={<LivestocksPage />} />
             <Route path="farm-maps" element={<FarmMapsPage />} />
+            <Route path="requests" element={<RequestsPage />} />
             <Route path="reports" element={<ReportsPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>

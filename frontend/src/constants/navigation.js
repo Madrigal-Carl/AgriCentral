@@ -1,4 +1,4 @@
-import { LayoutGrid, Users, Wheat, Tractor, Beef, Map, FileText, UserCircle2, Settings } from "lucide-react";
+import { LayoutGrid, Users, Wheat, Tractor, Beef, Map, FileText, UserCircle2, Settings, ClipboardList } from "lucide-react";
 
 /* ---------------- FAR ---------------- */
 export const farNavSections = [
@@ -22,11 +22,12 @@ export const farNavSections = [
     },
     {
         label: "Mapping",
-        items: [{ to: "/far/farm-maps", label: "Farm Maps", icon: Map }],
+        items: [{ to: "/far/farm-maps", label: "Farm Map", icon: Map }],
     },
     {
         label: "Records",
         items: [
+            { to: "/far/requests", label: "Request", icon: ClipboardList },
             { to: "/far/reports", label: "Report", icon: FileText },
         ],
     },
@@ -43,6 +44,7 @@ const farBreadcrumbs = {
     "/far/equipments": { group: "Resources", label: "Equipment" },
     "/far/livestocks": { group: "Resources", label: "Livestock" },
     "/far/farm-maps": { group: "Mapping", label: "Farm Maps" },
+    "/far/requests": { group: "Requests", label: "Request" },
     "/far/reports": { group: "Records", label: "Report" },
     "/far/settings": { group: "Settings", label: "Settings" },
 };
