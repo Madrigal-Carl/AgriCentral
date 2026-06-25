@@ -1,30 +1,54 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight, Loader2 } from "lucide-react";
 
 import logoAsset from "@/assets/logo.png";
 import barnAsset from "@/assets/images/barn.jpg";
+import { authSchema } from "@/schemas/auth.schema";
+import useAuth from "@/hooks/useAuth";
 
 export default function AuthPage() {
   const [mode, setMode] = useState("signin");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
   const [info, setInfo] = useState(null);
+  const { login, register: registerUser } = useAuth();
 
-  async function handleSubmit(e) {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    reset,
+  } = useForm({
+    resolver: zodResolver(authSchema),
+    defaultValues: { email: "", password: "" },
+  });
+
+  function switchMode(nextMode) {
+    setMode(nextMode);
     setInfo(null);
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    reset();
+  }
+
+  async function onSubmit(values) {
+    setInfo(null);
+    try {
+      if (mode === "signup") {
+        await registerUser(values);
+        setInfo("Account created. You can now sign in.");
+        switchMode("signin");
+      } else {
+        await login(values);
+      }
+    } catch (err) {
       setInfo(
-        mode === "signup"
-          ? "Account creation requires backend setup."
-          : "Sign-in requires backend setup.",
+        err?.response?.data?.message ??
+          (mode === "signup"
+            ? "Could not create account. Please try again."
+            : "Invalid email or password."),
       );
-    }, 600);
+    }
   }
 
   return (
@@ -71,7 +95,10 @@ export default function AuthPage() {
               : "Get started managing farms, livestock, and resources."}
           </p>
 
-          <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="mt-6 flex flex-col gap-4"
+          >
             <div className="flex flex-col gap-1.5">
               <label
                 htmlFor="email"
@@ -82,14 +109,18 @@ export default function AuthPage() {
               <input
                 id="email"
                 type="email"
-                required
                 autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                {...register("email")}
                 className="rounded-[5px] border border-zinc-300 bg-white px-3 py-2.5 text-[14px] text-ink outline-none focus:border-ink transition-colors"
                 placeholder="you@organization.org"
               />
+              {errors.email && (
+                <p className="text-[12px] text-red-600">
+                  {errors.email.message}
+                </p>
+              )}
             </div>
+
             <div className="flex flex-col gap-1.5">
               <label
                 htmlFor="password"
@@ -100,16 +131,18 @@ export default function AuthPage() {
               <input
                 id="password"
                 type="password"
-                required
-                minLength={6}
                 autoComplete={
                   mode === "signin" ? "current-password" : "new-password"
                 }
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                {...register("password")}
                 className="rounded-[5px] border border-zinc-300 bg-white px-3 py-2.5 text-[14px] text-ink outline-none focus:border-ink transition-colors"
                 placeholder="••••••••"
               />
+              {errors.password && (
+                <p className="text-[12px] text-red-600">
+                  {errors.password.message}
+                </p>
+              )}
             </div>
 
             {info && (
@@ -120,10 +153,10 @@ export default function AuthPage() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={isSubmitting}
               className="mt-1 inline-flex items-center justify-center gap-1.5 rounded-[5px] bg-ink px-3.5 py-2.5 text-[13.5px] font-medium text-white hover:bg-black transition-colors disabled:opacity-60"
             >
-              {loading ? (
+              {isSubmitting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <>
@@ -140,10 +173,7 @@ export default function AuthPage() {
                 New to AgriCentral?{" "}
                 <button
                   type="button"
-                  onClick={() => {
-                    setMode("signup");
-                    setInfo(null);
-                  }}
+                  onClick={() => switchMode("signup")}
                   className="text-ink font-medium hover:underline"
                 >
                   Create an account
@@ -154,10 +184,7 @@ export default function AuthPage() {
                 Already have an account?{" "}
                 <button
                   type="button"
-                  onClick={() => {
-                    setMode("signin");
-                    setInfo(null);
-                  }}
+                  onClick={() => switchMode("signin")}
                   className="text-ink font-medium hover:underline"
                 >
                   Sign in

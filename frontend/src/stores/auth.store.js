@@ -7,7 +7,7 @@ import {
   getMe,
 } from "@/services/auth.service";
 
-const useAuthStore = create((set) => ({
+const useAuthStore = create((set, get) => ({
   user: null,
   loading: true,
 
@@ -36,6 +36,17 @@ const useAuthStore = create((set) => ({
   logout: async () => {
     await logoutUser();
     set({ user: null });
+  },
+
+  getInitial: () => {
+    const user = get().user;
+    if (!user) return "";
+
+    const name = user.fullname?.trim();
+    if (name) return name.charAt(0).toUpperCase();
+
+    const email = user.email?.trim();
+    return email ? email.charAt(0).toUpperCase() : "";
   },
 }));
 

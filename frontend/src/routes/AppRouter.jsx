@@ -3,7 +3,9 @@ import { Routes, Route } from "react-router-dom";
 import HomePage from "@/pages/public/HomePage";
 import AuthPage from "@/pages/public/AuthPage";
 
-// import DashboardLayout from "@/layouts/DashboardLayout";
+import DashboardLayout from "@/layouts/DashboardLayout";
+
+// import AuthPage from "@/pages/public/AuthPage";
 
 import UnauthorizedPage from "@/pages/shared/UnauthorizedPage";
 
@@ -15,7 +17,7 @@ import AuthRedirectRoute from "./AuthRedirectRoute";
 
 import { ROLES } from "@/constants/roles";
 
-import ScrollToTop from "@/components/public/ScrollToTop";
+import { ScrollToTop } from "@/components/public";
 
 export default function AppRouter() {
   return (
@@ -36,10 +38,13 @@ export default function AppRouter() {
         </Route>
 
         {/* FAR ONLY */}
-        <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN]} />}>
-          {/* <Route path="/far" element={<DashboardLayout />}> */}
-          <Route path="overview" element={<div>Far Page</div>} />
-          {/* </Route> */}
+        <Route element={<ProtectedRoute allowedRoles={[ROLES.FAR]} />}>
+          <Route path="/far" element={<DashboardLayout />}>
+            <Route
+              path="overview"
+              element={<h1 className="text-3xl">Far Page</h1>}
+            />
+          </Route>
         </Route>
 
         {/* AEW ONLY */}

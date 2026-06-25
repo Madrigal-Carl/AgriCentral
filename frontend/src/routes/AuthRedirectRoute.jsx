@@ -13,11 +13,18 @@ export default function AuthRedirectRoute() {
   // Redirect admin/technician/cashier users to their role's default route
   if (
     isAuthenticated &&
-    [ROLES.ADMIN, ROLES.TECHNICIAN, ROLES.CASHIER].includes(role)
+    [
+      ROLES.FAR,
+      ROLES.AEW,
+      ROLES.COORDINATOR,
+      ROLES.GOVERNOR,
+      ROLES.HEAD,
+      ROLES.ADMIN,
+    ].includes(role)
   ) {
     return <Navigate to={getRoleRedirect(role)} replace />;
   }
 
-  // Allow guests and customers to proceed
+  // Allow guests to proceed
   return <Outlet />;
 }

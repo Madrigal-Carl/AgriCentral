@@ -1,183 +1,120 @@
+import { LayoutGrid, Users, Wheat, Tractor, Beef, Map, FileText, UserCircle2, Settings } from "lucide-react";
 
-import {
-    LuLayoutDashboard,
-    LuShoppingCart,
-    LuPackage,
-    LuTags,
-    LuStar,
-    LuArchive,
-    LuHash,
-    LuArrowLeftRight,
-    LuBriefcase,
-    LuFolderOpen,
-    LuCalendarCheck,
-    LuChartBar,
-    LuCreditCard,
-    LuUsers,
-    LuMessageSquare,
-    LuSettings,
-    LuStore,
-    LuCircleUser,
-} from "react-icons/lu";
-
-export const adminNavSections = [
+/* ---------------- FAR ---------------- */
+export const farNavSections = [
     {
         label: "Dashboard",
+        items: [{ to: "/far/overview", label: "Overview", icon: LayoutGrid, exact: true }],
+    },
+    {
+        label: "Management",
         items: [
-            {
-                name: "Overview",
-                href: "/admin/overview",
-                icon: LuLayoutDashboard,
-            },
+            { to: "/far/farmers", label: "Farmer", icon: Users },
+            { to: "/far/farms", label: "Farm", icon: Wheat },
         ],
     },
     {
-        label: "Orders",
+        label: "Resources",
         items: [
-            {
-                name: "Orders",
-                href: "/admin/orders",
-                icon: LuShoppingCart,
-            },
+            { to: "/far/equipment", label: "Equipment", icon: Tractor },
+            { to: "/far/livestock", label: "Livestock", icon: Beef },
         ],
     },
     {
-        label: "Products",
-        items: [
-            {
-                name: "Products",
-                href: "/admin/products",
-                icon: LuPackage,
-            },
-            {
-                name: "Categories",
-                href: "/admin/products/categories",
-                icon: LuTags,
-            },
-            {
-                name: "Reviews",
-                href: "/admin/products/reviews",
-                icon: LuStar,
-            },
-        ],
+        label: "Mapping",
+        items: [{ to: "/far/farm-maps", label: "Farm Maps", icon: Map }],
     },
     {
-        label: "Inventory",
+        label: "Records",
         items: [
-            {
-                name: "Stock",
-                href: "/admin/inventory",
-                icon: LuArchive,
-            },
-            {
-                name: "Serial Numbers",
-                href: "/admin/inventory/serial-numbers",
-                icon: LuHash,
-            },
-            {
-                name: "Movements",
-                href: "/admin/inventory/movements",
-                icon: LuArrowLeftRight,
-            },
-        ],
-    },
-    {
-        label: "Services",
-        items: [
-            {
-                name: "Services",
-                href: "/admin/services",
-                icon: LuBriefcase,
-            },
-            {
-                name: "Categories",
-                href: "/admin/services/categories",
-                icon: LuFolderOpen,
-            },
-            {
-                name: "Bookings",
-                href: "/admin/services/bookings",
-                icon: LuCalendarCheck,
-            },
-            {
-                name: "Reviews",
-                href: "/admin/services/reviews",
-                icon: LuStar,
-            },
-        ],
-    },
-    {
-        label: "Sales",
-        items: [
-            {
-                name: "Overview",
-                href: "/admin/sales/overview",
-                icon: LuChartBar,
-            },
-            {
-                name: "Transactions",
-                href: "/admin/sales/transactions",
-                icon: LuCreditCard,
-            },
-        ],
-    },
-    {
-        label: "Staff",
-        items: [
-            {
-                name: "Users",
-                href: "/admin/staff/users",
-                icon: LuUsers,
-            },
-        ],
-    },
-    {
-        label: "Website",
-        items: [
-            {
-                name: "Reviews",
-                href: "/admin/website/reviews",
-                icon: LuMessageSquare,
-            },
+            { to: "/far/reports", label: "Report", icon: FileText },
+            { to: "/far/members", label: "Member", icon: UserCircle2 },
         ],
     },
     {
         label: "Settings",
-        items: [
-            {
-                name: "Store",
-                href: "/admin/settings/store",
-                icon: LuStore,
-            },
-            {
-                name: "Profile",
-                href: "/admin/settings/profile",
-                icon: LuCircleUser,
-            },
-        ],
+        items: [{ to: "/far/settings", label: "Settings", icon: Settings }],
     },
 ];
 
-export const adminBreadcrumbs = {
-    "/admin/overview": { section: "Dashboard", page: "Overview" },
-    "/admin/orders": { section: "Orders", page: "All Orders" },
-    "/admin/products": { section: "Products", page: "All Products" },
-    "/admin/products/categories": { section: "Products", page: "Categories" },
-    "/admin/products/reviews": { section: "Products", page: "Reviews" },
-    "/admin/inventory": { section: "Inventory", page: "Stock" },
-    "/admin/inventory/serial-numbers": {
-        section: "Inventory",
-        page: "Serial Numbers",
+const farBreadcrumbs = {
+    "/far/overview": { group: "Dashboard", label: "Overview" },
+    "/far/farmers": { group: "Management", label: "Farmer" },
+    "/far/farms": { group: "Management", label: "Farm" },
+    "/far/equipment": { group: "Resources", label: "Equipment" },
+    "/far/livestock": { group: "Resources", label: "Livestock" },
+    "/far/farm-maps": { group: "Mapping", label: "Farm Maps" },
+    "/far/reports": { group: "Records", label: "Report" },
+    "/far/members": { group: "Records", label: "Member" },
+    "/far/settings": { group: "Settings", label: "Settings" },
+};
+
+/* ---------------- AEW ---------------- */
+export const aewNavSections = [
+    {
+        label: "Dashboard",
+        items: [{ to: "/aew/overview", label: "Overview", icon: LayoutGrid, exact: true }],
     },
-    "/admin/inventory/movements": { section: "Inventory", page: "Movements" },
-    "/admin/services": { section: "Services", page: "All Services" },
-    "/admin/services/categories": { section: "Services", page: "Categories" },
-    "/admin/services/bookings": { section: "Services", page: "Bookings" },
-    "/admin/services/reviews": { section: "Services", page: "Reviews" },
-    "/admin/sales/overview": { section: "Sales", page: "Overview" },
-    "/admin/sales/transactions": { section: "Sales", page: "Transactions" },
-    "/admin/staff/users": { section: "Staff", page: "Users" },
-    "/admin/website/reviews": { section: "Website", page: "Reviews" },
-    "/admin/settings/store": { section: "Settings", page: "Settings" },
-    "/admin/settings/profile": { section: "Settings", page: "Settings" },
+];
+
+const aewBreadcrumbs = {
+    "/aew/overview": { group: "Dashboard", label: "Overview" },
+};
+
+/* ---------------- COORDINATOR ---------------- */
+export const coordinatorNavSections = [
+    {
+        label: "Dashboard",
+        items: [{ to: "/coordinator/overview", label: "Overview", icon: LayoutGrid, exact: true }],
+    },
+];
+
+const coordinatorBreadcrumbs = {
+    "/coordinator/overview": { group: "Dashboard", label: "Overview" },
+};
+
+/* ---------------- GOVERNOR ---------------- */
+export const governorNavSections = [
+    {
+        label: "Dashboard",
+        items: [{ to: "/governor/overview", label: "Overview", icon: LayoutGrid, exact: true }],
+    },
+];
+
+const governorBreadcrumbs = {
+    "/governor/overview": { group: "Dashboard", label: "Overview" },
+};
+
+/* ---------------- HEAD ---------------- */
+export const headNavSections = [
+    {
+        label: "Dashboard",
+        items: [{ to: "/head/overview", label: "Overview", icon: LayoutGrid, exact: true }],
+    },
+];
+
+const headBreadcrumbs = {
+    "/head/overview": { group: "Dashboard", label: "Overview" },
+};
+
+/* ---------------- ADMIN ---------------- */
+export const adminNavSections = [
+    {
+        label: "Dashboard",
+        items: [{ to: "/admin/overview", label: "Overview", icon: LayoutGrid, exact: true }],
+    },
+];
+
+const adminBreadcrumbs = {
+    "/admin/overview": { group: "Dashboard", label: "Overview" },
+};
+
+/* ---------------- MERGED ---------------- */
+export const allBreadcrumbs = {
+    ...farBreadcrumbs,
+    ...aewBreadcrumbs,
+    ...coordinatorBreadcrumbs,
+    ...governorBreadcrumbs,
+    ...headBreadcrumbs,
+    ...adminBreadcrumbs,
 };
