@@ -486,8 +486,7 @@ function ReturnConfirmModal({ row, onCancel, onConfirm }) {
           <strong className="text-foreground">
             {row.id} ({row.name})
           </strong>{" "}
-          ? It will be removed from your inventory and returned to the
-          coordinator.
+          ? It will be removed from your inventory.
         </p>
         <div className="flex items-center justify-center gap-2">
           <Button variant="outline" onClick={onCancel}>

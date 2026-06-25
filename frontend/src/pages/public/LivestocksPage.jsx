@@ -9,6 +9,10 @@ import {
   Activity,
   Info,
   AlertTriangle,
+  Eye,
+  UserPlus,
+  HeartPulse,
+  RotateCcw,
 } from "lucide-react";
 import {
   PageHeader,
@@ -16,7 +20,8 @@ import {
   RowActions,
   StatusPill,
 } from "@/components/public";
-import { Button, Select } from "@/components/ui";
+import { Button, IconButton, Select } from "@/components/ui";
+
 import { LIVESTOCKS } from "@/constants/data";
 
 const FARMERS = [
@@ -71,87 +76,110 @@ const statusLabel = {
   quarantine: "Quarantine",
 };
 
+const LIVESTOCK_CATALOG = [
+  { id: "LS-101", animal: "Cow", breed: "Friesian", gender: "female" },
+  { id: "LS-102", animal: "Cow", breed: "Jersey", gender: "female" },
+  { id: "LS-103", animal: "Cow", breed: "Angus", gender: "male" },
+  { id: "LS-104", animal: "Goat", breed: "Boer", gender: "male" },
+  { id: "LS-105", animal: "Goat", breed: "Nubian", gender: "female" },
+  { id: "LS-106", animal: "Sheep", breed: "Merino", gender: "female" },
+  { id: "LS-107", animal: "Sheep", breed: "Dorper", gender: "male" },
+  { id: "LS-108", animal: "Pig", breed: "Yorkshire", gender: "female" },
+  { id: "LS-109", animal: "Chicken", breed: "Leghorn", gender: "female" },
+  {
+    id: "LS-110",
+    animal: "Chicken",
+    breed: "Rhode Island Red",
+    gender: "male",
+  },
+];
+
 const blankForm = {
-  id: "",
-  animal: "Cow",
-  breed: "",
-  gender: "female",
-  dob: "",
-  color: "",
-  weight: "",
-  farmer: "",
+  catalogId: "",
   health: "healthy",
-  status: "active",
   acquisitionDate: "",
 };
 
 export function LivestocksPage() {
   const [rows, setRows] = useState(LIVESTOCKS);
-  const [modal, setModal] = useState(null); // { mode: 'add' | 'edit', data }
-  const [drawer, setDrawer] = useState(null); // row
-  const [confirmDelete, setConfirmDelete] = useState(null); // row
+  const [modal, setModal] = useState(null); // { type: 'add' | 'assign' | 'status' , row }
+  const [drawer, setDrawer] = useState(null);
+  const [confirmReturn, setConfirmReturn] = useState(null);
 
-  const openAdd = () =>
-    setModal({
-      mode: "add",
-      data: {
-        ...blankForm,
-        id: `LS-${String(rows.length + 1).padStart(3, "0")}`,
-      },
-    });
-  const openEdit = (row) => setModal({ mode: "edit", data: { ...row } });
+  const openAdd = () => setModal({ type: "add", data: { ...blankForm } });
+  const openAssign = (row) => setModal({ type: "assign", row });
+  const openStatus = (row) => setModal({ type: "status", row });
   const openView = (row) => setDrawer(row);
-  const askDelete = (row) => setConfirmDelete(row);
-  const confirmRemove = () => {
-    if (!confirmDelete) return;
-    setRows((r) => r.filter((x) => x.id !== confirmDelete.id));
-    setConfirmDelete(null);
+  const askReturn = (row) => setConfirmReturn(row);
+
+  const confirmReturnAction = () => {
+    if (!confirmReturn) return;
+    const today = new Date().toISOString().slice(0, 10);
+    setRows((r) =>
+      r.map((x) =>
+        x.id === confirmReturn.id
+          ? {
+              ...x,
+              farmer: "",
+              status: "active",
+              history: [
+                ...(x.history || []),
+                { farmer: "Returned to cooperative", date: today },
+              ],
+            }
+          : x,
+      ),
+    );
+    setConfirmReturn(null);
   };
 
-  const handleSave = (data) => {
-    setRows((r) => {
-      const exists = r.some((x) => x.id === data.id);
-      if (exists) {
-        return r.map((x) =>
-          x.id === data.id
-            ? {
-                ...x,
-                ...data,
-                weight: Number(data.weight) || 0,
-                history:
-                  x.farmer !== data.farmer && data.farmer
-                    ? [
-                        ...(x.history || []),
-                        {
-                          farmer: data.farmer,
-                          date:
-                            data.acquisitionDate ||
-                            new Date().toISOString().slice(0, 10),
-                        },
-                      ]
-                    : x.history,
-              }
-            : x,
-        );
-      }
-      return [
-        ...r,
-        {
-          ...data,
-          weight: Number(data.weight) || 0,
-          history: data.farmer
-            ? [
-                {
-                  farmer: data.farmer,
-                  date:
-                    data.acquisitionDate ||
-                    new Date().toISOString().slice(0, 10),
-                },
-              ]
-            : [],
-        },
-      ];
-    });
+  const handleAdd = (data) => {
+    const catalog = LIVESTOCK_CATALOG.find((c) => c.id === data.catalogId);
+    if (!catalog) return;
+    const newId = `LS-${String(rows.length + 1).padStart(3, "0")}`;
+    setRows((r) => [
+      ...r,
+      {
+        id: newId,
+        tag: `${catalog.animal} #${newId}`,
+        animal: catalog.animal,
+        breed: catalog.breed,
+        gender: catalog.gender,
+        dob: "",
+        color: "",
+        weight: 0,
+        farmer: "",
+        health: data.health,
+        status: "active",
+        acquisitionDate: data.acquisitionDate,
+        history: [],
+      },
+    ]);
+    setModal(null);
+  };
+
+  const handleAssign = (farmer) => {
+    if (!modal?.row) return;
+    const today = new Date().toISOString().slice(0, 10);
+    setRows((r) =>
+      r.map((x) =>
+        x.id === modal.row.id
+          ? {
+              ...x,
+              farmer,
+              history: [...(x.history || []), { farmer, date: today }],
+            }
+          : x,
+      ),
+    );
+    setModal(null);
+  };
+
+  const handleStatus = (health) => {
+    if (!modal?.row) return;
+    setRows((r) =>
+      r.map((x) => (x.id === modal.row.id ? { ...x, health } : x)),
+    );
     setModal(null);
   };
 
@@ -226,71 +254,98 @@ export function LivestocksPage() {
             header: "",
             align: "right",
             cell: (r) => (
-              <RowActions
-                onView={() => openView(r)}
-                onEdit={() => openEdit(r)}
-                onDelete={() => askDelete(r)}
-              />
+              <div className="flex items-center justify-end gap-1">
+                <IconButton
+                  icon={Eye}
+                  label="View"
+                  onClick={() => openView(r)}
+                />
+                <IconButton
+                  icon={UserPlus}
+                  label="Assign"
+                  onClick={() => openAssign(r)}
+                />
+                <IconButton
+                  icon={HeartPulse}
+                  label="Update Status"
+                  onClick={() => openStatus(r)}
+                />
+                <IconButton
+                  icon={RotateCcw}
+                  label="Return"
+                  tone="danger"
+                  onClick={() => askReturn(r)}
+                />
+              </div>
             ),
           },
         ]}
       />
 
-      {modal && (
-        <LivestockModal
-          mode={modal.mode}
+      {modal?.type === "add" && (
+        <AddLivestockModal
           initial={modal.data}
+          existingIds={rows.map((r) => r.id)}
           onClose={() => setModal(null)}
-          onSave={handleSave}
+          onSave={handleAdd}
+        />
+      )}
+      {modal?.type === "assign" && (
+        <AssignModal
+          row={modal.row}
+          onClose={() => setModal(null)}
+          onSave={handleAssign}
+        />
+      )}
+      {modal?.type === "status" && (
+        <StatusModal
+          row={modal.row}
+          onClose={() => setModal(null)}
+          onSave={handleStatus}
         />
       )}
       {drawer && (
         <LivestockDrawer row={drawer} onClose={() => setDrawer(null)} />
       )}
-      {confirmDelete && (
-        <DeleteConfirmModal
-          id={confirmDelete.id}
-          animal={confirmDelete.animal}
-          breed={confirmDelete.breed}
-          onCancel={() => setConfirmDelete(null)}
-          onConfirm={confirmRemove}
+      {confirmReturn && (
+        <ReturnConfirmModal
+          row={confirmReturn}
+          onCancel={() => setConfirmReturn(null)}
+          onConfirm={confirmReturnAction}
         />
       )}
     </div>
   );
 }
 
-/* ---------------- Modal ---------------- */
-function LivestockModal({ mode, initial, onClose, onSave }) {
-  const [form, setForm] = useState(initial);
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-
+/* ---------------- Modal shell ---------------- */
+function ModalShell({
+  title,
+  eyebrow = "Livestock",
+  onClose,
+  children,
+  footer,
+  maxWidth = "max-w-md",
+}) {
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
-
-  const submit = (e) => {
-    e.preventDefault();
-    if (!form.animal) return;
-    onSave(form);
-  };
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-foreground-40 p-4"
       onClick={onClose}
     >
       <div
-        className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden bg-surface border border-border shadow-xl"
+        className={`relative flex max-h-[90vh] w-full ${maxWidth} flex-col overflow-hidden bg-surface border border-border shadow-xl`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
           <div>
-            <div className="label-eyebrow mb-1">Livestock</div>
+            <div className="label-eyebrow mb-1">{eyebrow}</div>
             <h2 className="font-display text-xl tracking-tight text-foreground">
-              {mode === "add" ? "Add New Livestock" : `Edit ${initial.id}`}
+              {title}
             </h2>
           </div>
           <button
@@ -301,104 +356,137 @@ function LivestockModal({ mode, initial, onClose, onSave }) {
             <X className="h-4 w-4" />
           </button>
         </div>
-
-        <form onSubmit={submit} className="flex-1 overflow-y-auto px-6 py-5">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Livestock ID">
-              <TextInput
-                value={form.id}
-                onChange={(v) => set("id", v)}
-                placeholder="LS-001"
-              />
-            </Field>
-            <Field label="Animal">
-              <FullSelect
-                value={form.animal}
-                onChange={(v) => set("animal", v)}
-                options={ANIMAL_OPTIONS}
-              />
-            </Field>
-            <Field label="Breed">
-              <TextInput
-                value={form.breed}
-                onChange={(v) => set("breed", v)}
-                placeholder="Friesian"
-              />
-            </Field>
-            <Field label="Gender">
-              <FullSelect
-                value={form.gender}
-                onChange={(v) => set("gender", v)}
-                options={GENDER_OPTIONS}
-              />
-            </Field>
-            <Field label="Date of Birth">
-              <TextInput
-                type="date"
-                value={form.dob}
-                onChange={(v) => set("dob", v)}
-              />
-            </Field>
-            <Field label="Color">
-              <TextInput
-                value={form.color}
-                onChange={(v) => set("color", v)}
-                placeholder="Black & White"
-              />
-            </Field>
-            <Field label="Weight (kg)">
-              <TextInput
-                type="number"
-                value={form.weight}
-                onChange={(v) => set("weight", v)}
-                placeholder="0"
-              />
-            </Field>
-            <Field label="Assign Farmer" full>
-              <FarmerSelect
-                value={form.farmer}
-                onChange={(v) => set("farmer", v)}
-              />
-            </Field>
-            <Field label="Health">
-              <FullSelect
-                value={form.health}
-                onChange={(v) => set("health", v)}
-                options={HEALTH_OPTIONS}
-              />
-            </Field>
-            <Field label="Status">
-              <FullSelect
-                value={form.status}
-                onChange={(v) => set("status", v)}
-                options={STATUS_OPTIONS}
-              />
-            </Field>
-            <Field label="Acquisition Date" full>
-              <TextInput
-                type="date"
-                value={form.acquisitionDate}
-                onChange={(v) => set("acquisitionDate", v)}
-              />
-            </Field>
+        <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
+        {footer && (
+          <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-muted/40 px-6 py-4">
+            {footer}
           </div>
-        </form>
-
-        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-muted/40 px-6 py-4">
-          <Button variant="outline" onClick={onClose} type="button">
-            Cancel
-          </Button>
-          <Button variant="primary" onClick={submit} type="submit">
-            {mode === "add" ? "Add Livestock" : "Save Changes"}
-          </Button>
-        </div>
+        )}
       </div>
     </div>
   );
 }
 
-/* ---------------- Delete Confirmation Modal ---------------- */
-function DeleteConfirmModal({ id, animal, breed, onCancel, onConfirm }) {
+/* ---------------- Add Livestock Modal ---------------- */
+function AddLivestockModal({ initial, existingIds, onClose, onSave }) {
+  const [form, setForm] = useState(initial);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const available = LIVESTOCK_CATALOG.filter(
+    (c) => !existingIds.includes(c.id),
+  );
+  const submit = (e) => {
+    e?.preventDefault();
+    if (!form.catalogId || !form.acquisitionDate) return;
+    onSave(form);
+  };
+  return (
+    <ModalShell
+      title="Add New Livestock"
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose} type="button">
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={submit} type="submit">
+            Add Livestock
+          </Button>
+        </>
+      }
+    >
+      <form onSubmit={submit} className="space-y-4">
+        <Field label="Livestock" full>
+          <CatalogSelect
+            value={form.catalogId}
+            onChange={(v) => set("catalogId", v)}
+            options={available}
+          />
+        </Field>
+        <Field label="Status (Health)" full>
+          <FullSelect
+            value={form.health}
+            onChange={(v) => set("health", v)}
+            options={HEALTH_OPTIONS}
+          />
+        </Field>
+        <Field label="Acquisition Date" full>
+          <TextInput
+            type="date"
+            value={form.acquisitionDate}
+            onChange={(v) => set("acquisitionDate", v)}
+          />
+        </Field>
+      </form>
+    </ModalShell>
+  );
+}
+
+/* ---------------- Assign Modal ---------------- */
+function AssignModal({ row, onClose, onSave }) {
+  const [farmer, setFarmer] = useState(row.farmer || "");
+  return (
+    <ModalShell
+      title={`Assign · ${row.id}`}
+      eyebrow={`${row.animal} · ${row.breed}`}
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose} type="button">
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => farmer && onSave(farmer)}
+            type="button"
+          >
+            Assign Farmer
+          </Button>
+        </>
+      }
+    >
+      <Field label="Assign Farmer" full>
+        <FarmerSelect value={farmer} onChange={setFarmer} />
+      </Field>
+    </ModalShell>
+  );
+}
+
+/* ---------------- Status Update Modal ---------------- */
+function StatusModal({ row, onClose, onSave }) {
+  const [health, setHealth] = useState(row.health);
+  return (
+    <ModalShell
+      title={`Update Status · ${row.id}`}
+      eyebrow={`${row.animal} · ${row.breed}`}
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose} type="button">
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => onSave(health)}
+            type="button"
+          >
+            Update Status
+          </Button>
+        </>
+      }
+    >
+      <Field label="Status (Health)" full>
+        <FullSelect
+          value={health}
+          onChange={setHealth}
+          options={HEALTH_OPTIONS}
+        />
+      </Field>
+    </ModalShell>
+  );
+}
+
+/* ---------------- Return Confirmation Modal ---------------- */
+function ReturnConfirmModal({ row, onCancel, onConfirm }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-foreground-40 p-4"
@@ -408,28 +496,112 @@ function DeleteConfirmModal({ id, animal, breed, onCancel, onConfirm }) {
         className="w-full max-w-sm bg-surface border border-border shadow-xl p-6 text-center"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mx-auto mb-4 grid h-12 w-12 place-items-center bg-danger/10 text-danger">
+        <div className="mx-auto mb-4 grid h-12 w-12 place-items-center bg-warning/10 text-warning">
           <AlertTriangle className="h-6 w-6" />
         </div>
         <h3 className="font-display text-lg tracking-tight text-foreground mb-1">
-          Delete Livestock?
+          Return Livestock?
         </h3>
         <p className="text-sm text-secondary mb-6">
-          Are you sure you want to delete{" "}
+          Have you already returned{" "}
           <strong className="text-foreground">
-            {id} ({animal} · {breed})
-          </strong>
-          ? This action cannot be undone.
+            {row.id} ({row.animal} · {row.breed})
+          </strong>{" "}
+          ? It will be removed from your inventory.
         </p>
         <div className="flex items-center justify-center gap-2">
           <Button variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button variant="danger" onClick={onConfirm}>
-            Delete
+          <Button variant="primary" onClick={onConfirm}>
+            Confirm Return
           </Button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ---------------- Catalog searchable select ---------------- */
+function CatalogSelect({ value, onChange, options }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const ref = useRef(null);
+  useEffect(() => {
+    const h = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    window.addEventListener("mousedown", h);
+    return () => window.removeEventListener("mousedown", h);
+  }, []);
+  const filtered = useMemo(
+    () =>
+      options.filter((o) =>
+        `${o.id} ${o.animal} ${o.breed} ${o.gender}`
+          .toLowerCase()
+          .includes(q.toLowerCase()),
+      ),
+    [q, options],
+  );
+  const selected = options.find((o) => o.id === value);
+  const fmt = (o) =>
+    `${o.id} · ${o.animal} · ${o.breed} · ${o.gender === "male" ? "Male" : "Female"}`;
+  return (
+    <div ref={ref} className="relative w-full">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between border border-border bg-surface px-3 py-2.5 text-left text-sm hover:border-foreground/30"
+      >
+        <span className={selected ? "text-foreground" : "text-secondary"}>
+          {selected ? fmt(selected) : "Select livestock…"}
+        </span>
+        <ChevronDown
+          className={`h-4 w-4 text-secondary transition-transform ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+      {open && (
+        <div className="absolute left-0 right-0 top-full z-30 mt-1 border border-border bg-surface shadow-lg">
+          <div className="relative border-b border-border">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary" />
+            <input
+              autoFocus
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search livestock…"
+              className="w-full bg-surface py-2.5 pl-9 pr-3 text-sm outline-none"
+            />
+          </div>
+          <ul className="max-h-56 overflow-auto">
+            {filtered.length === 0 ? (
+              <li className="px-3 py-3 text-sm text-secondary">
+                No livestock available.
+              </li>
+            ) : (
+              filtered.map((o) => (
+                <li key={o.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange(o.id);
+                      setOpen(false);
+                      setQ("");
+                    }}
+                    className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted ${
+                      o.id === value ? "bg-accent-soft font-semibold" : ""
+                    }`}
+                  >
+                    {fmt(o)}
+                    {o.id === value && (
+                      <span className="h-1.5 w-1.5 bg-accent" />
+                    )}
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
