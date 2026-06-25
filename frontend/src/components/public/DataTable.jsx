@@ -1,3 +1,8 @@
+import { ChevronDown, ChevronUp, Search } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Pagination } from "./";
+import { Select } from "@/components/ui";
+
 export function DataTable({
   columns,
   data,
@@ -74,7 +79,7 @@ export function DataTable({
           />
         </div>
         {filters.map((f) => (
-          <CustomSelect
+          <Select
             key={f.key}
             value={filterValues[f.key]}
             onChange={(v) => setFilterValues((s) => ({ ...s, [f.key]: v }))}

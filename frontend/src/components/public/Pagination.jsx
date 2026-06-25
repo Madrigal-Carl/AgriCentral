@@ -1,3 +1,6 @@
+import { IconButton } from "@/components/ui";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+
 export function Pagination({ page, pageSize, total, onPage }) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   return (

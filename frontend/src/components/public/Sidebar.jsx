@@ -16,7 +16,7 @@ export function Sidebar({ open, onClose }) {
       {/* Mobile overlay */}
       {open && (
         <div
-          className="fixed inset-0 z-40 bg-foreground/40 lg:hidden"
+          className="fixed inset-0 z-40 bg-foreground-40 lg:hidden"
           onClick={onClose}
         />
       )}

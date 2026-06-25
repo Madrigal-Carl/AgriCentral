@@ -1,9 +1,7 @@
-export function CustomSelect({
-  value,
-  onChange,
-  options,
-  placeholder = "Select",
-}) {
+import { ChevronDown } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+
+export function Select({ value, onChange, options, placeholder = "Select" }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useEffect(() => {
