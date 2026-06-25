@@ -16,13 +16,13 @@ export function Sidebar({ open, onClose }) {
       {/* Mobile overlay */}
       {open && (
         <div
-          className="fixed inset-0 z-40 bg-foreground-40 lg:hidden"
+          className="fixed inset-0 z-30 bg-foreground-40 lg:hidden"
           onClick={onClose}
         />
       )}
       <aside
         className={[
-          "fixed inset-y-0 left-0 z-50 flex w-[240px] flex-col bg-surface border-r border-border transition-transform duration-200",
+          "fixed inset-y-0 left-0 z-40 md:z-30 flex w-[240px] flex-col bg-surface border-r border-border transition-transform duration-200",
           "lg:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full",
         ].join(" ")}

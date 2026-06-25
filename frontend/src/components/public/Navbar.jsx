@@ -4,12 +4,48 @@ import { ChevronDown, LogOut, Menu, Settings, User } from "lucide-react";
 
 import { useCrumbs } from "@/utils/useCrumbs";
 import useAuth from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+
+function LogoutConfirmModal({ onCancel, onConfirm }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground-40 p-4"
+      onClick={onCancel}
+    >
+      <div
+        className="w-full max-w-sm bg-surface border border-border shadow-xl p-6 text-center"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mx-auto mb-4 grid h-12 w-12 place-items-center bg-warning/10 text-warning">
+          <LogOut className="h-6 w-6" />
+        </div>
+        <h3 className="font-display text-lg tracking-tight text-foreground mb-1">
+          Log Out?
+        </h3>
+        <p className="text-sm text-secondary mb-6">
+          Are you sure you want to log out of{" "}
+          <strong className="text-foreground">AgriCentral</strong>? You'll need
+          to sign in again to access your account.
+        </p>
+        <div className="flex items-center justify-center gap-2">
+          <Button variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={onConfirm}>
+            Log Out
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function Navbar({ onMenu }) {
   const crumb = useCrumbs();
   const { user, initial, logout } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const ref = useRef(null);
 
   useEffect(() => {
@@ -20,14 +56,19 @@ export function Navbar({ onMenu }) {
     return () => window.removeEventListener("mousedown", handler);
   }, []);
 
-  async function handleLogout() {
+  function handleLogoutClick() {
     setOpen(false);
+    setShowLogoutConfirm(true);
+  }
+
+  async function handleLogoutConfirm() {
+    setShowLogoutConfirm(false);
     await logout();
     navigate("/auth");
   }
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-border bg-surface px-4 lg:px-8">
+    <header className="sticky top-0 z-20 md:z-30 flex h-16 items-center justify-between gap-4 border-b border-border bg-surface px-4 lg:px-8">
       <div className="flex min-w-0 items-center gap-3">
         <button
           className="text-secondary hover:text-foreground lg:hidden"
@@ -86,7 +127,7 @@ export function Navbar({ onMenu }) {
                 ))}
                 <li className="border-t border-border">
                   <button
-                    onClick={handleLogout}
+                    onClick={handleLogoutClick}
                     className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-foreground hover:bg-muted"
                   >
                     <LogOut className="h-4 w-4 text-secondary" />
@@ -98,6 +139,13 @@ export function Navbar({ onMenu }) {
           )}
         </div>
       </div>
+
+      {showLogoutConfirm && (
+        <LogoutConfirmModal
+          onCancel={() => setShowLogoutConfirm(false)}
+          onConfirm={handleLogoutConfirm}
+        />
+      )}
     </header>
   );
 }

@@ -681,8 +681,8 @@ function FarmDrawer({ row, onClose }) {
                     <span className="font-medium text-foreground">
                       {c.crop}
                     </span>
-                    <StatusPill tone={cropStatusTone[c.status]}>
-                      {cropStatusLabel[c.status]}
+                    <StatusPill tone={CROP_STATUS_TONE[c.status]}>
+                      {CROP_STATUS_LABEL[c.status]}
                     </StatusPill>
                   </li>
                 ))}
