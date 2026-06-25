@@ -45,41 +45,6 @@
     --warning: #f59e0b;
   }
 
-  .dark {
-    --background: #0e1016;
-    --surface: #181b22;
-    --foreground: #f1f3f5;
-    --foreground-40: rgba(241, 243, 245, 0.4);
-    --card: #181b22;
-    --card-foreground: #f1f3f5;
-    --popover: #181b22;
-    --popover-foreground: #f1f3f5;
-    --primary: #f1f3f5;
-    --primary-foreground: #0e1016;
-    --secondary: #9aa1ad;
-    --secondary-foreground: #0e1016;
-    --muted: #1c1f27;
-    --muted-foreground: #9aa1ad;
-    --accent: #1cb87a;
-    --accent-foreground: #0e1016;
-    --accent-soft: #133526;
-    --destructive: #e53935;
-    --destructive-foreground: #ffffff;
-    --border: #2a2e38;
-    --input: #2a2e38;
-    --ring: #f1f3f5;
-    --sidebar: #181b22;
-    --sidebar-foreground: #f1f3f5;
-    --sidebar-primary: #f1f3f5;
-    --sidebar-primary-foreground: #0e1016;
-    --sidebar-accent: #1cb87a;
-    --sidebar-accent-foreground: #0e1016;
-    --sidebar-border: #2a2e38;
-    --sidebar-ring: #f1f3f5;
-    --success: #1cb87a;
-    --warning: #f59e0b;
-  }
-
   html {
     font-size: 17.5px;
     font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
