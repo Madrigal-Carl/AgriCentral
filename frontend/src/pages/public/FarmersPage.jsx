@@ -224,7 +224,7 @@ export default function FarmersPage() {
             sortable: true,
             cell: (r) => (
               <div className="flex items-center gap-3">
-                <div className="grid h-9 w-9 shrink-0 place-items-center bg-primary font-display text-xs text-accent">
+                <div className="grid h-9 w-9 shrink-0 place-items-center bg-accent-soft font-display text-xs text-accent rounded-full">
                   {r.name[0]}
                 </div>
                 <div>

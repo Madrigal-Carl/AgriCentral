@@ -6,7 +6,7 @@ export default function Dashboardlayout() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="dashboard min-h-screen bg-background">
+    <div className="min-h-screen bg-background">
       <Sidebar open={open} onClose={() => setOpen(false)} />
       <div className="lg:pl-[240px]">
         <Navbar onMenu={() => setOpen(true)} />

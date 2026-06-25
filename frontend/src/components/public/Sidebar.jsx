@@ -92,7 +92,7 @@ export function Sidebar({ open, onClose }) {
         {/* User footer */}
         <div className="border-t border-border p-3">
           <div className="flex items-center gap-3 px-2 py-2">
-            <div className="grid h-9 w-9 shrink-0 place-items-center bg-accent-soft font-display text-sm text-accent">
+            <div className="grid h-9 w-9 shrink-0 place-items-center bg-accent-soft font-display rounded-full text-sm text-accent">
               {initial}
             </div>
             <div className="min-w-0 flex-1">

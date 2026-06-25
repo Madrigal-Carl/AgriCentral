@@ -65,7 +65,7 @@ export function Navbar({ onMenu }) {
             onClick={() => setOpen((o) => !o)}
             className="flex items-center gap-2 py-1.5 pl-1 pr-2 hover:bg-muted"
           >
-            <div className="grid h-8 w-8 place-items-center bg-accent-soft font-display text-xs text-accent">
+            <div className="grid h-8 w-8 place-items-center bg-accent-soft rounded-full font-display text-xs text-accent">
               {initial}
             </div>
             <ChevronDown className="h-4 w-4 text-secondary" />
