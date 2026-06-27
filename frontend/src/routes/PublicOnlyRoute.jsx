@@ -4,7 +4,11 @@ import { ROLES } from "@/constants/roles";
 import { getRoleRedirect } from "@/utils/getRoleRedirect";
 
 export default function PublicOnlyRoute() {
-  const { isAuthenticated, role } = useAuth();
+  const { isAuthenticated, role, loading } = useAuth();
+
+  if (loading) {
+    return null;
+  }
 
   // Guests can access
   if (!isAuthenticated) {
