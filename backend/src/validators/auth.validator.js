@@ -1,7 +1,7 @@
-import { authSchema } from "../schemas/auth.schema.js";
+import { registerSchema, loginSchema } from "../schemas/auth.schema.js";
 
-export const validateAuth = (req, res, next) => {
-    const result = authSchema.safeParse(req.body);
+const validate = (schema) => (req, res, next) => {
+    const result = schema.safeParse(req.body);
 
     if (!result.success) {
         return res.status(400).json({
@@ -13,3 +13,6 @@ export const validateAuth = (req, res, next) => {
     req.body = result.data;
     next();
 };
+
+export const validateRegister = validate(registerSchema);
+export const validateLogin = validate(loginSchema);

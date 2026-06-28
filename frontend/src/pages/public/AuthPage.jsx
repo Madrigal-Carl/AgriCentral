@@ -7,7 +7,7 @@ import { ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 
 import logoAsset from "@/assets/logo.png";
 import barnAsset from "@/assets/images/barn.jpg";
-import { authSchema } from "@/schemas/auth.schema";
+import { registerSchema, loginSchema } from "@/schemas/auth.schema";
 import useAuth from "@/hooks/useAuth";
 
 export function AuthPage() {
@@ -22,8 +22,8 @@ export function AuthPage() {
     formState: { errors, isSubmitting },
     reset,
   } = useForm({
-    resolver: zodResolver(authSchema),
-    defaultValues: { email: "", password: "" },
+    resolver: zodResolver(mode === "signup" ? registerSchema : loginSchema),
+    defaultValues: { fullname: "", email: "", password: "" },
   });
 
   function switchMode(nextMode) {
@@ -101,6 +101,30 @@ export function AuthPage() {
             onSubmit={handleSubmit(onSubmit)}
             className="mt-6 flex flex-col gap-4"
           >
+            {mode === "signup" && (
+              <div className="flex flex-col gap-1.5">
+                <label
+                  htmlFor="fullname"
+                  className="font-mono text-[10.5px] tracking-[0.16em] text-ink-muted uppercase"
+                >
+                  Full Name
+                </label>
+                <input
+                  id="fullname"
+                  type="text"
+                  autoComplete="name"
+                  {...register("fullname")}
+                  className="rounded-[5px] border border-zinc-300 bg-white px-3 py-2.5 text-[14px] text-ink outline-none focus:border-ink transition-colors"
+                  placeholder="Juan Dela Cruz"
+                />
+                {errors.fullname && (
+                  <p className="text-[12px] text-red-600">
+                    {errors.fullname.message}
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="flex flex-col gap-1.5">
               <label
                 htmlFor="email"

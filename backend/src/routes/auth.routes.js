@@ -6,15 +6,16 @@ import {
     getMe,
 } from "../controllers/auth.controller.js";
 import {
-    validateAuth,
+    validateRegister,
+    validateLogin,
 } from "../validators/auth.validator.js";
 import { authenticated, guestOnly } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
-router.post("/register", guestOnly, validateAuth, register);
+router.post("/register", guestOnly, validateRegister, register);
 
-router.post("/login", guestOnly, validateAuth, login);
+router.post("/login", guestOnly, validateLogin, login);
 
 router.post("/logout", authenticated, logout);
 

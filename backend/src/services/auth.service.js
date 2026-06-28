@@ -8,7 +8,7 @@ import {
   generateVerifyToken,
 } from "../utils/generateToken.js";
 
-export const registerUser = async ({ email, password }) => {
+export const registerUser = async ({ fullname, email, password }) => {
   const existingUser = await User.findOne({ email });
 
   if (existingUser) {
@@ -18,6 +18,7 @@ export const registerUser = async ({ email, password }) => {
   const hashedPassword = await bcrypt.hash(password, 12);
 
   const user = await User.create({
+    fullname,
     email,
     password: hashedPassword,
     isVerified: false,
