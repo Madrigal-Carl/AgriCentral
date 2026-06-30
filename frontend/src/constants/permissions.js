@@ -9,6 +9,7 @@ const PERMISSIONS = {
     farms: {
         far: { view: true, add: true, edit: true, delete: true },
         aew: { view: true, add: false, edit: false, delete: false },
+        head: { view: true, add: false, edit: false, delete: false },
     },
     equipments: {
         far: { view: true, add: true, edit: true, delete: true },

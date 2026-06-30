@@ -262,12 +262,87 @@ export const governorBreadcrumbs = {
 export const headNavSections = [
     {
         label: "Dashboard",
-        items: [{ to: "/head/overview", label: "Overview", icon: LayoutGrid, exact: true }],
+        items: [
+            {
+                to: "/head/overview",
+                label: "Overview",
+                icon: LayoutGrid,
+                exact: true,
+            },
+        ],
+    },
+    {
+        label: "Records",
+        items: [
+            {
+                to: "/head/requests",
+                label: "Request",
+                icon: ClipboardList,
+            },
+            {
+                to: "/head/reports",
+                label: "Report",
+                icon: FileText,
+            },
+        ],
+    },
+    {
+        label: "Management",
+        items: [
+            {
+                to: "/head/farms",
+                label: "Farm",
+                icon: Wheat,
+            },
+        ],
+    },
+    {
+        label: "Mapping",
+        items: [
+            {
+                to: "/head/farm-maps",
+                label: "Farm Map",
+                icon: Map,
+            },
+        ],
+    },
+    {
+        label: "Settings",
+        items: [
+            {
+                to: "/head/settings",
+                label: "Settings",
+                icon: Settings,
+            },
+        ],
     },
 ];
 
-const headBreadcrumbs = {
-    "/head/overview": { group: "Dashboard", label: "Overview" },
+export const headBreadcrumbs = {
+    "/head/overview": {
+        group: "Dashboard",
+        label: "Overview",
+    },
+    "/head/requests": {
+        group: "Records",
+        label: "Request",
+    },
+    "/head/reports": {
+        group: "Records",
+        label: "Report",
+    },
+    "/head/farms": {
+        group: "Management",
+        label: "Farm",
+    },
+    "/head/farm-maps": {
+        group: "Mapping",
+        label: "Farm Map",
+    },
+    "/head/settings": {
+        group: "Settings",
+        label: "Settings",
+    },
 };
 
 /* ---------------- ADMIN ---------------- */

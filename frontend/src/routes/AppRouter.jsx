@@ -102,7 +102,14 @@ export default function AppRouter() {
 
         {/* HEAD ONLY */}
         <Route element={<ProtectedRoute allowedRoles={[ROLES.HEAD]} />}>
-          <Route path="/head/overview" element={<div>Head Page</div>} />
+          <Route path="/head" element={<DashboardLayout />}>
+            <Route path="overview" element={<OverviewPage />} />
+            <Route path="farms" element={<FarmsPage />} />
+            <Route path="requests" element={<RequestsPage />} />
+            <Route path="reports" element={<ReportsPage />} />
+            <Route path="farm-maps" element={<FarmMapsPage />} />
+            <Route path="settings" element={<SettingsPage />} />
+          </Route>
         </Route>
 
         {/* ADMIN ONLY */}
