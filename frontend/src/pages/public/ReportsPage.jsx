@@ -16,6 +16,7 @@ import {
 } from "@/components/public";
 import { Button, Select } from "@/components/ui";
 import { REPORTS } from "@/constants/data";
+import useAuth from "@/hooks/useAuth";
 
 const TYPE_OPTIONS = [
   { value: "crop", label: "Crop" },
@@ -72,11 +73,41 @@ const blankForm = {
   details: "",
 };
 
+function normalizeRole(role) {
+  return role ? String(role).toLowerCase() : "";
+}
+
+// Reports are only reviewable (approve/deny) by a specific designated
+// reviewer role, depending on who filed the report:
+//   - reports filed by "far"  -> reviewable only by "aew"
+//   - reports filed by "aew"  -> reviewable only by "coordinator"
+// Any other role (including the report's own role) cannot review it.
+const REVIEWER_BY_REPORT_ROLE = {
+  far: "aew",
+  aew: "coordinator",
+};
+
 export function ReportsPage() {
+  const { user, role: roleFromAuth } = useAuth();
+  const currentRole = normalizeRole(roleFromAuth ?? user?.role);
+
   const [rows, setRows] = useState(REPORTS);
   const [modal, setModal] = useState(null);
   const [drawer, setDrawer] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [reviewRow, setReviewRow] = useState(null); // { row, action: "approve" | "deny" }
+
+  // A report belongs to the current user's role if its `role` field
+  // matches their own role. Own-role reports get full CRUD.
+  const isOwnReport = (row) => normalizeRole(row.role) === currentRole;
+
+  // Only the designated reviewer role for a given report's role can
+  // approve/deny it (see REVIEWER_BY_REPORT_ROLE above).
+  const canReview = (row) => {
+    const reportRole = normalizeRole(row.role);
+    const requiredReviewer = REVIEWER_BY_REPORT_ROLE[reportRole];
+    return Boolean(requiredReviewer) && currentRole === requiredReviewer;
+  };
 
   const openAdd = () =>
     setModal({
@@ -85,6 +116,7 @@ export function ReportsPage() {
         ...blankForm,
         id: `RP-${String(rows.length + 1).padStart(3, "0")}`,
         date: new Date().toISOString().slice(0, 10),
+        role: currentRole,
       },
     });
   const openEdit = (row) => setModal({ mode: "edit", data: { ...row } });
@@ -94,6 +126,19 @@ export function ReportsPage() {
     if (!confirmDelete) return;
     setRows((r) => r.filter((x) => x.id !== confirmDelete.id));
     setConfirmDelete(null);
+  };
+
+  const askApprove = (row) => setReviewRow({ row, action: "approve" });
+  const askDeny = (row) => setReviewRow({ row, action: "deny" });
+  const confirmReview = () => {
+    if (!reviewRow) return;
+    const nextStatus = reviewRow.action === "approve" ? "resolved" : "open";
+    setRows((r) =>
+      r.map((x) =>
+        x.id === reviewRow.row.id ? { ...x, status: nextStatus } : x,
+      ),
+    );
+    setReviewRow(null);
   };
 
   const handleSave = (data) => {
@@ -174,13 +219,29 @@ export function ReportsPage() {
             key: "actions",
             header: "",
             align: "right",
-            cell: (r) => (
-              <RowActions
-                onView={() => openView(r)}
-                onEdit={() => openEdit(r)}
-                onDelete={() => askDelete(r)}
-              />
-            ),
+            cell: (r) => {
+              if (isOwnReport(r)) {
+                return (
+                  <RowActions
+                    onView={() => openView(r)}
+                    onEdit={() => openEdit(r)}
+                    onDelete={() => askDelete(r)}
+                  />
+                );
+              }
+              if (canReview(r)) {
+                return (
+                  <RowActions
+                    onView={() => openView(r)}
+                    onApprove={() => askApprove(r)}
+                    onDeny={() => askDeny(r)}
+                  />
+                );
+              }
+              // Not the owner and not the designated reviewer for this
+              // report's role -> view only.
+              return <RowActions onView={() => openView(r)} />;
+            },
           },
         ]}
       />
@@ -200,6 +261,14 @@ export function ReportsPage() {
           title={confirmDelete.title}
           onCancel={() => setConfirmDelete(null)}
           onConfirm={confirmRemove}
+        />
+      )}
+      {reviewRow && (
+        <ReviewConfirmModal
+          row={reviewRow.row}
+          action={reviewRow.action}
+          onCancel={() => setReviewRow(null)}
+          onConfirm={confirmReview}
         />
       )}
     </div>
@@ -347,6 +416,65 @@ function DeleteConfirmModal({ id, title, onCancel, onConfirm }) {
   );
 }
 
+/* ---------------- Review (Approve / Deny) Confirmation Modal ---------------- */
+function ReviewConfirmModal({ row, action, onCancel, onConfirm }) {
+  const isApprove = action === "approve";
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground-40 p-4"
+      onClick={onCancel}
+    >
+      <div
+        className="w-full max-w-sm bg-surface border border-border shadow-xl p-6 text-center"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          className={`mx-auto mb-4 grid h-12 w-12 place-items-center ${
+            isApprove
+              ? "bg-success/10 text-success"
+              : "bg-danger/10 text-danger"
+          }`}
+        >
+          <AlertTriangle className="h-6 w-6" />
+        </div>
+        <h3 className="font-display text-lg tracking-tight text-foreground mb-1">
+          {isApprove ? "Approve Report?" : "Deny Report?"}
+        </h3>
+        <p className="text-sm text-secondary mb-6">
+          {isApprove ? (
+            <>
+              Mark{" "}
+              <strong className="text-foreground">
+                {row.id} — {row.title}
+              </strong>{" "}
+              as resolved?
+            </>
+          ) : (
+            <>
+              Send{" "}
+              <strong className="text-foreground">
+                {row.id} — {row.title}
+              </strong>{" "}
+              back to open status?
+            </>
+          )}
+        </p>
+        <div className="flex items-center justify-center gap-2">
+          <Button variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button
+            variant={isApprove ? "primary" : "danger"}
+            onClick={onConfirm}
+          >
+            {isApprove ? "Confirm Approve" : "Confirm Deny"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Field({ label, children, full }) {
   return (
     <div className={full ? "sm:col-span-2" : ""}>
@@ -442,7 +570,8 @@ function ReportDrawer({ row, onClose }) {
                 </div>
                 <div className="min-w-0">
                   <div className="font-semibold text-foreground">
-                    {row.reportedBy}
+                    {row.reportedBy} -{" "}
+                    <span className="uppercase">{row.role}</span>
                   </div>
                   <div className="text-xs text-secondary">
                     Submitted {fmtDate(row.date)}
