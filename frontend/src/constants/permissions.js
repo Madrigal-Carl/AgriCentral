@@ -14,11 +14,10 @@ const PERMISSIONS = {
         far: { view: true, add: true, edit: true, delete: true },
         aew: { view: true, add: false, edit: false, delete: false },
     },
-    // Example for future pages — adjust per actual rules:
-    // livestocks: {
-    //   far: { view: true, add: true, edit: true, delete: true },
-    //   aew: { view: true, add: false, edit: false, delete: false },
-    // },
+    livestocks: {
+        far: { view: true, add: true, edit: true, delete: true },
+        aew: { view: true, add: false, edit: false, delete: false },
+    },
 };
 
 const DEFAULT_CAPABILITIES = { view: true, add: false, edit: false, delete: false };

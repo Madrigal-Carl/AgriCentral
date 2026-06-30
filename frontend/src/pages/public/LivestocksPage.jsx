@@ -23,6 +23,7 @@ import {
 import { Button, IconButton, Select } from "@/components/ui";
 
 import { LIVESTOCKS } from "@/constants/data";
+import { usePermissions } from "@/constants/permissions";
 
 const FARMERS = [
   "Lina Okoro",
@@ -101,19 +102,33 @@ const blankForm = {
 };
 
 export function LivestocksPage() {
+  const can = usePermissions("livestocks");
+
   const [rows, setRows] = useState(LIVESTOCKS);
   const [modal, setModal] = useState(null); // { type: 'add' | 'assign' | 'status' , row }
   const [drawer, setDrawer] = useState(null);
   const [confirmReturn, setConfirmReturn] = useState(null);
 
-  const openAdd = () => setModal({ type: "add", data: { ...blankForm } });
-  const openAssign = (row) => setModal({ type: "assign", row });
-  const openStatus = (row) => setModal({ type: "status", row });
+  const openAdd = () => {
+    if (!can.add) return;
+    setModal({ type: "add", data: { ...blankForm } });
+  };
+  const openAssign = (row) => {
+    if (!can.edit) return;
+    setModal({ type: "assign", row });
+  };
+  const openStatus = (row) => {
+    if (!can.edit) return;
+    setModal({ type: "status", row });
+  };
   const openView = (row) => setDrawer(row);
-  const askReturn = (row) => setConfirmReturn(row);
+  const askReturn = (row) => {
+    if (!can.delete) return;
+    setConfirmReturn(row);
+  };
 
   const confirmReturnAction = () => {
-    if (!confirmReturn) return;
+    if (!confirmReturn || !can.delete) return;
     const today = new Date().toISOString().slice(0, 10);
     setRows((r) =>
       r.map((x) =>
@@ -134,6 +149,7 @@ export function LivestocksPage() {
   };
 
   const handleAdd = (data) => {
+    if (!can.add) return;
     const catalog = LIVESTOCK_CATALOG.find((c) => c.id === data.catalogId);
     if (!catalog) return;
     const newId = `LS-${String(rows.length + 1).padStart(3, "0")}`;
@@ -159,7 +175,7 @@ export function LivestocksPage() {
   };
 
   const handleAssign = (farmer) => {
-    if (!modal?.row) return;
+    if (!modal?.row || !can.edit) return;
     const today = new Date().toISOString().slice(0, 10);
     setRows((r) =>
       r.map((x) =>
@@ -176,7 +192,7 @@ export function LivestocksPage() {
   };
 
   const handleStatus = (health) => {
-    if (!modal?.row) return;
+    if (!modal?.row || !can.edit) return;
     setRows((r) =>
       r.map((x) => (x.id === modal.row.id ? { ...x, health } : x)),
     );
@@ -189,9 +205,11 @@ export function LivestocksPage() {
         title="Livestock"
         subtitle="Animal welfare and inventory."
         action={
-          <Button variant="primary" onClick={openAdd}>
-            <Plus className="h-4 w-4" /> Add Livestock
-          </Button>
+          can.add ? (
+            <Button variant="primary" onClick={openAdd}>
+              <Plus className="h-4 w-4" /> Add Livestock
+            </Button>
+          ) : null
         }
       />
       <DataTable
@@ -260,29 +278,35 @@ export function LivestocksPage() {
                   label="View"
                   onClick={() => openView(r)}
                 />
-                <IconButton
-                  icon={UserPlus}
-                  label="Assign"
-                  onClick={() => openAssign(r)}
-                />
-                <IconButton
-                  icon={HeartPulse}
-                  label="Update Status"
-                  onClick={() => openStatus(r)}
-                />
-                <IconButton
-                  icon={RotateCcw}
-                  label="Return"
-                  tone="danger"
-                  onClick={() => askReturn(r)}
-                />
+                {can.edit && (
+                  <IconButton
+                    icon={UserPlus}
+                    label="Assign"
+                    onClick={() => openAssign(r)}
+                  />
+                )}
+                {can.edit && (
+                  <IconButton
+                    icon={HeartPulse}
+                    label="Update Status"
+                    onClick={() => openStatus(r)}
+                  />
+                )}
+                {can.delete && (
+                  <IconButton
+                    icon={RotateCcw}
+                    label="Return"
+                    tone="danger"
+                    onClick={() => askReturn(r)}
+                  />
+                )}
               </div>
             ),
           },
         ]}
       />
 
-      {modal?.type === "add" && (
+      {modal?.type === "add" && can.add && (
         <AddLivestockModal
           initial={modal.data}
           existingIds={rows.map((r) => r.id)}
@@ -290,14 +314,14 @@ export function LivestocksPage() {
           onSave={handleAdd}
         />
       )}
-      {modal?.type === "assign" && (
+      {modal?.type === "assign" && can.edit && (
         <AssignModal
           row={modal.row}
           onClose={() => setModal(null)}
           onSave={handleAssign}
         />
       )}
-      {modal?.type === "status" && (
+      {modal?.type === "status" && can.edit && (
         <StatusModal
           row={modal.row}
           onClose={() => setModal(null)}
@@ -307,7 +331,7 @@ export function LivestocksPage() {
       {drawer && (
         <LivestockDrawer row={drawer} onClose={() => setDrawer(null)} />
       )}
-      {confirmReturn && (
+      {confirmReturn && can.delete && (
         <ReturnConfirmModal
           row={confirmReturn}
           onCancel={() => setConfirmReturn(null)}
