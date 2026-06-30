@@ -6,11 +6,11 @@ const PERMISSIONS = {
         far: { view: true, add: true, edit: true, delete: true },
         aew: { view: true, add: false, edit: false, delete: false },
     },
+    farms: {
+        far: { view: true, add: true, edit: true, delete: true },
+        aew: { view: true, add: false, edit: false, delete: false },
+    },
     // Example for future pages — adjust per actual rules:
-    // farms: {
-    //   far: { view: true, add: true, edit: true, delete: true },
-    //   aew: { view: true, add: false, edit: false, delete: false },
-    // },
     // equipments: {
     //   far: { view: true, add: true, edit: true, delete: true },
     //   aew: { view: true, add: false, edit: false, delete: false },

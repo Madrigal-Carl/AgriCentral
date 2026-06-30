@@ -32,6 +32,7 @@ import {
   CROP_STATUS_TONE,
   CROP_STATUS_LABEL,
 } from "@/constants/data";
+import { usePermissions } from "@/constants/permissions";
 
 /* ---------------- Reference data ---------------- */
 const FARMER_OPTIONS = [
@@ -62,12 +63,15 @@ const blankForm = {
 
 /* ---------------- Page ---------------- */
 export function FarmsPage() {
+  const can = usePermissions("farms");
+
   const [rows, setRows] = useState(FARMS);
   const [modal, setModal] = useState(null);
   const [drawer, setDrawer] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
 
-  const openAdd = () =>
+  const openAdd = () => {
+    if (!can.add) return;
     setModal({
       mode: "add",
       data: {
@@ -75,11 +79,18 @@ export function FarmsPage() {
         id: `FM-${String(rows.length + 1).padStart(3, "0")}`,
       },
     });
-  const openEdit = (row) => setModal({ mode: "edit", data: { ...row } });
+  };
+  const openEdit = (row) => {
+    if (!can.edit) return;
+    setModal({ mode: "edit", data: { ...row } });
+  };
   const openView = (row) => setDrawer(row);
-  const askDelete = (row) => setConfirmDelete(row);
+  const askDelete = (row) => {
+    if (!can.delete) return;
+    setConfirmDelete(row);
+  };
   const confirmRemove = () => {
-    if (!confirmDelete) return;
+    if (!confirmDelete || !can.delete) return;
     setRows((r) => r.filter((x) => x.id !== confirmDelete.id));
     setConfirmDelete(null);
   };
@@ -91,6 +102,7 @@ export function FarmsPage() {
   };
 
   const handleSave = (data) => {
+    if (!can.add && !can.edit) return;
     setRows((r) => {
       const exists = r.find((x) => x.id === data.id);
       const today = new Date().toISOString().slice(0, 10);
@@ -153,9 +165,11 @@ export function FarmsPage() {
         title="Farms"
         subtitle="Land assets, sizes, and crop allocations."
         action={
-          <Button variant="primary" onClick={openAdd}>
-            <Plus className="h-4 w-4" /> Add Farm
-          </Button>
+          can.add ? (
+            <Button variant="primary" onClick={openAdd}>
+              <Plus className="h-4 w-4" /> Add Farm
+            </Button>
+          ) : null
         }
       />
       <DataTable
@@ -208,15 +222,15 @@ export function FarmsPage() {
             cell: (r) => (
               <RowActions
                 onView={() => openView(r)}
-                onEdit={() => openEdit(r)}
-                onDelete={() => askDelete(r)}
+                onEdit={can.edit ? () => openEdit(r) : undefined}
+                onDelete={can.delete ? () => askDelete(r) : undefined}
               />
             ),
           },
         ]}
       />
 
-      {modal && (
+      {modal && (can.add || can.edit) && (
         <FarmModal
           mode={modal.mode}
           initial={modal.data}
@@ -225,7 +239,7 @@ export function FarmsPage() {
         />
       )}
       {drawer && <FarmDrawer row={drawer} onClose={() => setDrawer(null)} />}
-      {confirmDelete && (
+      {confirmDelete && can.delete && (
         <DeleteConfirmModal
           id={confirmDelete.id}
           name={confirmDelete.address}
