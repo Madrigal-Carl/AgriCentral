@@ -91,7 +91,13 @@ export default function AppRouter() {
 
         {/* GOVERNOR ONLY */}
         <Route element={<ProtectedRoute allowedRoles={[ROLES.GOVERNOR]} />}>
-          <Route path="/governor/overview" element={<div>Governor Page</div>} />
+          <Route path="/governor" element={<DashboardLayout />}>
+            <Route path="overview" element={<OverviewPage />} />
+            <Route path="equipments" element={<EquipmentsPage />} />
+            <Route path="requests" element={<RequestsPage />} />
+            <Route path="reports" element={<ReportsPage />} />
+            <Route path="settings" element={<SettingsPage />} />
+          </Route>
         </Route>
 
         {/* HEAD ONLY */}

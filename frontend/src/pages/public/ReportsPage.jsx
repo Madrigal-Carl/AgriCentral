@@ -82,9 +82,9 @@ function normalizeRole(role) {
 //   - reports filed by "far"  -> reviewable only by "aew"
 //   - reports filed by "aew"  -> reviewable only by "coordinator"
 // Any other role (including the report's own role) cannot review it.
-const REVIEWER_BY_REPORT_ROLE = {
+const REVIEWERS_BY_REPORT_ROLE = {
   far: "aew",
-  aew: "coordinator",
+  aew: ["coordinator", "governor", "head"],
 };
 
 export function ReportsPage() {
@@ -105,8 +105,8 @@ export function ReportsPage() {
   // approve/deny it (see REVIEWER_BY_REPORT_ROLE above).
   const canReview = (row) => {
     const reportRole = normalizeRole(row.role);
-    const requiredReviewer = REVIEWER_BY_REPORT_ROLE[reportRole];
-    return Boolean(requiredReviewer) && currentRole === requiredReviewer;
+    const allowedReviewers = REVIEWERS_BY_REPORT_ROLE[reportRole] ?? [];
+    return allowedReviewers.includes(currentRole);
   };
 
   const openAdd = () =>

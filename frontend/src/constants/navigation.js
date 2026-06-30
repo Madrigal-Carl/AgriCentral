@@ -189,12 +189,73 @@ export const coordinatorBreadcrumbs = {
 export const governorNavSections = [
     {
         label: "Dashboard",
-        items: [{ to: "/governor/overview", label: "Overview", icon: LayoutGrid, exact: true }],
+        items: [
+            {
+                to: "/governor/overview",
+                label: "Overview",
+                icon: LayoutGrid,
+                exact: true,
+            },
+        ],
+    },
+    {
+        label: "Resources",
+        items: [
+            {
+                to: "/governor/equipments",
+                label: "Equipment",
+                icon: Tractor,
+            },
+        ],
+    },
+    {
+        label: "Records",
+        items: [
+            {
+                to: "/governor/requests",
+                label: "Request",
+                icon: ClipboardList,
+            },
+            {
+                to: "/governor/reports",
+                label: "Report",
+                icon: FileText,
+            },
+        ],
+    },
+    {
+        label: "Settings",
+        items: [
+            {
+                to: "/governor/settings",
+                label: "Settings",
+                icon: Settings,
+            },
+        ],
     },
 ];
 
-const governorBreadcrumbs = {
-    "/governor/overview": { group: "Dashboard", label: "Overview" },
+export const governorBreadcrumbs = {
+    "/governor/overview": {
+        group: "Dashboard",
+        label: "Overview",
+    },
+    "/governor/equipments": {
+        group: "Resources",
+        label: "Equipment",
+    },
+    "/governor/requests": {
+        group: "Records",
+        label: "Request",
+    },
+    "/governor/reports": {
+        group: "Records",
+        label: "Report",
+    },
+    "/governor/settings": {
+        group: "Settings",
+        label: "Settings",
+    },
 };
 
 /* ---------------- HEAD ---------------- */
