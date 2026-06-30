@@ -13,6 +13,7 @@ const PERMISSIONS = {
     equipments: {
         far: { view: true, add: true, edit: true, delete: true },
         aew: { view: true, add: false, edit: false, delete: false },
+        coordinator: { view: true, add: true, edit: true, delete: true },
     },
     livestocks: {
         far: { view: true, add: true, edit: true, delete: true },

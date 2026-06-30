@@ -93,18 +93,96 @@ export const aewNavSections = [
 
 const aewBreadcrumbs = {
     "/aew/overview": { group: "Dashboard", label: "Overview" },
+    "/aew/farmers": { group: "Management", label: "Farmer" },
+    "/aew/farms": { group: "Management", label: "Farm" },
+    "/aew/equipments": { group: "Resources", label: "Equipment" },
+    "/aew/livestocks": { group: "Resources", label: "Livestock" },
+    "/aew/farm-maps": { group: "Mapping", label: "Farm Maps" },
+    "/aew/associations": { group: "Community", label: "Request" },
+    "/aew/reports": { group: "Records", label: "Report" },
+    "/aew/settings": { group: "Settings", label: "Settings" },
 };
 
 /* ---------------- COORDINATOR ---------------- */
 export const coordinatorNavSections = [
     {
         label: "Dashboard",
-        items: [{ to: "/coordinator/overview", label: "Overview", icon: LayoutGrid, exact: true }],
+        items: [
+            {
+                to: "/coordinator/overview",
+                label: "Overview",
+                icon: LayoutGrid,
+                exact: true,
+            },
+        ],
+    },
+    {
+        label: "Inventory",
+        items: [
+            {
+                to: "/coordinator/equipments",
+                label: "Equipment",
+                icon: Tractor,
+            },
+            {
+                to: "/coordinator/livestocks",
+                label: "Livestock",
+                icon: Beef,
+            },
+        ],
+    },
+    {
+        label: "Records",
+        items: [
+            {
+                to: "/coordinator/requests",
+                label: "Request",
+                icon: ClipboardList,
+            },
+            {
+                to: "/coordinator/reports",
+                label: "Report",
+                icon: FileText,
+            },
+        ],
+    },
+    {
+        label: "Settings",
+        items: [
+            {
+                to: "/coordinator/settings",
+                label: "Settings",
+                icon: Settings,
+            },
+        ],
     },
 ];
 
-const coordinatorBreadcrumbs = {
-    "/coordinator/overview": { group: "Dashboard", label: "Overview" },
+export const coordinatorBreadcrumbs = {
+    "/coordinator/overview": {
+        group: "Dashboard",
+        label: "Overview",
+    },
+    "/coordinator/equipments": {
+        group: "Inventory",
+        label: "Equipment",
+    },
+    "/coordinator/livestocks": {
+        group: "Inventory",
+        label: "Livestock",
+    },
+    "/coordinator/requests": {
+        group: "Records",
+        label: "Request",
+    },
+    "/coordinator/reports": {
+        group: "Records",
+        label: "Report",
+    },
+    "/coordinator/settings": {
+        group: "Settings",
+        label: "Settings",
+    },
 };
 
 /* ---------------- GOVERNOR ---------------- */

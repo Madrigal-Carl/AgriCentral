@@ -13,6 +13,7 @@ import {
   UserPlus,
   RefreshCw,
   Undo2,
+  Trash2,
 } from "lucide-react";
 import {
   PageHeader,
@@ -24,6 +25,7 @@ import { Button, IconButton, Select } from "@/components/ui";
 
 import { EQUIPMENTS } from "@/constants/data";
 import { usePermissions } from "@/constants/permissions";
+import useAuth from "@/hooks/useAuth";
 
 const FARMERS = [
   "Lina Okoro",
@@ -87,22 +89,59 @@ const statusLabel = {
   repair: "Repair",
 };
 
+function normalizeRole(role) {
+  return role ? String(role).toLowerCase() : "";
+}
+
 export function EquipmentsPage() {
   const can = usePermissions("equipments");
+  const { user, role: roleFromAuth } = useAuth();
+  const currentRole = normalizeRole(roleFromAuth ?? user?.role);
+
+  // Coordinators manage equipment directly (id/name/condition/status) via a
+  // simpler add/edit modal and plain View/Edit/Delete actions. FAR keeps the
+  // assign/update-status/return workflow.
+  const isCoordinator = currentRole === "coordinator";
 
   const [rows, setRows] = useState(EQUIPMENTS);
   const [catalog, setCatalog] = useState(EQUIPMENT_CATALOG);
   const [addModal, setAddModal] = useState(false);
+  const [coordModal, setCoordModal] = useState(null); // { mode: "add" | "edit", data }
   const [assignRow, setAssignRow] = useState(null);
   const [statusRow, setStatusRow] = useState(null);
   const [returnRow, setReturnRow] = useState(null);
+  const [deleteRow, setDeleteRow] = useState(null);
   const [drawer, setDrawer] = useState(null);
 
   const nextId = () => `EQ-${String(rows.length + 1).padStart(3, "0")}`;
 
   const openAddModal = () => {
     if (!can.add) return;
+    if (isCoordinator) {
+      setCoordModal({
+        mode: "add",
+        data: {
+          id: nextId(),
+          name: "",
+          condition: "excellent",
+          status: "available",
+        },
+      });
+      return;
+    }
     setAddModal(true);
+  };
+  const openCoordEdit = (row) => {
+    if (!can.edit) return;
+    setCoordModal({
+      mode: "edit",
+      data: {
+        id: row.id,
+        name: row.name,
+        condition: row.condition,
+        status: row.status,
+      },
+    });
   };
   const openAssign = (row) => {
     if (!can.edit) return;
@@ -115,6 +154,10 @@ export function EquipmentsPage() {
   const openReturn = (row) => {
     if (!can.delete) return;
     setReturnRow(row);
+  };
+  const openDelete = (row) => {
+    if (!can.delete) return;
+    setDeleteRow(row);
   };
 
   const handleAdd = (data) => {
@@ -140,6 +183,43 @@ export function EquipmentsPage() {
       },
     ]);
     setAddModal(false);
+  };
+
+  const handleCoordSave = (data) => {
+    if (coordModal?.mode === "add" && !can.add) return;
+    if (coordModal?.mode === "edit" && !can.edit) return;
+    if (data.name && !catalog.includes(data.name)) {
+      setCatalog((c) => [...c, data.name]);
+    }
+    setRows((r) => {
+      const exists = r.some((x) => x.id === data.id);
+      if (exists) {
+        return r.map((x) =>
+          x.id === data.id
+            ? {
+                ...x,
+                name: data.name,
+                condition: data.condition,
+                status: data.status,
+              }
+            : x,
+        );
+      }
+      const today = new Date().toISOString().slice(0, 10);
+      return [
+        ...r,
+        {
+          id: data.id,
+          name: data.name,
+          condition: data.condition,
+          status: data.status,
+          farmer: "",
+          acquisitionDate: today,
+          history: [{ name: data.name, date: today }],
+        },
+      ];
+    });
+    setCoordModal(null);
   };
 
   const handleAssign = (farmer) => {
@@ -168,6 +248,12 @@ export function EquipmentsPage() {
       ),
     );
     setReturnRow(null);
+  };
+
+  const handleDelete = () => {
+    if (!deleteRow || !can.delete) return;
+    setRows((r) => r.filter((x) => x.id !== deleteRow.id));
+    setDeleteRow(null);
   };
 
   return (
@@ -240,42 +326,49 @@ export function EquipmentsPage() {
             key: "actions",
             header: "",
             align: "right",
-            cell: (r) => (
-              <div className="flex items-center justify-end gap-1">
-                <IconButton
-                  icon={Eye}
-                  label="View"
-                  onClick={() => setDrawer(r)}
+            cell: (r) =>
+              isCoordinator ? (
+                <RowActions
+                  onView={() => setDrawer(r)}
+                  onEdit={can.edit ? () => openCoordEdit(r) : undefined}
+                  onDelete={can.delete ? () => openDelete(r) : undefined}
                 />
-                {can.edit && (
+              ) : (
+                <div className="flex items-center justify-end gap-1">
                   <IconButton
-                    icon={UserPlus}
-                    label="Assign"
-                    onClick={() => openAssign(r)}
+                    icon={Eye}
+                    label="View"
+                    onClick={() => setDrawer(r)}
                   />
-                )}
-                {can.edit && (
-                  <IconButton
-                    icon={RefreshCw}
-                    label="Update Status"
-                    onClick={() => openStatus(r)}
-                  />
-                )}
-                {can.delete && (
-                  <IconButton
-                    icon={Undo2}
-                    label="Return"
-                    tone="danger"
-                    onClick={() => openReturn(r)}
-                  />
-                )}
-              </div>
-            ),
+                  {can.edit && (
+                    <IconButton
+                      icon={UserPlus}
+                      label="Assign"
+                      onClick={() => openAssign(r)}
+                    />
+                  )}
+                  {can.edit && (
+                    <IconButton
+                      icon={RefreshCw}
+                      label="Update Status"
+                      onClick={() => openStatus(r)}
+                    />
+                  )}
+                  {can.delete && (
+                    <IconButton
+                      icon={Undo2}
+                      label="Return"
+                      tone="danger"
+                      onClick={() => openReturn(r)}
+                    />
+                  )}
+                </div>
+              ),
           },
         ]}
       />
 
-      {addModal && can.add && (
+      {addModal && can.add && !isCoordinator && (
         <AddEquipmentModal
           nextId={nextId()}
           catalog={catalog}
@@ -283,25 +376,41 @@ export function EquipmentsPage() {
           onSave={handleAdd}
         />
       )}
-      {assignRow && can.edit && (
+      {coordModal && (
+        <CoordinatorEquipmentModal
+          mode={coordModal.mode}
+          initial={coordModal.data}
+          catalog={catalog}
+          onClose={() => setCoordModal(null)}
+          onSave={handleCoordSave}
+        />
+      )}
+      {assignRow && can.edit && !isCoordinator && (
         <AssignModal
           row={assignRow}
           onClose={() => setAssignRow(null)}
           onSave={handleAssign}
         />
       )}
-      {statusRow && can.edit && (
+      {statusRow && can.edit && !isCoordinator && (
         <StatusUpdateModal
           row={statusRow}
           onClose={() => setStatusRow(null)}
           onSave={handleStatusUpdate}
         />
       )}
-      {returnRow && can.delete && (
+      {returnRow && can.delete && !isCoordinator && (
         <ReturnConfirmModal
           row={returnRow}
           onCancel={() => setReturnRow(null)}
           onConfirm={handleReturn}
+        />
+      )}
+      {deleteRow && can.delete && isCoordinator && (
+        <DeleteConfirmModal
+          row={deleteRow}
+          onCancel={() => setDeleteRow(null)}
+          onConfirm={handleDelete}
         />
       )}
       {drawer && (
@@ -360,7 +469,7 @@ function ModalShell({
   );
 }
 
-/* ---------------- Add Equipment Modal ---------------- */
+/* ---------------- Add Equipment Modal (FAR) ---------------- */
 function AddEquipmentModal({ nextId, catalog, onClose, onSave }) {
   const [name, setName] = useState("");
   const [status, setStatus] = useState("available");
@@ -418,7 +527,78 @@ function AddEquipmentModal({ nextId, catalog, onClose, onSave }) {
   );
 }
 
-/* ---------------- Assign Modal ---------------- */
+/* ---------------- Add/Edit Equipment Modal (Coordinator) ---------------- */
+function CoordinatorEquipmentModal({
+  mode,
+  initial,
+  catalog,
+  onClose,
+  onSave,
+}) {
+  const [form, setForm] = useState(initial);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const submit = (e) => {
+    e.preventDefault();
+    if (!form.id || !form.name) return;
+    onSave(form);
+  };
+
+  return (
+    <ModalShell
+      eyebrow={`Equipment · ${form.id || "New"}`}
+      title={mode === "add" ? "Add New Equipment" : `Edit ${initial.id}`}
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose} type="button">
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={submit} type="submit">
+            {mode === "add" ? "Add Equipment" : "Save Changes"}
+          </Button>
+        </>
+      }
+    >
+      <form onSubmit={submit} className="space-y-4">
+        <Field label="Equipment ID">
+          <TextInput
+            value={form.id}
+            onChange={(v) => set("id", v)}
+            placeholder="EQ-001"
+            disabled={mode === "edit"}
+          />
+        </Field>
+        <Field label="Equipment Name">
+          <SearchableSelect
+            value={form.name}
+            onChange={(v) => set("name", v)}
+            options={catalog}
+            placeholder="Select equipment…"
+            searchPlaceholder="Search or add equipment…"
+            allowCreate
+          />
+        </Field>
+        <Field label="Condition">
+          <FullSelect
+            value={form.condition}
+            onChange={(v) => set("condition", v)}
+            options={CONDITION_OPTIONS}
+          />
+        </Field>
+        <Field label="Status">
+          <FullSelect
+            value={form.status}
+            onChange={(v) => set("status", v)}
+            options={STATUS_OPTIONS}
+          />
+        </Field>
+      </form>
+    </ModalShell>
+  );
+}
+
+/* ---------------- Assign Modal (FAR) ---------------- */
 function AssignModal({ row, onClose, onSave }) {
   const [farmer, setFarmer] = useState(row.farmer || "");
   const submit = (e) => {
@@ -457,7 +637,7 @@ function AssignModal({ row, onClose, onSave }) {
   );
 }
 
-/* ---------------- Status Update Modal ---------------- */
+/* ---------------- Status Update Modal (FAR) ---------------- */
 function StatusUpdateModal({ row, onClose, onSave }) {
   const [condition, setCondition] = useState(row.condition);
   const submit = (e) => {
@@ -493,7 +673,7 @@ function StatusUpdateModal({ row, onClose, onSave }) {
   );
 }
 
-/* ---------------- Return Confirm Modal ---------------- */
+/* ---------------- Return Confirm Modal (FAR) ---------------- */
 function ReturnConfirmModal({ row, onCancel, onConfirm }) {
   return (
     <div
@@ -530,6 +710,43 @@ function ReturnConfirmModal({ row, onCancel, onConfirm }) {
   );
 }
 
+/* ---------------- Delete Confirm Modal (Coordinator) ---------------- */
+function DeleteConfirmModal({ row, onCancel, onConfirm }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground-40 p-4"
+      onClick={onCancel}
+    >
+      <div
+        className="w-full max-w-sm bg-surface border border-border shadow-xl p-6 text-center"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mx-auto mb-4 grid h-12 w-12 place-items-center bg-danger/10 text-danger">
+          <Trash2 className="h-6 w-6" />
+        </div>
+        <h3 className="font-display text-lg tracking-tight text-foreground mb-1">
+          Delete Equipment?
+        </h3>
+        <p className="text-sm text-secondary mb-6">
+          Are you sure you want to delete{" "}
+          <strong className="text-foreground">
+            {row.id} ({row.name})
+          </strong>
+          ? This action cannot be undone.
+        </p>
+        <div className="flex items-center justify-center gap-2">
+          <Button variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={onConfirm}>
+            Delete
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ---------------- Field helpers ---------------- */
 function Field({ label, children, full }) {
   return (
@@ -546,7 +763,7 @@ function TextInput({ value, onChange, type = "text", ...rest }) {
       type={type}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-secondary focus:border-foreground"
+      className="w-full border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-secondary focus:border-foreground disabled:cursor-not-allowed disabled:bg-muted/50 disabled:text-secondary"
       {...rest}
     />
   );

@@ -18,6 +18,7 @@ import {
 } from "@/components/public";
 import { Button, Select } from "@/components/ui";
 import { EQUIPMENTS, LIVESTOCKS } from "@/constants/data";
+import useAuth from "@/hooks/useAuth";
 
 const TYPE_OPTIONS = [
   { value: "equipment", label: "Equipment" },
@@ -130,11 +131,23 @@ const blankForm = {
   details: "",
 };
 
+function normalizeRole(role) {
+  return role ? String(role).toLowerCase() : "";
+}
+
 export function RequestsPage() {
+  const { user, role: roleFromAuth } = useAuth();
+  const currentRole = normalizeRole(roleFromAuth ?? user?.role);
+
+  // FAR is the role that files requests, so it gets full CRUD over them.
+  // Any other signed-in role only gets to review (approve/deny) requests.
+  const isFar = currentRole === "far";
+
   const [rows, setRows] = useState(INITIAL);
   const [modal, setModal] = useState(null);
   const [drawer, setDrawer] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [reviewRow, setReviewRow] = useState(null); // { row, action: "approve" | "deny" }
 
   const openAdd = () =>
     setModal({
@@ -152,6 +165,19 @@ export function RequestsPage() {
     if (!confirmDelete) return;
     setRows((r) => r.filter((x) => x.id !== confirmDelete.id));
     setConfirmDelete(null);
+  };
+
+  const askApprove = (row) => setReviewRow({ row, action: "approve" });
+  const askDeny = (row) => setReviewRow({ row, action: "deny" });
+  const confirmReview = () => {
+    if (!reviewRow) return;
+    const nextStatus = reviewRow.action === "approve" ? "approved" : "rejected";
+    setRows((r) =>
+      r.map((x) =>
+        x.id === reviewRow.row.id ? { ...x, status: nextStatus } : x,
+      ),
+    );
+    setReviewRow(null);
   };
 
   const handleSave = (data) => {
@@ -242,13 +268,20 @@ export function RequestsPage() {
             key: "actions",
             header: "",
             align: "right",
-            cell: (r) => (
-              <RowActions
-                onView={() => openView(r)}
-                onEdit={() => openEdit(r)}
-                onDelete={() => askDelete(r)}
-              />
-            ),
+            cell: (r) =>
+              isFar ? (
+                <RowActions
+                  onView={() => openView(r)}
+                  onEdit={() => openEdit(r)}
+                  onDelete={() => askDelete(r)}
+                />
+              ) : (
+                <RowActions
+                  onView={() => openView(r)}
+                  onApprove={() => askApprove(r)}
+                  onDeny={() => askDeny(r)}
+                />
+              ),
           },
         ]}
       />
@@ -268,6 +301,14 @@ export function RequestsPage() {
           title={confirmDelete.title}
           onCancel={() => setConfirmDelete(null)}
           onConfirm={confirmRemove}
+        />
+      )}
+      {reviewRow && (
+        <ReviewConfirmModal
+          row={reviewRow.row}
+          action={reviewRow.action}
+          onCancel={() => setReviewRow(null)}
+          onConfirm={confirmReview}
         />
       )}
     </div>
@@ -521,6 +562,65 @@ function DeleteConfirmModal({ id, title, onCancel, onConfirm }) {
           </Button>
           <Button variant="danger" onClick={onConfirm}>
             Delete
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Review (Approve / Deny) Confirmation Modal ---------------- */
+function ReviewConfirmModal({ row, action, onCancel, onConfirm }) {
+  const isApprove = action === "approve";
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground-40 p-4"
+      onClick={onCancel}
+    >
+      <div
+        className="w-full max-w-sm bg-surface border border-border shadow-xl p-6 text-center"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          className={`mx-auto mb-4 grid h-12 w-12 place-items-center ${
+            isApprove
+              ? "bg-success/10 text-success"
+              : "bg-danger/10 text-danger"
+          }`}
+        >
+          <AlertTriangle className="h-6 w-6" />
+        </div>
+        <h3 className="font-display text-lg tracking-tight text-foreground mb-1">
+          {isApprove ? "Approve Request?" : "Deny Request?"}
+        </h3>
+        <p className="text-sm text-secondary mb-6">
+          {isApprove ? (
+            <>
+              Mark{" "}
+              <strong className="text-foreground">
+                {row.id} — {row.title}
+              </strong>{" "}
+              as approved?
+            </>
+          ) : (
+            <>
+              Mark{" "}
+              <strong className="text-foreground">
+                {row.id} — {row.title}
+              </strong>{" "}
+              as rejected?
+            </>
+          )}
+        </p>
+        <div className="flex items-center justify-center gap-2">
+          <Button variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button
+            variant={isApprove ? "primary" : "danger"}
+            onClick={onConfirm}
+          >
+            {isApprove ? "Confirm Approve" : "Confirm Deny"}
           </Button>
         </div>
       </div>
