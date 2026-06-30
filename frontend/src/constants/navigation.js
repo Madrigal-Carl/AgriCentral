@@ -56,6 +56,18 @@ export const aewNavSections = [
         items: [{ to: "/aew/overview", label: "Overview", icon: LayoutGrid, exact: true }],
     },
     {
+        label: "Community",
+        items: [
+            { to: "/aew/association", label: "Association", icon: UserCircle2 },
+        ],
+    },
+    {
+        label: "Records",
+        items: [
+            { to: "/aew/reports", label: "Report", icon: FileText },
+        ],
+    },
+    {
         label: "Management",
         items: [
             { to: "/aew/farmers", label: "Farmer", icon: Users },
@@ -74,20 +86,8 @@ export const aewNavSections = [
         items: [{ to: "/aew/farm-maps", label: "Farm Map", icon: Map }],
     },
     {
-        label: "Records",
-        items: [
-            { to: "/aew/reports", label: "Report", icon: FileText },
-        ],
-    },
-    {
-        label: "Community",
-        items: [
-            { to: "/aew/association", label: "Report", icon: UserCircle2 },
-        ],
-    },
-    {
         label: "Settings",
-        items: [{ to: "/far/settings", label: "Settings", icon: Settings }],
+        items: [{ to: "/aew/settings", label: "Settings", icon: Settings }],
     },
 ];
 

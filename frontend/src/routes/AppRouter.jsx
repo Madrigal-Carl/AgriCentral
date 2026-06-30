@@ -64,7 +64,14 @@ export default function AppRouter() {
         {/* AEW ONLY */}
         <Route element={<ProtectedRoute allowedRoles={[ROLES.AEW]} />}>
           <Route path="/aew" element={<DashboardLayout />}>
-            <Route path="overview" element={<div>AEW Page</div>} />
+            <Route path="overview" element={<OverviewPage />} />
+            <Route path="farmers" element={<FarmersPage />} />
+            <Route path="farms" element={<FarmsPage />} />
+            <Route path="equipments" element={<EquipmentsPage />} />
+            <Route path="livestocks" element={<LivestocksPage />} />
+            <Route path="farm-maps" element={<FarmMapsPage />} />
+            <Route path="reports" element={<ReportsPage />} />
+            <Route path="settings" element={<SettingsPage />} />
           </Route>
         </Route>
 
