@@ -140,8 +140,10 @@ export function RequestsPage() {
   const currentRole = normalizeRole(roleFromAuth ?? user?.role);
 
   // FAR is the role that files requests, so it gets full CRUD over them.
+  // Admin is view-only and cannot approve/deny or edit/delete requests.
   // Any other signed-in role only gets to review (approve/deny) requests.
   const isFar = currentRole === "far";
+  const isAdmin = currentRole === "admin";
 
   const [rows, setRows] = useState(INITIAL);
   const [modal, setModal] = useState(null);
@@ -196,9 +198,11 @@ export function RequestsPage() {
         title="Requests"
         subtitle="Resource requests across equipment and livestock."
         action={
-          <Button variant="primary" onClick={openAdd}>
-            <Plus className="h-4 w-4" /> Add Request
-          </Button>
+          !isAdmin ? (
+            <Button variant="primary" onClick={openAdd}>
+              <Plus className="h-4 w-4" /> Add Request
+            </Button>
+          ) : null
         }
       />
       <DataTable
@@ -269,7 +273,9 @@ export function RequestsPage() {
             header: "",
             align: "right",
             cell: (r) =>
-              isFar ? (
+              isAdmin ? (
+                <RowActions onView={() => openView(r)} />
+              ) : isFar ? (
                 <RowActions
                   onView={() => openView(r)}
                   onEdit={() => openEdit(r)}

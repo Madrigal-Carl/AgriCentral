@@ -5,21 +5,25 @@ const PERMISSIONS = {
     farmers: {
         far: { view: true, add: true, edit: true, delete: true },
         aew: { view: true, add: false, edit: false, delete: false },
+        admin: { view: true, add: true, edit: true, delete: true },
     },
     farms: {
         far: { view: true, add: true, edit: true, delete: true },
         aew: { view: true, add: false, edit: false, delete: false },
         head: { view: true, add: false, edit: false, delete: false },
+        admin: { view: true, add: true, edit: true, delete: true },
     },
     equipments: {
         far: { view: true, add: true, edit: true, delete: true },
         aew: { view: true, add: false, edit: false, delete: false },
         coordinator: { view: true, add: true, edit: true, delete: true },
+        admin: { view: true, add: true, edit: true, delete: true },
     },
     livestocks: {
         far: { view: true, add: true, edit: true, delete: true },
         aew: { view: true, add: false, edit: false, delete: false },
         coordinator: { view: true, add: true, edit: true, delete: true },
+        admin: { view: true, add: true, edit: true, delete: true },
     },
 };
 

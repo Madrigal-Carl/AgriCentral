@@ -129,7 +129,8 @@ export function LivestocksPage() {
   // Coordinators manage livestock directly (tag/animal/breed/gender/dob/
   // color/weight) via a dedicated add/edit modal and plain View/Edit/Delete
   // actions. FAR keeps the assign/update-status/return workflow.
-  const isCoordinator = currentRole === "coordinator";
+  const isManagerRole =
+    currentRole === "coordinator" || currentRole === "admin";
 
   const [rows, setRows] = useState(LIVESTOCKS);
   const [animalCatalog, setAnimalCatalog] = useState(ANIMAL_CATALOG_SEED);
@@ -144,7 +145,7 @@ export function LivestocksPage() {
 
   const openAdd = () => {
     if (!can.add) return;
-    if (isCoordinator) {
+    if (isManagerRole) {
       setCoordModal({ mode: "add", data: { ...blankCoordForm, id: nextId() } });
       return;
     }
@@ -387,7 +388,7 @@ export function LivestocksPage() {
             header: "",
             align: "right",
             cell: (r) =>
-              isCoordinator ? (
+              isManagerRole ? (
                 <RowActions
                   onView={() => openView(r)}
                   onEdit={can.edit ? () => openCoordEdit(r) : undefined}
@@ -428,7 +429,7 @@ export function LivestocksPage() {
         ]}
       />
 
-      {modal?.type === "add" && can.add && !isCoordinator && (
+      {modal?.type === "add" && can.add && !isManagerRole && (
         <AddLivestockModal
           initial={modal.data}
           existingIds={rows.map((r) => r.id)}
@@ -446,14 +447,14 @@ export function LivestocksPage() {
           onSave={handleCoordSave}
         />
       )}
-      {modal?.type === "assign" && can.edit && !isCoordinator && (
+      {modal?.type === "assign" && can.edit && !isManagerRole && (
         <AssignModal
           row={modal.row}
           onClose={() => setModal(null)}
           onSave={handleAssign}
         />
       )}
-      {modal?.type === "status" && can.edit && !isCoordinator && (
+      {modal?.type === "status" && can.edit && !isManagerRole && (
         <StatusModal
           row={modal.row}
           onClose={() => setModal(null)}
@@ -463,14 +464,14 @@ export function LivestocksPage() {
       {drawer && (
         <LivestockDrawer row={drawer} onClose={() => setDrawer(null)} />
       )}
-      {confirmReturn && can.delete && !isCoordinator && (
+      {confirmReturn && can.delete && !isManagerRole && (
         <ReturnConfirmModal
           row={confirmReturn}
           onCancel={() => setConfirmReturn(null)}
           onConfirm={confirmReturnAction}
         />
       )}
-      {deleteRow && can.delete && isCoordinator && (
+      {deleteRow && can.delete && isManagerRole && (
         <DeleteConfirmModal
           row={deleteRow}
           onCancel={() => setDeleteRow(null)}

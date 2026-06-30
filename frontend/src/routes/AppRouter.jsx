@@ -13,6 +13,7 @@ import {
   ReportsPage,
   RequestsPage,
   SettingsPage,
+  UsersPage,
 } from "@/pages/public";
 
 import DashboardLayout from "@/layouts/DashboardLayout";
@@ -114,7 +115,19 @@ export default function AppRouter() {
 
         {/* ADMIN ONLY */}
         <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN]} />}>
-          <Route path="/admin/overview" element={<div>Admin Page</div>} />
+          <Route path="/admin" element={<DashboardLayout />}>
+            <Route path="overview" element={<OverviewPage />} />
+            <Route path="farmers" element={<FarmersPage />} />
+            <Route path="users" element={<UsersPage />} />
+            <Route path="farms" element={<FarmsPage />} />
+            <Route path="equipments" element={<EquipmentsPage />} />
+            <Route path="livestocks" element={<LivestocksPage />} />
+            <Route path="associations" element={<AssociationsPage />} />
+            <Route path="farm-maps" element={<FarmMapsPage />} />
+            <Route path="reports" element={<ReportsPage />} />
+            <Route path="settings" element={<SettingsPage />} />
+            <Route path="requests" element={<RequestsPage />} />
+          </Route>
         </Route>
 
         {/* MULTIPLE ROLES */}

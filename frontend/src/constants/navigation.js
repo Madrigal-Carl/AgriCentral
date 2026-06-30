@@ -1,4 +1,4 @@
-import { LayoutGrid, Users, Wheat, Tractor, Beef, Map, FileText, UserCircle2, Settings, ClipboardList } from "lucide-react";
+import { LayoutGrid, Users, Wheat, Tractor, Beef, Map, FileText, UserCircle2, Settings, ClipboardList, UserCog } from "lucide-react";
 
 /* ---------------- FAR ---------------- */
 export const farNavSections = [
@@ -349,12 +349,142 @@ export const headBreadcrumbs = {
 export const adminNavSections = [
     {
         label: "Dashboard",
-        items: [{ to: "/admin/overview", label: "Overview", icon: LayoutGrid, exact: true }],
+        items: [
+            {
+                to: "/admin/overview",
+                label: "Overview",
+                icon: LayoutGrid,
+                exact: true,
+            },
+        ],
+    },
+    {
+        label: "Management",
+        items: [
+            {
+                to: "/admin/farmers",
+                label: "Farmer",
+                icon: Users,
+            },
+            {
+                to: "/admin/users",
+                label: "User",
+                icon: UserCog,
+            },
+            {
+                to: "/admin/farms",
+                label: "Farm",
+                icon: Wheat,
+            },
+        ],
+    },
+    {
+        label: "Resources",
+        items: [
+            {
+                to: "/admin/equipments",
+                label: "Equipment",
+                icon: Tractor,
+            },
+            {
+                to: "/admin/livestocks",
+                label: "Livestock",
+                icon: Beef,
+            },
+        ],
+    },
+    {
+        label: "Community",
+        items: [
+            {
+                to: "/admin/associations",
+                label: "Association",
+                icon: UserCircle2,
+            },
+        ],
+    },
+    {
+        label: "Records",
+        items: [
+            {
+                to: "/admin/requests",
+                label: "Request",
+                icon: ClipboardList,
+            },
+            {
+                to: "/admin/reports",
+                label: "Report",
+                icon: FileText,
+            },
+        ],
+    },
+    {
+        label: "Mapping",
+        items: [
+            {
+                to: "/admin/farm-maps",
+                label: "Farm Map",
+                icon: Map,
+            },
+        ],
+    },
+    {
+        label: "Settings",
+        items: [
+            {
+                to: "/admin/settings",
+                label: "Settings",
+                icon: Settings,
+            },
+        ],
     },
 ];
 
-const adminBreadcrumbs = {
-    "/admin/overview": { group: "Dashboard", label: "Overview" },
+export const adminBreadcrumbs = {
+    "/admin/overview": {
+        group: "Dashboard",
+        label: "Overview",
+    },
+    "/admin/farmers": {
+        group: "Management",
+        label: "Farmer",
+    },
+    "/admin/users": {
+        group: "Management",
+        label: "User",
+    },
+    "/admin/farms": {
+        group: "Management",
+        label: "Farm",
+    },
+    "/admin/equipments": {
+        group: "Resources",
+        label: "Equipment",
+    },
+    "/admin/livestocks": {
+        group: "Resources",
+        label: "Livestock",
+    },
+    "/admin/associations": {
+        group: "Community",
+        label: "Association",
+    },
+    "/admin/requests": {
+        group: "Records",
+        label: "Request",
+    },
+    "/admin/reports": {
+        group: "Records",
+        label: "Report",
+    },
+    "/admin/settings": {
+        group: "Settings",
+        label: "Settings",
+    },
+    "/admin/farm-maps": {
+        group: "Mapping",
+        label: "Farm Map",
+    },
 };
 
 /* ---------------- MERGED ---------------- */

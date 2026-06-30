@@ -319,3 +319,70 @@ export const CROP_STATUS_LABEL = {
     harvested: "Harvested",
     fallow: "Fallow",
 };
+
+export const USERS = [
+    {
+        id: "US-001",
+        fullName: "Daniel Kiprotich",
+        email: "daniel.kiprotich@agritrack.io",
+        role: "far",
+        isVerified: true,
+    },
+    {
+        id: "US-002",
+        fullName: "Lina Okoro",
+        email: "lina.okoro@agritrack.io",
+        role: "far",
+        isVerified: true,
+    },
+    {
+        id: "US-003",
+        fullName: "Samuel Mwangi",
+        email: "samuel.mwangi@agritrack.io",
+        role: "aew",
+        isVerified: true,
+    },
+    {
+        id: "US-004",
+        fullName: "Aisha Bello",
+        email: "aisha.bello@agritrack.io",
+        role: "aew",
+        isVerified: true,
+    },
+    {
+        id: "US-005",
+        fullName: "Grace Mensah",
+        email: "grace.mensah@agritrack.io",
+        role: "coordinator",
+        isVerified: true,
+    },
+    {
+        id: "US-006",
+        fullName: "Ibrahim Sow",
+        email: "ibrahim.sow@agritrack.io",
+        role: "coordinator",
+        isVerified: true,
+    },
+    {
+        id: "US-007",
+        fullName: "Helen Adeyemi",
+        email: "helen.adeyemi@agritrack.io",
+        role: "governor",
+        isVerified: true,
+    },
+    {
+        id: "US-008",
+        fullName: "Ravi Patel",
+        email: "ravi.patel@agritrack.io",
+        role: "head",
+        isVerified: true,
+    },
+    // Example: a FAR who self-registered and is awaiting admin approval.
+    {
+        id: "US-009",
+        fullName: "Wanjiru Kamau",
+        email: "wanjiru.kamau@agritrack.io",
+        role: "far",
+        isVerified: false,
+    },
+];

@@ -98,10 +98,11 @@ export function EquipmentsPage() {
   const { user, role: roleFromAuth } = useAuth();
   const currentRole = normalizeRole(roleFromAuth ?? user?.role);
 
-  // Coordinators manage equipment directly (id/name/condition/status) via a
-  // simpler add/edit modal and plain View/Edit/Delete actions. FAR keeps the
+  // Coordinators and admins manage equipment directly (id/name/condition/status)
+  // via a simpler add/edit modal and plain View/Edit/Delete actions. FAR keeps the
   // assign/update-status/return workflow.
-  const isCoordinator = currentRole === "coordinator";
+  const isManagerRole =
+    currentRole === "coordinator" || currentRole === "admin";
 
   const [rows, setRows] = useState(EQUIPMENTS);
   const [catalog, setCatalog] = useState(EQUIPMENT_CATALOG);
@@ -117,7 +118,7 @@ export function EquipmentsPage() {
 
   const openAddModal = () => {
     if (!can.add) return;
-    if (isCoordinator) {
+    if (isManagerRole) {
       setCoordModal({
         mode: "add",
         data: {
@@ -327,7 +328,7 @@ export function EquipmentsPage() {
             header: "",
             align: "right",
             cell: (r) =>
-              isCoordinator ? (
+              isManagerRole ? (
                 <RowActions
                   onView={() => setDrawer(r)}
                   onEdit={can.edit ? () => openCoordEdit(r) : undefined}
@@ -368,7 +369,7 @@ export function EquipmentsPage() {
         ]}
       />
 
-      {addModal && can.add && !isCoordinator && (
+      {addModal && can.add && !isManagerRole && (
         <AddEquipmentModal
           nextId={nextId()}
           catalog={catalog}
@@ -385,28 +386,28 @@ export function EquipmentsPage() {
           onSave={handleCoordSave}
         />
       )}
-      {assignRow && can.edit && !isCoordinator && (
+      {assignRow && can.edit && !isManagerRole && (
         <AssignModal
           row={assignRow}
           onClose={() => setAssignRow(null)}
           onSave={handleAssign}
         />
       )}
-      {statusRow && can.edit && !isCoordinator && (
+      {statusRow && can.edit && !isManagerRole && (
         <StatusUpdateModal
           row={statusRow}
           onClose={() => setStatusRow(null)}
           onSave={handleStatusUpdate}
         />
       )}
-      {returnRow && can.delete && !isCoordinator && (
+      {returnRow && can.delete && !isManagerRole && (
         <ReturnConfirmModal
           row={returnRow}
           onCancel={() => setReturnRow(null)}
           onConfirm={handleReturn}
         />
       )}
-      {deleteRow && can.delete && isCoordinator && (
+      {deleteRow && can.delete && isManagerRole && (
         <DeleteConfirmModal
           row={deleteRow}
           onCancel={() => setDeleteRow(null)}

@@ -326,7 +326,7 @@ function FarmModal({ mode, initial, onClose, onSave }) {
                 placeholder="24"
               />
             </Field>
-            <Field label="Crop Yield (kg)">
+            <Field label="Crop Yield (kg)" full>
               <TextInput
                 type="number"
                 value={form.yieldKg}
