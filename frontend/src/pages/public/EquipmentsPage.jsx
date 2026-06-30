@@ -23,6 +23,7 @@ import {
 import { Button, IconButton, Select } from "@/components/ui";
 
 import { EQUIPMENTS } from "@/constants/data";
+import { usePermissions } from "@/constants/permissions";
 
 const FARMERS = [
   "Lina Okoro",
@@ -87,6 +88,8 @@ const statusLabel = {
 };
 
 export function EquipmentsPage() {
+  const can = usePermissions("equipments");
+
   const [rows, setRows] = useState(EQUIPMENTS);
   const [catalog, setCatalog] = useState(EQUIPMENT_CATALOG);
   const [addModal, setAddModal] = useState(false);
@@ -97,7 +100,25 @@ export function EquipmentsPage() {
 
   const nextId = () => `EQ-${String(rows.length + 1).padStart(3, "0")}`;
 
+  const openAddModal = () => {
+    if (!can.add) return;
+    setAddModal(true);
+  };
+  const openAssign = (row) => {
+    if (!can.edit) return;
+    setAssignRow(row);
+  };
+  const openStatus = (row) => {
+    if (!can.edit) return;
+    setStatusRow(row);
+  };
+  const openReturn = (row) => {
+    if (!can.delete) return;
+    setReturnRow(row);
+  };
+
   const handleAdd = (data) => {
+    if (!can.add) return;
     if (data.name && !catalog.includes(data.name)) {
       setCatalog((c) => [...c, data.name]);
     }
@@ -122,7 +143,7 @@ export function EquipmentsPage() {
   };
 
   const handleAssign = (farmer) => {
-    if (!assignRow) return;
+    if (!assignRow || !can.edit) return;
     setRows((r) =>
       r.map((x) =>
         x.id === assignRow.id ? { ...x, farmer, status: "assigned" } : x,
@@ -132,7 +153,7 @@ export function EquipmentsPage() {
   };
 
   const handleStatusUpdate = (condition) => {
-    if (!statusRow) return;
+    if (!statusRow || !can.edit) return;
     setRows((r) =>
       r.map((x) => (x.id === statusRow.id ? { ...x, condition } : x)),
     );
@@ -140,7 +161,7 @@ export function EquipmentsPage() {
   };
 
   const handleReturn = () => {
-    if (!returnRow) return;
+    if (!returnRow || !can.delete) return;
     setRows((r) =>
       r.map((x) =>
         x.id === returnRow.id ? { ...x, farmer: "", status: "available" } : x,
@@ -155,9 +176,11 @@ export function EquipmentsPage() {
         title="Equipment"
         subtitle="Fleet & tools across all farms."
         action={
-          <Button variant="primary" onClick={() => setAddModal(true)}>
-            <Plus className="h-4 w-4" /> Add Equipment
-          </Button>
+          can.add ? (
+            <Button variant="primary" onClick={openAddModal}>
+              <Plus className="h-4 w-4" /> Add Equipment
+            </Button>
+          ) : null
         }
       />
       <DataTable
@@ -224,29 +247,35 @@ export function EquipmentsPage() {
                   label="View"
                   onClick={() => setDrawer(r)}
                 />
-                <IconButton
-                  icon={UserPlus}
-                  label="Assign"
-                  onClick={() => setAssignRow(r)}
-                />
-                <IconButton
-                  icon={RefreshCw}
-                  label="Update Status"
-                  onClick={() => setStatusRow(r)}
-                />
-                <IconButton
-                  icon={Undo2}
-                  label="Return"
-                  tone="danger"
-                  onClick={() => setReturnRow(r)}
-                />
+                {can.edit && (
+                  <IconButton
+                    icon={UserPlus}
+                    label="Assign"
+                    onClick={() => openAssign(r)}
+                  />
+                )}
+                {can.edit && (
+                  <IconButton
+                    icon={RefreshCw}
+                    label="Update Status"
+                    onClick={() => openStatus(r)}
+                  />
+                )}
+                {can.delete && (
+                  <IconButton
+                    icon={Undo2}
+                    label="Return"
+                    tone="danger"
+                    onClick={() => openReturn(r)}
+                  />
+                )}
               </div>
             ),
           },
         ]}
       />
 
-      {addModal && (
+      {addModal && can.add && (
         <AddEquipmentModal
           nextId={nextId()}
           catalog={catalog}
@@ -254,21 +283,21 @@ export function EquipmentsPage() {
           onSave={handleAdd}
         />
       )}
-      {assignRow && (
+      {assignRow && can.edit && (
         <AssignModal
           row={assignRow}
           onClose={() => setAssignRow(null)}
           onSave={handleAssign}
         />
       )}
-      {statusRow && (
+      {statusRow && can.edit && (
         <StatusUpdateModal
           row={statusRow}
           onClose={() => setStatusRow(null)}
           onSave={handleStatusUpdate}
         />
       )}
-      {returnRow && (
+      {returnRow && can.delete && (
         <ReturnConfirmModal
           row={returnRow}
           onCancel={() => setReturnRow(null)}
