@@ -63,7 +63,9 @@ export default function AppRouter() {
 
         {/* AEW ONLY */}
         <Route element={<ProtectedRoute allowedRoles={[ROLES.AEW]} />}>
-          <Route path="/aew/overview" element={<div>AEW Page</div>} />
+          <Route path="/aew" element={<DashboardLayout />}>
+            <Route path="overview" element={<div>AEW Page</div>} />
+          </Route>
         </Route>
 
         {/* COORDINATOR ONLY */}

@@ -1,13 +1,16 @@
 import { Link, useLocation } from "react-router-dom";
-import { Leaf, X } from "lucide-react";
+import { X } from "lucide-react";
 import logoAsset from "@/assets/logo.png";
 
-import { farNavSections } from "@/constants/navigation";
+import { getNavSectionsForRole } from "@/constants/navigation";
 import useAuth from "@/hooks/useAuth";
 
 export function Sidebar({ open, onClose }) {
   const { user, initial } = useAuth();
   const { pathname } = useLocation();
+
+  const navSections = getNavSectionsForRole(user?.role);
+
   const isActive = (to, exact) =>
     exact ? pathname === to : pathname === to || pathname.startsWith(to + "/");
 
@@ -50,7 +53,7 @@ export function Sidebar({ open, onClose }) {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto px-3 py-5">
-          {farNavSections.map((group) => (
+          {navSections.map((group) => (
             <div key={group.label} className="mb-5">
               <div className="label-eyebrow px-3 pb-2">{group.label}</div>
               <ul className="space-y-0.5">

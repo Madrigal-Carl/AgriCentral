@@ -55,6 +55,40 @@ export const aewNavSections = [
         label: "Dashboard",
         items: [{ to: "/aew/overview", label: "Overview", icon: LayoutGrid, exact: true }],
     },
+    {
+        label: "Management",
+        items: [
+            { to: "/aew/farmers", label: "Farmer", icon: Users },
+            { to: "/aew/farms", label: "Farm", icon: Wheat },
+        ],
+    },
+    {
+        label: "Resources",
+        items: [
+            { to: "/aew/equipments", label: "Equipment", icon: Tractor },
+            { to: "/aew/livestocks", label: "Livestock", icon: Beef },
+        ],
+    },
+    {
+        label: "Mapping",
+        items: [{ to: "/aew/farm-maps", label: "Farm Map", icon: Map }],
+    },
+    {
+        label: "Records",
+        items: [
+            { to: "/aew/reports", label: "Report", icon: FileText },
+        ],
+    },
+    {
+        label: "Community",
+        items: [
+            { to: "/aew/association", label: "Report", icon: UserCircle2 },
+        ],
+    },
+    {
+        label: "Settings",
+        items: [{ to: "/far/settings", label: "Settings", icon: Settings }],
+    },
 ];
 
 const aewBreadcrumbs = {
@@ -118,3 +152,36 @@ export const allBreadcrumbs = {
     ...headBreadcrumbs,
     ...adminBreadcrumbs,
 };
+
+/* ---------------- ROLE MAP ---------------- */
+export const navSectionsByRole = {
+    far: farNavSections,
+    aew: aewNavSections,
+    coordinator: coordinatorNavSections,
+    governor: governorNavSections,
+    head: headNavSections,
+    admin: adminNavSections,
+};
+
+export const breadcrumbsByRole = {
+    far: farBreadcrumbs,
+    aew: aewBreadcrumbs,
+    coordinator: coordinatorBreadcrumbs,
+    governor: governorBreadcrumbs,
+    head: headBreadcrumbs,
+    admin: adminBreadcrumbs,
+};
+
+export function resolveRoleKey(role, fallback = "far") {
+    if (!role) return fallback;
+    const key = String(role).toLowerCase();
+    return navSectionsByRole[key] ? key : fallback;
+}
+
+export function getNavSectionsForRole(role) {
+    return navSectionsByRole[resolveRoleKey(role)];
+}
+
+export function getBreadcrumbsForRole(role) {
+    return breadcrumbsByRole[resolveRoleKey(role)];
+}
