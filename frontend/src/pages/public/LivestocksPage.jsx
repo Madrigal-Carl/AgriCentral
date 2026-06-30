@@ -13,6 +13,7 @@ import {
   UserPlus,
   HeartPulse,
   RotateCcw,
+  Trash2,
 } from "lucide-react";
 import {
   PageHeader,
@@ -24,6 +25,7 @@ import { Button, IconButton, Select } from "@/components/ui";
 
 import { LIVESTOCKS } from "@/constants/data";
 import { usePermissions } from "@/constants/permissions";
+import useAuth from "@/hooks/useAuth";
 
 const FARMERS = [
   "Lina Okoro",
@@ -95,23 +97,74 @@ const LIVESTOCK_CATALOG = [
   },
 ];
 
+const ANIMAL_CATALOG_SEED = ANIMAL_OPTIONS.map((o) => o.value);
+const BREED_CATALOG_SEED = [...new Set(LIVESTOCK_CATALOG.map((c) => c.breed))];
+
 const blankForm = {
   catalogId: "",
   health: "healthy",
   acquisitionDate: "",
 };
 
+const blankCoordForm = {
+  id: "",
+  tag: "",
+  animal: "",
+  breed: "",
+  gender: "male",
+  dob: "",
+  color: "",
+  weight: "",
+};
+
+function normalizeRole(role) {
+  return role ? String(role).toLowerCase() : "";
+}
+
 export function LivestocksPage() {
   const can = usePermissions("livestocks");
+  const { user, role: roleFromAuth } = useAuth();
+  const currentRole = normalizeRole(roleFromAuth ?? user?.role);
+
+  // Coordinators manage livestock directly (tag/animal/breed/gender/dob/
+  // color/weight) via a dedicated add/edit modal and plain View/Edit/Delete
+  // actions. FAR keeps the assign/update-status/return workflow.
+  const isCoordinator = currentRole === "coordinator";
 
   const [rows, setRows] = useState(LIVESTOCKS);
+  const [animalCatalog, setAnimalCatalog] = useState(ANIMAL_CATALOG_SEED);
+  const [breedCatalog, setBreedCatalog] = useState(BREED_CATALOG_SEED);
   const [modal, setModal] = useState(null); // { type: 'add' | 'assign' | 'status' , row }
+  const [coordModal, setCoordModal] = useState(null); // { mode: 'add' | 'edit', data }
   const [drawer, setDrawer] = useState(null);
   const [confirmReturn, setConfirmReturn] = useState(null);
+  const [deleteRow, setDeleteRow] = useState(null);
+
+  const nextId = () => `LS-${String(rows.length + 1).padStart(3, "0")}`;
 
   const openAdd = () => {
     if (!can.add) return;
+    if (isCoordinator) {
+      setCoordModal({ mode: "add", data: { ...blankCoordForm, id: nextId() } });
+      return;
+    }
     setModal({ type: "add", data: { ...blankForm } });
+  };
+  const openCoordEdit = (row) => {
+    if (!can.edit) return;
+    setCoordModal({
+      mode: "edit",
+      data: {
+        id: row.id,
+        tag: row.tag || "",
+        animal: row.animal || "",
+        breed: row.breed || "",
+        gender: row.gender || "male",
+        dob: row.dob || "",
+        color: row.color || "",
+        weight: row.weight ?? "",
+      },
+    });
   };
   const openAssign = (row) => {
     if (!can.edit) return;
@@ -125,6 +178,10 @@ export function LivestocksPage() {
   const askReturn = (row) => {
     if (!can.delete) return;
     setConfirmReturn(row);
+  };
+  const askDelete = (row) => {
+    if (!can.delete) return;
+    setDeleteRow(row);
   };
 
   const confirmReturnAction = () => {
@@ -148,11 +205,17 @@ export function LivestocksPage() {
     setConfirmReturn(null);
   };
 
+  const handleDelete = () => {
+    if (!deleteRow || !can.delete) return;
+    setRows((r) => r.filter((x) => x.id !== deleteRow.id));
+    setDeleteRow(null);
+  };
+
   const handleAdd = (data) => {
     if (!can.add) return;
     const catalog = LIVESTOCK_CATALOG.find((c) => c.id === data.catalogId);
     if (!catalog) return;
-    const newId = `LS-${String(rows.length + 1).padStart(3, "0")}`;
+    const newId = nextId();
     setRows((r) => [
       ...r,
       {
@@ -172,6 +235,58 @@ export function LivestocksPage() {
       },
     ]);
     setModal(null);
+  };
+
+  const handleCoordSave = (data) => {
+    if (coordModal?.mode === "add" && !can.add) return;
+    if (coordModal?.mode === "edit" && !can.edit) return;
+    if (data.animal && !animalCatalog.includes(data.animal)) {
+      setAnimalCatalog((c) => [...c, data.animal]);
+    }
+    if (data.breed && !breedCatalog.includes(data.breed)) {
+      setBreedCatalog((c) => [...c, data.breed]);
+    }
+    const weightNum = data.weight === "" ? 0 : parseFloat(data.weight);
+
+    setRows((r) => {
+      const exists = r.some((x) => x.id === data.id);
+      if (exists) {
+        return r.map((x) =>
+          x.id === data.id
+            ? {
+                ...x,
+                tag: data.tag,
+                animal: data.animal,
+                breed: data.breed,
+                gender: data.gender,
+                dob: data.dob,
+                color: data.color,
+                weight: weightNum,
+              }
+            : x,
+        );
+      }
+      const today = new Date().toISOString().slice(0, 10);
+      return [
+        ...r,
+        {
+          id: data.id,
+          tag: data.tag,
+          animal: data.animal,
+          breed: data.breed,
+          gender: data.gender,
+          dob: data.dob,
+          color: data.color,
+          weight: weightNum,
+          farmer: "",
+          health: "healthy",
+          status: "active",
+          acquisitionDate: today,
+          history: [],
+        },
+      ];
+    });
+    setCoordModal(null);
   };
 
   const handleAssign = (farmer) => {
@@ -271,42 +386,49 @@ export function LivestocksPage() {
             key: "actions",
             header: "",
             align: "right",
-            cell: (r) => (
-              <div className="flex items-center justify-end gap-1">
-                <IconButton
-                  icon={Eye}
-                  label="View"
-                  onClick={() => openView(r)}
+            cell: (r) =>
+              isCoordinator ? (
+                <RowActions
+                  onView={() => openView(r)}
+                  onEdit={can.edit ? () => openCoordEdit(r) : undefined}
+                  onDelete={can.delete ? () => askDelete(r) : undefined}
                 />
-                {can.edit && (
+              ) : (
+                <div className="flex items-center justify-end gap-1">
                   <IconButton
-                    icon={UserPlus}
-                    label="Assign"
-                    onClick={() => openAssign(r)}
+                    icon={Eye}
+                    label="View"
+                    onClick={() => openView(r)}
                   />
-                )}
-                {can.edit && (
-                  <IconButton
-                    icon={HeartPulse}
-                    label="Update Status"
-                    onClick={() => openStatus(r)}
-                  />
-                )}
-                {can.delete && (
-                  <IconButton
-                    icon={RotateCcw}
-                    label="Return"
-                    tone="danger"
-                    onClick={() => askReturn(r)}
-                  />
-                )}
-              </div>
-            ),
+                  {can.edit && (
+                    <IconButton
+                      icon={UserPlus}
+                      label="Assign"
+                      onClick={() => openAssign(r)}
+                    />
+                  )}
+                  {can.edit && (
+                    <IconButton
+                      icon={HeartPulse}
+                      label="Update Status"
+                      onClick={() => openStatus(r)}
+                    />
+                  )}
+                  {can.delete && (
+                    <IconButton
+                      icon={RotateCcw}
+                      label="Return"
+                      tone="danger"
+                      onClick={() => askReturn(r)}
+                    />
+                  )}
+                </div>
+              ),
           },
         ]}
       />
 
-      {modal?.type === "add" && can.add && (
+      {modal?.type === "add" && can.add && !isCoordinator && (
         <AddLivestockModal
           initial={modal.data}
           existingIds={rows.map((r) => r.id)}
@@ -314,14 +436,24 @@ export function LivestocksPage() {
           onSave={handleAdd}
         />
       )}
-      {modal?.type === "assign" && can.edit && (
+      {coordModal && (
+        <CoordinatorLivestockModal
+          mode={coordModal.mode}
+          initial={coordModal.data}
+          animalCatalog={animalCatalog}
+          breedCatalog={breedCatalog}
+          onClose={() => setCoordModal(null)}
+          onSave={handleCoordSave}
+        />
+      )}
+      {modal?.type === "assign" && can.edit && !isCoordinator && (
         <AssignModal
           row={modal.row}
           onClose={() => setModal(null)}
           onSave={handleAssign}
         />
       )}
-      {modal?.type === "status" && can.edit && (
+      {modal?.type === "status" && can.edit && !isCoordinator && (
         <StatusModal
           row={modal.row}
           onClose={() => setModal(null)}
@@ -331,11 +463,18 @@ export function LivestocksPage() {
       {drawer && (
         <LivestockDrawer row={drawer} onClose={() => setDrawer(null)} />
       )}
-      {confirmReturn && can.delete && (
+      {confirmReturn && can.delete && !isCoordinator && (
         <ReturnConfirmModal
           row={confirmReturn}
           onCancel={() => setConfirmReturn(null)}
           onConfirm={confirmReturnAction}
+        />
+      )}
+      {deleteRow && can.delete && isCoordinator && (
+        <DeleteConfirmModal
+          row={deleteRow}
+          onCancel={() => setDeleteRow(null)}
+          onConfirm={handleDelete}
         />
       )}
     </div>
@@ -391,7 +530,7 @@ function ModalShell({
   );
 }
 
-/* ---------------- Add Livestock Modal ---------------- */
+/* ---------------- Add Livestock Modal (FAR) ---------------- */
 function AddLivestockModal({ initial, existingIds, onClose, onSave }) {
   const [form, setForm] = useState(initial);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
@@ -445,7 +584,104 @@ function AddLivestockModal({ initial, existingIds, onClose, onSave }) {
   );
 }
 
-/* ---------------- Assign Modal ---------------- */
+/* ---------------- Add/Edit Livestock Modal (Coordinator) ---------------- */
+function CoordinatorLivestockModal({
+  mode,
+  initial,
+  animalCatalog,
+  breedCatalog,
+  onClose,
+  onSave,
+}) {
+  const [form, setForm] = useState(initial);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const submit = (e) => {
+    e?.preventDefault();
+    if (!form.tag || !form.animal || !form.breed) return;
+    onSave(form);
+  };
+
+  return (
+    <ModalShell
+      eyebrow={`Livestock · ${form.id || "New"}`}
+      title={mode === "add" ? "Add New Livestock" : `Edit ${initial.id}`}
+      onClose={onClose}
+      maxWidth="max-w-lg"
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose} type="button">
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={submit} type="submit">
+            {mode === "add" ? "Add Livestock" : "Save Changes"}
+          </Button>
+        </>
+      }
+    >
+      <form onSubmit={submit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Field label="Tag / Name" full>
+          <TextInput
+            value={form.tag}
+            onChange={(v) => set("tag", v)}
+            placeholder="e.g. Cow #A-204"
+          />
+        </Field>
+        <Field label="Animal Type">
+          <CreatableSelect
+            value={form.animal}
+            onChange={(v) => set("animal", v)}
+            options={animalCatalog}
+            placeholder="Select animal type…"
+            searchPlaceholder="Search or add animal type…"
+          />
+        </Field>
+        <Field label="Breed">
+          <CreatableSelect
+            value={form.breed}
+            onChange={(v) => set("breed", v)}
+            options={breedCatalog}
+            placeholder="Select breed…"
+            searchPlaceholder="Search or add breed…"
+          />
+        </Field>
+        <Field label="Gender">
+          <FullSelect
+            value={form.gender}
+            onChange={(v) => set("gender", v)}
+            options={GENDER_OPTIONS}
+          />
+        </Field>
+        <Field label="Date of Birth">
+          <TextInput
+            type="date"
+            value={form.dob}
+            onChange={(v) => set("dob", v)}
+          />
+        </Field>
+        <Field label="Color">
+          <TextInput
+            value={form.color}
+            onChange={(v) => set("color", v)}
+            placeholder="e.g. Brown & White"
+          />
+        </Field>
+        <Field label="Weight (kg)">
+          <TextInput
+            type="number"
+            min="0"
+            step="0.1"
+            value={form.weight}
+            onChange={(v) => set("weight", v)}
+            placeholder="0.0"
+          />
+        </Field>
+      </form>
+    </ModalShell>
+  );
+}
+
+/* ---------------- Assign Modal (FAR) ---------------- */
 function AssignModal({ row, onClose, onSave }) {
   const [farmer, setFarmer] = useState(row.farmer || "");
   return (
@@ -475,7 +711,7 @@ function AssignModal({ row, onClose, onSave }) {
   );
 }
 
-/* ---------------- Status Update Modal ---------------- */
+/* ---------------- Status Update Modal (FAR) ---------------- */
 function StatusModal({ row, onClose, onSave }) {
   const [health, setHealth] = useState(row.health);
   return (
@@ -509,7 +745,7 @@ function StatusModal({ row, onClose, onSave }) {
   );
 }
 
-/* ---------------- Return Confirmation Modal ---------------- */
+/* ---------------- Return Confirmation Modal (FAR) ---------------- */
 function ReturnConfirmModal({ row, onCancel, onConfirm }) {
   return (
     <div
@@ -546,7 +782,44 @@ function ReturnConfirmModal({ row, onCancel, onConfirm }) {
   );
 }
 
-/* ---------------- Catalog searchable select ---------------- */
+/* ---------------- Delete Confirmation Modal (Coordinator) ---------------- */
+function DeleteConfirmModal({ row, onCancel, onConfirm }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground-40 p-4"
+      onClick={onCancel}
+    >
+      <div
+        className="w-full max-w-sm bg-surface border border-border shadow-xl p-6 text-center"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mx-auto mb-4 grid h-12 w-12 place-items-center bg-danger/10 text-danger">
+          <Trash2 className="h-6 w-6" />
+        </div>
+        <h3 className="font-display text-lg tracking-tight text-foreground mb-1">
+          Delete Livestock?
+        </h3>
+        <p className="text-sm text-secondary mb-6">
+          Are you sure you want to delete{" "}
+          <strong className="text-foreground">
+            {row.id} ({row.animal} · {row.breed})
+          </strong>
+          ? This action cannot be undone.
+        </p>
+        <div className="flex items-center justify-center gap-2">
+          <Button variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={onConfirm}>
+            Delete
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Catalog searchable select (FAR add flow) ---------------- */
 function CatalogSelect({ value, onChange, options }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -622,6 +895,112 @@ function CatalogSelect({ value, onChange, options }) {
                   </button>
                 </li>
               ))
+            )}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------------- Creatable searchable select (Coordinator: animal/breed) ---------------- */
+function CreatableSelect({
+  value,
+  onChange,
+  options,
+  placeholder = "Select…",
+  searchPlaceholder = "Search…",
+}) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const ref = useRef(null);
+  useEffect(() => {
+    const h = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    window.addEventListener("mousedown", h);
+    return () => window.removeEventListener("mousedown", h);
+  }, []);
+  const filtered = useMemo(
+    () => options.filter((o) => o.toLowerCase().includes(q.toLowerCase())),
+    [q, options],
+  );
+  const canCreate =
+    q.trim().length > 0 &&
+    !options.some((o) => o.toLowerCase() === q.trim().toLowerCase());
+
+  const pick = (v) => {
+    onChange(v);
+    setOpen(false);
+    setQ("");
+  };
+
+  return (
+    <div ref={ref} className="relative w-full">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between border border-border bg-surface px-3 py-2.5 text-left text-sm hover:border-foreground/30"
+      >
+        <span className={value ? "text-foreground" : "text-secondary"}>
+          {value || placeholder}
+        </span>
+        <ChevronDown
+          className={`h-4 w-4 text-secondary transition-transform ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+      {open && (
+        <div className="absolute left-0 right-0 top-full z-30 mt-1 border border-border bg-surface shadow-lg">
+          <div className="relative border-b border-border">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary" />
+            <input
+              autoFocus
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && canCreate) {
+                  e.preventDefault();
+                  pick(q.trim());
+                }
+              }}
+              placeholder={searchPlaceholder}
+              className="w-full bg-surface py-2.5 pl-9 pr-3 text-sm outline-none"
+            />
+          </div>
+          <ul className="max-h-56 overflow-auto">
+            {filtered.length === 0 && !canCreate ? (
+              <li className="px-3 py-3 text-sm text-secondary">No results.</li>
+            ) : (
+              <>
+                {filtered.map((o) => (
+                  <li key={o}>
+                    <button
+                      type="button"
+                      onClick={() => pick(o)}
+                      className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted ${
+                        o === value ? "bg-accent-soft font-semibold" : ""
+                      }`}
+                    >
+                      {o}
+                      {o === value && (
+                        <span className="h-1.5 w-1.5 bg-accent" />
+                      )}
+                    </button>
+                  </li>
+                ))}
+                {canCreate && (
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => pick(q.trim())}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
+                    >
+                      <Plus className="h-3.5 w-3.5 text-accent" />
+                      Add &ldquo;{q.trim()}&rdquo;
+                    </button>
+                  </li>
+                )}
+              </>
             )}
           </ul>
         </div>
