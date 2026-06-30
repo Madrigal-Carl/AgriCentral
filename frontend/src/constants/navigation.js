@@ -56,15 +56,15 @@ export const aewNavSections = [
         items: [{ to: "/aew/overview", label: "Overview", icon: LayoutGrid, exact: true }],
     },
     {
-        label: "Community",
-        items: [
-            { to: "/aew/association", label: "Association", icon: UserCircle2 },
-        ],
-    },
-    {
         label: "Records",
         items: [
             { to: "/aew/reports", label: "Report", icon: FileText },
+        ],
+    },
+    {
+        label: "Community",
+        items: [
+            { to: "/aew/associations", label: "Association", icon: UserCircle2 },
         ],
     },
     {

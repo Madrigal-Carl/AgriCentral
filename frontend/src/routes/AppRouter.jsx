@@ -2,6 +2,7 @@ import { Routes, Route } from "react-router-dom";
 
 import {
   HomePage,
+  AssociationsPage,
   AuthPage,
   OverviewPage,
   FarmersPage,
@@ -65,6 +66,7 @@ export default function AppRouter() {
         <Route element={<ProtectedRoute allowedRoles={[ROLES.AEW]} />}>
           <Route path="/aew" element={<DashboardLayout />}>
             <Route path="overview" element={<OverviewPage />} />
+            <Route path="associations" element={<AssociationsPage />} />
             <Route path="farmers" element={<FarmersPage />} />
             <Route path="farms" element={<FarmsPage />} />
             <Route path="equipments" element={<EquipmentsPage />} />

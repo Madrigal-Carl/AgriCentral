@@ -1,4 +1,5 @@
 export { AuthPage } from "./AuthPage"
+export { AssociationsPage } from "./AssociationsPage"
 export { EquipmentsPage } from "./EquipmentsPage"
 export { FarmersPage } from "./FarmersPage"
 export { FarmMapsPage } from "./FarmMapsPage"
