@@ -1,13 +1,13 @@
-import transporter from "../config/mail.js";
+import brevo from "../config/mail.js";
 
 export const sendEmail = async ({ to, subject, html, text }) => {
-  const info = await transporter.sendMail({
-    from: process.env.SMTP_FROM,
-    to,
+  const result = await brevo.transactionalEmails.sendTransacEmail({
+    sender: { email: process.env.EMAIL_FROM, name: "KapeKonek" },
+    to: [{ email: to }],
     subject,
-    text,
-    html,
+    htmlContent: html,
+    textContent: text,
   });
 
-  console.log("Email sent:", info.messageId);
+  console.log("Email sent:", result);
 };
