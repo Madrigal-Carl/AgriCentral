@@ -264,7 +264,7 @@ export function EquipmentsPage() {
         subtitle="Fleet & tools across all farms."
         action={
           can.add ? (
-            <Button variant="primary" onClick={openAddModal}>
+            <Button variant="accent" onClick={openAddModal}>
               <Plus className="h-4 w-4" /> Add Equipment
             </Button>
           ) : null
@@ -492,7 +492,7 @@ function AddEquipmentModal({ nextId, catalog, onClose, onSave }) {
           <Button variant="outline" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button variant="primary" onClick={submit} type="submit">
+          <Button variant="accent" onClick={submit} type="submit">
             Add Equipment
           </Button>
         </>
@@ -555,7 +555,7 @@ function CoordinatorEquipmentModal({
           <Button variant="outline" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button variant="primary" onClick={submit} type="submit">
+          <Button variant="accent" onClick={submit} type="submit">
             {mode === "add" ? "Add Equipment" : "Save Changes"}
           </Button>
         </>
@@ -617,7 +617,7 @@ function AssignModal({ row, onClose, onSave }) {
           <Button variant="outline" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button variant="primary" onClick={submit} type="submit">
+          <Button variant="accent" onClick={submit} type="submit">
             Assign
           </Button>
         </>
@@ -655,7 +655,7 @@ function StatusUpdateModal({ row, onClose, onSave }) {
           <Button variant="outline" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button variant="primary" onClick={submit} type="submit">
+          <Button variant="accent" onClick={submit} type="submit">
             Save Changes
           </Button>
         </>
@@ -702,7 +702,7 @@ function ReturnConfirmModal({ row, onCancel, onConfirm }) {
           <Button variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={onConfirm}>
+          <Button variant="accent" onClick={onConfirm}>
             Confirm Return
           </Button>
         </div>

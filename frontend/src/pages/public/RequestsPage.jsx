@@ -199,7 +199,7 @@ export function RequestsPage() {
         subtitle="Resource requests across equipment and livestock."
         action={
           !isAdmin ? (
-            <Button variant="primary" onClick={openAdd}>
+            <Button variant="accent" onClick={openAdd}>
               <Plus className="h-4 w-4" /> Add Request
             </Button>
           ) : null
@@ -443,7 +443,7 @@ function RequestModal({ mode, initial, onClose, onSave }) {
           <Button variant="outline" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button variant="primary" onClick={submit} type="submit">
+          <Button variant="accent" onClick={submit} type="submit">
             {mode === "add" ? "Add Request" : "Save Changes"}
           </Button>
         </div>
@@ -622,10 +622,7 @@ function ReviewConfirmModal({ row, action, onCancel, onConfirm }) {
           <Button variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button
-            variant={isApprove ? "primary" : "danger"}
-            onClick={onConfirm}
-          >
+          <Button variant={isApprove ? "accent" : "danger"} onClick={onConfirm}>
             {isApprove ? "Confirm Approve" : "Confirm Deny"}
           </Button>
         </div>

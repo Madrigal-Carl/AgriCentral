@@ -7,7 +7,7 @@ export function StatCard({ label, value, icon: Icon, trend, trendDir = "up" }) {
       <div className="flex items-start justify-between">
         <div className="label-eyebrow">{label}</div>
         <div className="grid h-9 w-9 place-items-center bg-muted text-secondary transition-colors group-hover:bg-accent-soft group-hover:text-foreground">
-          <Icon className="h-4 w-4" />
+          <Icon className="h-6 w-6" />
         </div>
       </div>
       <div className="mt-5 font-display text-4xl tracking-tight text-foreground">

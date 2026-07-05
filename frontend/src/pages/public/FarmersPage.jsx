@@ -199,7 +199,7 @@ export function FarmersPage() {
         subtitle="All registered farmers and their portfolio."
         action={
           can.add ? (
-            <Button variant="primary" onClick={openAdd}>
+            <Button variant="accent" onClick={openAdd}>
               <Plus className="h-4 w-4" /> Add Farmer
             </Button>
           ) : null
@@ -448,7 +448,7 @@ function FarmerModal({ mode, initial, onClose, onSave }) {
           <Button variant="outline" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button variant="primary" onClick={submit} type="submit">
+          <Button variant="accent" onClick={submit} type="submit">
             {mode === "add" ? "Add Farmer" : "Save Changes"}
           </Button>
         </div>
@@ -785,7 +785,7 @@ function FarmerDrawer({ row, onClose }) {
         <div className="border-b border-border px-6 py-5">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex items-start gap-3">
-              <div className="grid h-12 w-12 shrink-0 place-items-center bg-primary font-display text-base text-accent">
+              <div className="grid h-12 w-12 shrink-0 place-items-center bg-accent-soft rounded-full font-display text-base text-accent">
                 {row.name[0]}
               </div>
               <div className="min-w-0">

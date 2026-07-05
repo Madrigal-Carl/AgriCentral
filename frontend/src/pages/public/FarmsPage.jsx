@@ -166,7 +166,7 @@ export function FarmsPage() {
         subtitle="Land assets, sizes, and crop allocations."
         action={
           can.add ? (
-            <Button variant="primary" onClick={openAdd}>
+            <Button variant="accent" onClick={openAdd}>
               <Plus className="h-4 w-4" /> Add Farm
             </Button>
           ) : null
@@ -395,7 +395,7 @@ function FarmModal({ mode, initial, onClose, onSave }) {
           <Button variant="outline" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button variant="primary" onClick={submit} type="submit">
+          <Button variant="accent" onClick={submit} type="submit">
             {mode === "add" ? "Add Farm" : "Save Changes"}
           </Button>
         </div>
@@ -625,7 +625,7 @@ function FarmDrawer({ row, onClose }) {
         <div className="border-b border-border px-6 py-5">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex items-start gap-3">
-              <div className="grid h-12 w-12 shrink-0 place-items-center bg-primary text-accent">
+              <div className="grid h-12 w-12 shrink-0 place-items-center bg-accent-soft rounded-full text-accent">
                 <Wheat className="h-5 w-5" />
               </div>
               <div className="min-w-0">

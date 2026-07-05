@@ -322,7 +322,7 @@ export function LivestocksPage() {
         subtitle="Animal welfare and inventory."
         action={
           can.add ? (
-            <Button variant="primary" onClick={openAdd}>
+            <Button variant="accent" onClick={openAdd}>
               <Plus className="h-4 w-4" /> Add Livestock
             </Button>
           ) : null
@@ -552,7 +552,7 @@ function AddLivestockModal({ initial, existingIds, onClose, onSave }) {
           <Button variant="outline" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button variant="primary" onClick={submit} type="submit">
+          <Button variant="accent" onClick={submit} type="submit">
             Add Livestock
           </Button>
         </>
@@ -614,7 +614,7 @@ function CoordinatorLivestockModal({
           <Button variant="outline" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button variant="primary" onClick={submit} type="submit">
+          <Button variant="accent" onClick={submit} type="submit">
             {mode === "add" ? "Add Livestock" : "Save Changes"}
           </Button>
         </>
@@ -696,7 +696,7 @@ function AssignModal({ row, onClose, onSave }) {
             Cancel
           </Button>
           <Button
-            variant="primary"
+            variant="accent"
             onClick={() => farmer && onSave(farmer)}
             type="button"
           >
@@ -725,11 +725,7 @@ function StatusModal({ row, onClose, onSave }) {
           <Button variant="outline" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button
-            variant="primary"
-            onClick={() => onSave(health)}
-            type="button"
-          >
+          <Button variant="accent" onClick={() => onSave(health)} type="button">
             Update Status
           </Button>
         </>
@@ -774,7 +770,7 @@ function ReturnConfirmModal({ row, onCancel, onConfirm }) {
           <Button variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={onConfirm}>
+          <Button variant="accent" onClick={onConfirm}>
             Confirm Return
           </Button>
         </div>
