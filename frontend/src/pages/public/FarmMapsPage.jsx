@@ -195,7 +195,7 @@ function FarmsLeafletMap({ farms }) {
   return (
     <div
       ref={containerRef}
-      className="relative z-0 w-full h-[calc(100vh-260px)] min-h-[480px] border border-border bg-muted"
+      className="relative z-0 w-full h-[calc(100vh-260px)] min-h-[480px] border border-border bg-muted rounded-lg"
     />
   );
 }

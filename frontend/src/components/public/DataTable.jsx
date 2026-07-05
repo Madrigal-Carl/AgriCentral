@@ -66,7 +66,7 @@ export function DataTable({
         : { key, dir: "asc" },
     );
   return (
-    <div className="bg-surface border border-border">
+    <div className="bg-surface border border-border rounded-lg">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3 border-b border-border p-4">
         <div className="relative min-w-[200px] flex-1">

@@ -319,7 +319,7 @@ export function LivestocksPage() {
     <div>
       <PageHeader
         title="Livestock"
-        subtitle="Animal welfare and inventory."
+        subtitle="Animal welfare and livestock inventory management."
         action={
           can.add ? (
             <Button variant="accent" onClick={openAdd}>

@@ -17,7 +17,7 @@ function Field({ label, ...rest }) {
 
 function Section({ title, description, children }) {
   return (
-    <section className="bg-surface border border-border">
+    <section className="bg-surface border border-border rounded-lg">
       <header className="border-b border-border px-6 py-5">
         <h2 className="font-display text-lg text-foreground">{title}</h2>
         {description && (

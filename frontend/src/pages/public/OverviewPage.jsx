@@ -133,7 +133,7 @@ export function OverviewPage() {
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="bg-surface border border-border p-6 lg:col-span-2">
+        <div className="bg-surface border border-border p-6 lg:col-span-2 rounded-lg">
           <div className="mb-6 flex items-end justify-between">
             <div>
               <div className="label-eyebrow">Farm distribution</div>
@@ -169,7 +169,7 @@ export function OverviewPage() {
           )}
         </div>
 
-        <div className="bg-surface border border-border p-6">
+        <div className="bg-surface border border-border p-6 rounded-lg">
           <div className="mb-6">
             <div className="label-eyebrow">Livestock status</div>
             <h3 className="font-display mt-1 text-xl text-foreground">
@@ -198,7 +198,7 @@ export function OverviewPage() {
         </div>
       </div>
 
-      <div className="mt-6 bg-surface border border-border p-6">
+      <div className="mt-6 bg-surface border border-border p-6 rounded-lg">
         <div className="mb-5 flex items-center justify-between">
           <div>
             <div className="label-eyebrow">Recent activities</div>
