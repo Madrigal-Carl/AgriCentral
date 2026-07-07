@@ -62,12 +62,6 @@ export const aewNavSections = [
         ],
     },
     {
-        label: "Community",
-        items: [
-            { to: "/aew/associations", label: "Association", icon: UserCircle2 },
-        ],
-    },
-    {
         label: "Management",
         items: [
             { to: "/aew/farmers", label: "Farmer", icon: Users },
@@ -98,7 +92,6 @@ const aewBreadcrumbs = {
     "/aew/equipments": { group: "Resources", label: "Equipment" },
     "/aew/livestocks": { group: "Resources", label: "Livestock" },
     "/aew/farm-maps": { group: "Mapping", label: "Farm Maps" },
-    "/aew/associations": { group: "Community", label: "Request" },
     "/aew/reports": { group: "Records", label: "Report" },
     "/aew/settings": { group: "Settings", label: "Settings" },
 };
@@ -379,7 +372,7 @@ export const adminNavSections = [
         ],
     },
     {
-        label: "Resources",
+        label: "Inventory",
         items: [
             {
                 to: "/admin/equipments",
@@ -390,16 +383,6 @@ export const adminNavSections = [
                 to: "/admin/livestocks",
                 label: "Livestock",
                 icon: Beef,
-            },
-        ],
-    },
-    {
-        label: "Community",
-        items: [
-            {
-                to: "/admin/associations",
-                label: "Association",
-                icon: UserCircle2,
             },
         ],
     },
@@ -458,16 +441,12 @@ export const adminBreadcrumbs = {
         label: "Farm",
     },
     "/admin/equipments": {
-        group: "Resources",
+        group: "Inventory",
         label: "Equipment",
     },
     "/admin/livestocks": {
-        group: "Resources",
+        group: "Inventory",
         label: "Livestock",
-    },
-    "/admin/associations": {
-        group: "Community",
-        label: "Association",
     },
     "/admin/requests": {
         group: "Records",

@@ -13,7 +13,7 @@ export function Button({
   };
   return (
     <button
-      className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold transition-colors disabled:opacity-50 ${styles[variant]} ${className}`}
+      className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm rounded-lg font-semibold transition-colors disabled:opacity-50 ${styles[variant]} ${className}`}
       {...rest}
     >
       {children}

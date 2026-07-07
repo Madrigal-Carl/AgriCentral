@@ -140,10 +140,13 @@ export function RequestsPage() {
   const currentRole = normalizeRole(roleFromAuth ?? user?.role);
 
   // FAR is the role that files requests, so it gets full CRUD over them.
-  // Admin is view-only and cannot approve/deny or edit/delete requests.
+  // Admin, Governor, Head, and Coordinator are view-only and cannot
+  // approve/deny, edit/delete, or add requests.
   // Any other signed-in role only gets to review (approve/deny) requests.
+  const NO_ADD_ROLES = ["admin", "governor", "head", "coordinator"];
   const isFar = currentRole === "far";
   const isAdmin = currentRole === "admin";
+  const canAdd = !NO_ADD_ROLES.includes(currentRole);
 
   const [rows, setRows] = useState(INITIAL);
   const [modal, setModal] = useState(null);
@@ -198,7 +201,7 @@ export function RequestsPage() {
         title="Requests"
         subtitle="Resource requests across equipment and livestock."
         action={
-          !isAdmin ? (
+          canAdd ? (
             <Button variant="accent" onClick={openAdd}>
               <Plus className="h-4 w-4" /> Add Request
             </Button>
@@ -708,7 +711,7 @@ function RequestDrawer({ row, onClose }) {
           <Section icon={Info} title="Basic Information">
             <DefList
               items={[
-                ["Request ID", row.id],
+                ["Association", "Boac, Marinduque"],
                 ["Title", row.title],
                 ["Type", typeLabel[row.type]],
                 ["Severity", sevLabel[row.severity]],

@@ -4,7 +4,7 @@ import useAuth from "@/hooks/useAuth";
 const PERMISSIONS = {
     farmers: {
         far: { view: true, add: true, edit: true, delete: true },
-        aew: { view: true, add: false, edit: false, delete: false },
+        aew: { view: true, add: true, edit: true, delete: true },
         admin: { view: true, add: true, edit: true, delete: true },
     },
     farms: {

@@ -51,6 +51,7 @@ const blankForm = {
   email: "",
   role: "far",
   password: "",
+  association: "",
   isVerified: true, // accounts created by an admin are verified immediately
 };
 
@@ -61,6 +62,7 @@ export function UsersPage() {
   const [drawer, setDrawer] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [confirmDeny, setConfirmDeny] = useState(null);
+  const [confirmApprove, setConfirmApprove] = useState(null);
 
   const openAdd = () =>
     setModal({
@@ -88,10 +90,21 @@ export function UsersPage() {
     setConfirmDeny(null);
   };
 
-  const approveUser = (row) => {
+  // Self-registered FAR accounts don't have an association attached to
+  // them yet, so approval doubles as the moment that gets set. The
+  // confirmation modal collects the association name and it's saved
+  // together with isVerified in one step.
+  const askApprove = (row) => setConfirmApprove(row);
+  const confirmApproveAction = (associationName) => {
+    if (!confirmApprove) return;
     setRows((r) =>
-      r.map((x) => (x.id === row.id ? { ...x, isVerified: true } : x)),
+      r.map((x) =>
+        x.id === confirmApprove.id
+          ? { ...x, isVerified: true, association: associationName }
+          : x,
+      ),
     );
+    setConfirmApprove(null);
   };
 
   const handleSave = (data) => {
@@ -177,7 +190,7 @@ export function UsersPage() {
               return needsReview ? (
                 <RowActions
                   onView={() => openView(r)}
-                  onApprove={() => approveUser(r)}
+                  onApprove={() => askApprove(r)}
                   onDeny={() => askDeny(r)}
                 />
               ) : (
@@ -209,6 +222,15 @@ export function UsersPage() {
           onConfirm={confirmRemove}
         />
       )}
+      {confirmApprove && (
+        <ApproveConfirmModal
+          id={confirmApprove.id}
+          name={confirmApprove.fullName}
+          initialAssociation={confirmApprove.association}
+          onCancel={() => setConfirmApprove(null)}
+          onConfirm={confirmApproveAction}
+        />
+      )}
       {confirmDeny && (
         <DenyConfirmModal
           id={confirmDeny.id}
@@ -235,6 +257,7 @@ function UserModal({ mode, initial, onClose, onSave }) {
   const submit = (e) => {
     e.preventDefault();
     if (!form.fullName || !form.email) return;
+    if (form.role === "far" && !form.association.trim()) return;
     onSave(form);
   };
 
@@ -293,6 +316,19 @@ function UserModal({ mode, initial, onClose, onSave }) {
                 options={ROLE_OPTIONS}
               />
             </Field>
+
+            {/* Association Name only applies to FAR accounts, since FAR
+                is tied to a specific association. Shown/required whenever
+                the selected role is FAR, in both add and edit mode. */}
+            {form.role === "far" && (
+              <Field label="Association Name" full>
+                <TextInput
+                  value={form.association}
+                  onChange={(v) => set("association", v)}
+                  placeholder="e.g. Boac, Marinduque"
+                />
+              </Field>
+            )}
 
             {/* Password is always view-only. In add mode it shows the fixed
                 default password the new user will receive; in edit mode it
@@ -365,6 +401,91 @@ function DeleteConfirmModal({ id, name, onCancel, onConfirm }) {
           </Button>
           <Button variant="danger" onClick={onConfirm}>
             Delete
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Approve Confirmation Modal ---------------- */
+function ApproveConfirmModal({
+  id,
+  name,
+  initialAssociation,
+  onCancel,
+  onConfirm,
+}) {
+  const [association, setAssociation] = useState(initialAssociation || "");
+  const [touched, setTouched] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && onCancel();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+
+  const isValid = association.trim().length > 0;
+
+  const handleConfirm = () => {
+    if (!isValid) {
+      setTouched(true);
+      return;
+    }
+    onConfirm(association.trim());
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground-40 p-4"
+      onClick={onCancel}
+    >
+      <div
+        className="w-full max-w-sm bg-surface border border-border shadow-xl p-6 text-center"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mx-auto mb-4 grid h-12 w-12 place-items-center bg-success/10 text-success">
+          <AlertTriangle className="h-6 w-6" />
+        </div>
+        <h3 className="font-display text-lg tracking-tight text-foreground mb-1">
+          Approve Registration?
+        </h3>
+        <p className="text-sm text-secondary mb-4">
+          This will verify the pending account for{" "}
+          <strong className="text-foreground">
+            {id} ({name})
+          </strong>
+          . Since this account self-registered, assign the association it
+          belongs to before approving.
+        </p>
+
+        <div className="mb-6 text-left">
+          <label className="label-eyebrow mb-1.5 block">Association Name</label>
+          <input
+            autoFocus
+            value={association}
+            onChange={(e) => {
+              setAssociation(e.target.value);
+              if (touched) setTouched(false);
+            }}
+            placeholder="e.g. Boac, Marinduque"
+            className={`w-full border bg-surface px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-secondary focus:border-foreground ${
+              touched && !isValid ? "border-danger" : "border-border"
+            }`}
+          />
+          {touched && !isValid && (
+            <p className="mt-1 text-xs text-danger">
+              Association name is required to approve this account.
+            </p>
+          )}
+        </div>
+
+        <div className="flex items-center justify-center gap-2">
+          <Button variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button variant="accent" onClick={handleConfirm}>
+            Approve
           </Button>
         </div>
       </div>
@@ -494,6 +615,9 @@ function UserDrawer({ row, onClose }) {
                 ["User ID", row.id],
                 ["Full Name", row.fullName],
                 ["Role", roleLabel[row.role]],
+                ...(row.role === "far"
+                  ? [["Association", row.association || "—"]]
+                  : []),
               ]}
             />
           </Section>

@@ -27,6 +27,7 @@ import { Button, Select } from "@/components/ui";
 
 import { FARMERS } from "@/constants/data";
 import { usePermissions } from "@/constants/permissions";
+import useAuth from "@/hooks/useAuth";
 
 /* ---------------- Reference data ---------------- */
 const FARM_OPTIONS = [
@@ -79,6 +80,29 @@ const statusLabel = {
   pending: "Pending",
 };
 
+const ASSOCIATION_OPTIONS = [
+  "Boac, Marinduque",
+  "Gasan, Marinduque",
+  "Buenavista, Marinduque",
+  "Mogpog, Marinduque",
+  "Santa Cruz, Marinduque",
+  "Torrijos, Marinduque",
+];
+
+const POSITION_OPTIONS = [
+  { value: "president", label: "President" },
+  { value: "vice_president", label: "Vice President" },
+  { value: "secretary", label: "Secretary" },
+  { value: "member", label: "Member" },
+];
+
+const positionLabel = {
+  president: "President",
+  vice_president: "Vice President",
+  secretary: "Secretary",
+  member: "Member",
+};
+
 const blankForm = {
   id: "",
   name: "",
@@ -87,6 +111,8 @@ const blankForm = {
   gender: "female",
   dob: "",
   address: "",
+  association: "",
+  position: "",
   farms: [],
   livestock: [],
   equipment: [],
@@ -280,6 +306,16 @@ export function FarmersPage() {
             ),
           },
           {
+            key: "position",
+            header: "Position",
+            sortable: true,
+            cell: (r) => (
+              <span className="text-sm font-medium text-foreground">
+                {positionLabel[r.position] || "—"}
+              </span>
+            ),
+          },
+          {
             key: "actions",
             header: "",
             align: "right",
@@ -317,6 +353,7 @@ export function FarmersPage() {
 
 /* ---------------- Modal ---------------- */
 function FarmerModal({ mode, initial, onClose, onSave }) {
+  const { role } = useAuth();
   const [form, setForm] = useState(initial);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -402,38 +439,25 @@ function FarmerModal({ mode, initial, onClose, onSave }) {
                 placeholder="Street, City"
               />
             </Field>
-
-            {mode === "edit" && (
-              <>
-                <Field label="Assign Farms" full>
-                  <MultiSelect
-                    values={form.farms}
-                    onChange={(v) => set("farms", v)}
-                    options={FARM_OPTIONS}
-                    placeholder="Select farms…"
-                    searchPlaceholder="Search farm…"
-                  />
-                </Field>
-                <Field label="Assign Livestock" full>
-                  <MultiSelect
-                    values={form.livestock}
-                    onChange={(v) => set("livestock", v)}
-                    options={LIVESTOCK_OPTIONS}
-                    placeholder="Select livestock…"
-                    searchPlaceholder="Search livestock…"
-                  />
-                </Field>
-                <Field label="Assign Equipment" full>
-                  <MultiSelect
-                    values={form.equipment}
-                    onChange={(v) => set("equipment", v)}
-                    options={EQUIPMENT_OPTIONS}
-                    placeholder="Select equipment…"
-                    searchPlaceholder="Search equipment…"
-                  />
-                </Field>
-              </>
+            {role !== "far" && (
+              <Field label="Association" full>
+                <SingleSelect
+                  value={form.association}
+                  onChange={(v) => set("association", v)}
+                  options={ASSOCIATION_OPTIONS}
+                  placeholder="Select association…"
+                  searchPlaceholder="Search association…"
+                />
+              </Field>
             )}
+
+            <Field label="Position" full>
+              <FullSelect
+                value={form.position}
+                onChange={(v) => set("position", v)}
+                options={POSITION_OPTIONS}
+              />
+            </Field>
 
             <Field label="Attachments" full>
               <FileUploader
@@ -767,6 +791,92 @@ function FileUploader({ value = [], onChange }) {
   );
 }
 
+/* ---------------- SingleSelect (search + single) ---------------- */
+function SingleSelect({
+  value,
+  onChange,
+  options,
+  placeholder,
+  searchPlaceholder,
+}) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const h = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    window.addEventListener("mousedown", h);
+    return () => window.removeEventListener("mousedown", h);
+  }, []);
+
+  const filtered = useMemo(
+    () => options.filter((o) => o.toLowerCase().includes(q.toLowerCase())),
+    [q, options],
+  );
+
+  const select = (o) => {
+    onChange(o);
+    setOpen(false);
+    setQ("");
+  };
+
+  return (
+    <div ref={ref} className="relative w-full">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between gap-2 border border-border bg-surface px-3 py-2.5 text-left text-sm hover:border-foreground/30"
+      >
+        <span className={value ? "text-foreground" : "text-secondary"}>
+          {value || placeholder}
+        </span>
+        <ChevronDown
+          className={`h-4 w-4 shrink-0 text-secondary transition-transform ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+      {open && (
+        <div className="absolute left-0 right-0 top-full z-30 mt-1 border border-border bg-surface shadow-lg">
+          <div className="relative border-b border-border">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary" />
+            <input
+              autoFocus
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder={searchPlaceholder}
+              className="w-full bg-surface py-2.5 pl-9 pr-3 text-sm outline-none"
+            />
+          </div>
+          <ul className="max-h-56 overflow-auto">
+            {filtered.length === 0 ? (
+              <li className="px-3 py-3 text-sm text-secondary">No results.</li>
+            ) : (
+              filtered.map((o) => {
+                const selected = o === value;
+                return (
+                  <li key={o}>
+                    <button
+                      type="button"
+                      onClick={() => select(o)}
+                      className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted ${
+                        selected ? "bg-accent-soft font-semibold" : ""
+                      }`}
+                    >
+                      {o}
+                      {selected && <span className="h-1.5 w-1.5 bg-accent" />}
+                    </button>
+                  </li>
+                );
+              })
+            )}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ---------------- Drawer (view) ---------------- */
 function FarmerDrawer({ row, onClose }) {
   useEffect(() => {
@@ -814,7 +924,8 @@ function FarmerDrawer({ row, onClose }) {
           <Section icon={Info} title="Basic Information">
             <DefList
               items={[
-                ["Farmer ID", row.id],
+                ["Association", "Boac, Marinduque"],
+                ["Position", row.position],
                 ["Full Name", row.name],
                 ["Contact Number", row.contact || "—"],
                 ["Email Address", row.email || "—"],

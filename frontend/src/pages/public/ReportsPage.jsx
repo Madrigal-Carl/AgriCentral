@@ -101,6 +101,9 @@ export function ReportsPage() {
   // matches their own role. Own-role reports get full CRUD.
   const isOwnReport = (row) => normalizeRole(row.role) === currentRole;
 
+  const NO_ADD_ROLES = ["admin", "governor", "head", "coordinator"];
+  const canAdd = !NO_ADD_ROLES.includes(currentRole);
+
   // Only the designated reviewer role for a given report's role can
   // approve/deny it (see REVIEWER_BY_REPORT_ROLE above).
   const canReview = (row) => {
@@ -157,9 +160,11 @@ export function ReportsPage() {
         title="Reports"
         subtitle="Field reports across crops, equipment, and livestock."
         action={
-          <Button variant="accent" onClick={openAdd}>
-            <Plus className="h-4 w-4" /> Add Report
-          </Button>
+          canAdd ? (
+            <Button variant="accent" onClick={openAdd}>
+              <Plus className="h-4 w-4" /> Add Request
+            </Button>
+          ) : null
         }
       />
       <DataTable
@@ -549,7 +554,7 @@ function ReportDrawer({ row, onClose }) {
           <Section icon={Info} title="Report Information">
             <DefList
               items={[
-                ["Report ID", row.id],
+                ["Association", "Boac, Marinduque"],
                 ["Title", row.title],
                 ["Type", typeLabel[row.type]],
                 ["Severity", sevLabel[row.severity]],
