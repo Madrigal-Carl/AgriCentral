@@ -5,6 +5,7 @@ const PERMISSIONS = {
     farmers: {
         far: { view: true, add: true, edit: true, delete: true },
         aew: { view: true, add: true, edit: true, delete: true },
+        coordinator: { view: true, add: true, edit: true, delete: true },
         admin: { view: true, add: true, edit: true, delete: true },
     },
     farms: {

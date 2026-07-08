@@ -80,6 +80,7 @@ export default function AppRouter() {
         <Route element={<ProtectedRoute allowedRoles={[ROLES.COORDINATOR]} />}>
           <Route path="/coordinator" element={<DashboardLayout />}>
             <Route path="overview" element={<OverviewPage />} />
+            <Route path="farmers" element={<FarmersPage />} />
             <Route path="equipments" element={<EquipmentsPage />} />
             <Route path="livestocks" element={<LivestocksPage />} />
             <Route path="reports" element={<ReportsPage />} />

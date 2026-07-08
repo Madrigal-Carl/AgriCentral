@@ -451,13 +451,15 @@ function FarmerModal({ mode, initial, onClose, onSave }) {
               </Field>
             )}
 
-            <Field label="Position" full>
-              <FullSelect
-                value={form.position}
-                onChange={(v) => set("position", v)}
-                options={POSITION_OPTIONS}
-              />
-            </Field>
+            {role === "far" && (
+              <Field label="Position" full>
+                <FullSelect
+                  value={form.position}
+                  onChange={(v) => set("position", v)}
+                  options={POSITION_OPTIONS}
+                />
+              </Field>
+            )}
 
             <Field label="Attachments" full>
               <FileUploader

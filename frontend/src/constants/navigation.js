@@ -110,6 +110,16 @@ export const coordinatorNavSections = [
         ],
     },
     {
+        label: "Management",
+        items: [
+            {
+                to: "/coordinator/farmers",
+                label: "Farmer",
+                icon: Users,
+            },
+        ],
+    },
+    {
         label: "Inventory",
         items: [
             {
@@ -155,6 +165,10 @@ export const coordinatorBreadcrumbs = {
     "/coordinator/overview": {
         group: "Dashboard",
         label: "Overview",
+    },
+    "/coordinator/farmers": {
+        group: "Management",
+        label: "Farmer",
     },
     "/coordinator/equipments": {
         group: "Inventory",
