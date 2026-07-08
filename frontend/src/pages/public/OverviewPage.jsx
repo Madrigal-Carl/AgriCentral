@@ -15,6 +15,25 @@ const STATUS_HEX = {
   inactive: "#94a3b8",
 };
 
+const CROP_PALETTE = [
+  "#00a86b", // green
+  "#f59e0b", // amber
+  "#3b82f6", // blue
+  "#ef4444", // red
+  "#a855f7", // purple
+  "#06b6d4", // cyan
+  "#eab308", // yellow
+  "#ec4899", // pink
+  "#84cc16", // lime
+  "#f97316", // orange
+  "#14b8a6", // teal
+  "#6366f1", // indigo
+];
+
+function colorForCrop(label, index) {
+  return CROP_PALETTE[index % CROP_PALETTE.length];
+}
+
 function buildFarmDistribution() {
   const counts = new Map();
   for (const f of FARMS) {
@@ -24,7 +43,8 @@ function buildFarmDistribution() {
   }
   return [...counts.entries()]
     .map(([label, value]) => ({ label, value }))
-    .sort((a, b) => b.value - a.value);
+    .sort((a, b) => b.value - a.value)
+    .map((d, i) => ({ ...d, color: colorForCrop(d.label, i) }));
 }
 
 function buildLivestockStatus() {
@@ -150,7 +170,11 @@ export function OverviewPage() {
               {FARM_DISTRIBUTION.map((d) => (
                 <div key={d.label}>
                   <div className="mb-1.5 flex items-center justify-between text-xs">
-                    <span className="font-semibold text-foreground">
+                    <span className="flex items-center gap-2 font-semibold text-foreground">
+                      <span
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: d.color }}
+                      />
                       {d.label}
                     </span>
                     <span className="text-secondary">
@@ -159,8 +183,11 @@ export function OverviewPage() {
                   </div>
                   <div className="h-2 w-full bg-muted">
                     <div
-                      className="h-full bg-primary transition-all"
-                      style={{ width: `${(d.value / maxDist) * 100}%` }}
+                      className="h-full transition-all"
+                      style={{
+                        width: `${(d.value / maxDist) * 100}%`,
+                        backgroundColor: d.color,
+                      }}
                     />
                   </div>
                 </div>
@@ -169,6 +196,7 @@ export function OverviewPage() {
           )}
         </div>
 
+        {/* Livestock status card unchanged */}
         <div className="bg-surface border border-border p-6 rounded-lg">
           <div className="mb-6">
             <div className="label-eyebrow">Livestock status</div>
