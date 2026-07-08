@@ -47,7 +47,7 @@
 
   html {
     font-size: 17.5px;
-    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    font-family: "Poppins", ui-sans-serif, system-ui, sans-serif;
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
   }
@@ -62,7 +62,7 @@
   }
 
   .font-display {
-    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-family: "Poppins", ui-sans-serif, system-ui, sans-serif;
     font-weight: 700;
     letter-spacing: -0.01em;
   }

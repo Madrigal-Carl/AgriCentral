@@ -5,8 +5,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["IBM Plex Sans", "ui-sans-serif", "system-ui", "sans-serif"],
-        mono: ["IBM Plex Mono", "ui-monospace", "monospace"],
+        sans: ["Poppins", "ui-sans-serif", "system-ui", "sans-serif"],
+        mono: ["Poppins", "ui-sans-serif", "system-ui", "sans-serif"],
       },
       borderRadius: {
         sm: "calc(var(--radius) - 4px)",
