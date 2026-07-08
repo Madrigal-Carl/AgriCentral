@@ -196,12 +196,6 @@ export function FarmsPage() {
             ),
           },
           {
-            key: "size",
-            header: "Size (Hectares)",
-            sortable: true,
-            cell: (r) => `${r.size} ha`,
-          },
-          {
             key: "crops",
             header: "Crops",
             sortable: true,
@@ -311,19 +305,11 @@ function FarmModal({ mode, initial, onClose, onSave }) {
 
         <form onSubmit={submit} className="flex-1 overflow-y-auto px-6 py-5">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Farm ID">
+            <Field label="Farm Tag ID" full>
               <TextInput
                 value={form.id}
                 onChange={(v) => set("id", v)}
                 placeholder="FM-001"
-              />
-            </Field>
-            <Field label="Size (Hectares)">
-              <TextInput
-                type="number"
-                value={form.size}
-                onChange={(v) => set("size", v)}
-                placeholder="24"
               />
             </Field>
             <Field label="Crop Yield (kg)" full>
@@ -655,9 +641,8 @@ function FarmDrawer({ row, onClose }) {
           <Section icon={Info} title="Basic Information">
             <DefList
               items={[
-                ["Farm ID", row.id],
+                ["Farm Tag ID", row.id],
                 ["Address", row.address],
-                ["Size", `${row.size} ha`],
                 ["Crops Count", row.crops.length],
                 ["Farmer Count", row.farmers.length],
               ]}
