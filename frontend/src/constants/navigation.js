@@ -1,4 +1,4 @@
-import { LayoutGrid, Users, Wheat, Tractor, Beef, Map, FileText, UserCircle2, Settings, ClipboardList, UserCog } from "lucide-react";
+import { LayoutGrid, Users, Wheat, Tractor, Beef, Map, FileText, UserCircle2, Settings, ClipboardList, UserCog, BarChart3 } from "lucide-react";
 
 /* ---------------- FAR ---------------- */
 export const farNavSections = [
@@ -147,6 +147,7 @@ export const coordinatorNavSections = [
                 label: "Report",
                 icon: FileText,
             },
+            { to: "/coordinator/analytics", label: "Analytic", icon: BarChart3 },
         ],
     },
     {
@@ -185,6 +186,10 @@ export const coordinatorBreadcrumbs = {
     "/coordinator/reports": {
         group: "Records",
         label: "Report",
+    },
+    "/coordinator/analytics": {
+        group: "Records",
+        label: "Analytic",
     },
     "/coordinator/settings": {
         group: "Settings",
@@ -228,6 +233,7 @@ export const governorNavSections = [
                 label: "Report",
                 icon: FileText,
             },
+            { to: "/governor/analytics", label: "Analytic", icon: BarChart3 },
         ],
     },
     {
@@ -258,6 +264,10 @@ export const governorBreadcrumbs = {
     "/governor/reports": {
         group: "Records",
         label: "Report",
+    },
+    "/governor/analytics": {
+        group: "Records",
+        label: "Analytic",
     },
     "/governor/settings": {
         group: "Settings",
@@ -291,6 +301,7 @@ export const headNavSections = [
                 label: "Report",
                 icon: FileText,
             },
+            { to: "/head/analytics", label: "Analytic", icon: BarChart3 },
         ],
     },
     {
@@ -337,6 +348,10 @@ export const headBreadcrumbs = {
     "/head/reports": {
         group: "Records",
         label: "Report",
+    },
+    "/head/analytics": {
+        group: "Records",
+        label: "Analytic",
     },
     "/head/farms": {
         group: "Management",
