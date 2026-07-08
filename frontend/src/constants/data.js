@@ -164,7 +164,7 @@ export const LIVESTOCKS = [
         color: "Brown",
         weight: 52,
         farmer: "Samuel Mwangi",
-        health: "observation",
+        health: "pregnant",
         status: "active",
         acquisitionDate: "2023-02-10",
         history: [
@@ -197,7 +197,7 @@ export const LIVESTOCKS = [
         color: "Tan",
         weight: 420,
         farmer: "Chidi Okafor",
-        health: "healthy",
+        health: "deceased",
         status: "active",
         acquisitionDate: "2021-08-20",
         history: [

@@ -3,16 +3,16 @@ import { PageHeader, StatCard } from "@/components/public";
 import { FARMERS, FARMS, LIVESTOCKS, EQUIPMENTS } from "@/constants/data";
 
 const STATUS_TONES = {
-  active: "bg-accent",
-  sold: "bg-primary",
-  quarantine: "bg-[#f59e0b]",
-  inactive: "bg-[#94a3b8]",
+  healthy: "bg-accent",
+  pregnant: "bg-[#a855f7]",
+  sick: "bg-[#f59e0b]",
+  deceased: "bg-[#94a3b8]",
 };
 const STATUS_HEX = {
-  active: "#00e676",
-  sold: "#0e1016",
-  quarantine: "#f59e0b",
-  inactive: "#94a3b8",
+  healthy: "#00e676",
+  pregnant: "#a855f7",
+  sick: "#f59e0b",
+  deceased: "#94a3b8",
 };
 
 const CROP_PALETTE = [
@@ -50,7 +50,7 @@ function buildFarmDistribution() {
 function buildLivestockStatus() {
   const counts = new Map();
   for (const l of LIVESTOCKS) {
-    const key = l.status || "active";
+    const key = l.health || "active";
     counts.set(key, (counts.get(key) || 0) + 1);
   }
   return [...counts.entries()].map(([k, v]) => ({
@@ -199,7 +199,7 @@ export function OverviewPage() {
         {/* Livestock status card unchanged */}
         <div className="bg-surface border border-border p-6 rounded-lg">
           <div className="mb-6">
-            <div className="label-eyebrow">Livestock status</div>
+            <div className="label-eyebrow">Livestock health status</div>
             <h3 className="font-display mt-1 text-xl text-foreground">
               Distribution
             </h3>
