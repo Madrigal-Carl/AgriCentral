@@ -348,7 +348,7 @@ export function LivestocksPage() {
         columns={[
           {
             key: "id",
-            header: "Livestock ID",
+            header: "Livestock Tag ID",
             sortable: true,
             cell: (r) => (
               <div>
@@ -621,7 +621,7 @@ function CoordinatorLivestockModal({
       }
     >
       <form onSubmit={submit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Tag / Name" full>
+        <Field label="Livestock Tag ID" full>
           <TextInput
             value={form.tag}
             onChange={(v) => set("tag", v)}
@@ -1159,8 +1159,8 @@ function LivestockDrawer({ row, onClose }) {
           <Section icon={Info} title="Basic Information">
             <DefList
               items={[
-                ["Livestock ID", row.id],
-                ["Tag / Name", row.tag],
+                ["Livestock Tag ID", row.id],
+                ["Livestock Tag ID", row.tag],
                 ["Animal", row.animal],
                 ["Breed", row.breed || "—"],
                 ["Gender", row.gender === "male" ? "Male" : "Female"],

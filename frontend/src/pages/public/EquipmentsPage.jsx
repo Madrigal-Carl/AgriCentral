@@ -290,7 +290,7 @@ export function EquipmentsPage() {
         columns={[
           {
             key: "id",
-            header: "Equipment ID",
+            header: "Equipment Tag ID",
             sortable: true,
             cell: (r) => (
               <div>
@@ -562,7 +562,7 @@ function CoordinatorEquipmentModal({
       }
     >
       <form onSubmit={submit} className="space-y-4">
-        <Field label="Equipment ID">
+        <Field label="Equipment Tag ID">
           <TextInput
             value={form.id}
             onChange={(v) => set("id", v)}
@@ -931,7 +931,7 @@ function EquipmentDrawer({ row, onClose }) {
           <Section icon={Info} title="Basic Information">
             <DefList
               items={[
-                ["Equipment ID", row.id],
+                ["Equipment Tag ID", row.id],
                 ["Name", row.name],
                 ["Condition", condLabel[row.condition]],
                 ["Status", statusLabel[row.status]],
