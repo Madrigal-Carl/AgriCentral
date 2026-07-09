@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Plus,
   X,
@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   FileText,
   User,
+  ImagePlus,
 } from "lucide-react";
 import {
   PageHeader,
@@ -71,6 +72,7 @@ const blankForm = {
   status: "open",
   date: "",
   details: "",
+  image: "",
 };
 
 function normalizeRole(role) {
@@ -280,6 +282,57 @@ export function ReportsPage() {
   );
 }
 
+function ImageUpload({ value, onChange }) {
+  const fileInputRef = useRef(null);
+
+  const handleFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => onChange(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <div className="w-full">
+      {value ? (
+        <div className="relative w-full">
+          <img
+            src={value}
+            alt="Report attachment"
+            className="w-full h-48 object-cover border border-border"
+          />
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            className="absolute top-2 right-2 grid h-7 w-7 place-items-center bg-foreground/70 text-white hover:bg-foreground"
+            aria-label="Remove image"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="flex w-full flex-col items-center justify-center gap-2 border border-dashed border-border bg-muted/40 px-3 py-8 text-secondary hover:border-foreground hover:text-foreground"
+        >
+          <ImagePlus className="h-5 w-5" />
+          <span className="text-xs">Click to upload an image</span>
+        </button>
+      )}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFile}
+        className="hidden"
+      />
+    </div>
+  );
+}
+
 /* ---------------- Modal ---------------- */
 function ReportModal({ mode, initial, onClose, onSave }) {
   const [form, setForm] = useState(initial);
@@ -366,6 +419,12 @@ function ReportModal({ mode, initial, onClose, onSave }) {
                 placeholder="Describe the report…"
                 rows={5}
                 className="w-full border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-secondary focus:border-foreground resize-y"
+              />
+            </Field>
+            <Field label="Photo (Optional)" full>
+              <ImageUpload
+                value={form.image}
+                onChange={(v) => set("image", v)}
               />
             </Field>
           </div>
@@ -590,6 +649,16 @@ function ReportDrawer({ row, onClose }) {
               {row.details || "No additional details provided."}
             </p>
           </Section>
+
+          {row.image && (
+            <Section icon={ImagePlus} title="Attached Photo">
+              <img
+                src={row.image}
+                alt="Report attachment"
+                className="w-full max-h-80 object-cover border border-border"
+              />
+            </Section>
+          )}
 
           <Section icon={Calendar} title="Timeline">
             <ol className="relative ml-2 border-l border-border">
