@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -18,9 +19,18 @@ import {
   PolarAngleAxis,
   PolarRadiusAxis,
 } from "recharts";
-import { Tractor, Beef, Wheat, Leaf, Download } from "lucide-react";
+import {
+  Tractor,
+  Beef,
+  Wheat,
+  Leaf,
+  Download,
+  Search,
+  ChevronDown,
+  Check,
+} from "lucide-react";
 import { PageHeader } from "@/components/public";
-import { Button } from "@/components/ui";
+import { Button, Select } from "@/components/ui";
 import useAuth from "@/hooks/useAuth";
 
 /* ---------------- Mock analytics data ---------------- */
@@ -109,6 +119,35 @@ const COLORS = [
   "#7c3aed",
 ];
 
+/* ---------------- Filter options ---------------- */
+const PERIOD_OPTIONS = [
+  { value: "week", label: "This Week" },
+  { value: "month", label: "This Month" },
+  { value: "year", label: "This Year" },
+];
+
+const ASSOCIATIONS = [
+  "All Associations",
+  "Boac, Marinduque",
+  "Mogpog, Marinduque",
+  "Santa Cruz, Marinduque",
+  "Torrijos, Marinduque",
+  "Buenavista, Marinduque",
+  "Gasan, Marinduque",
+];
+
+/* ---------------- CSV export helper ---------------- */
+function exportCsv(filename, rows) {
+  const csv = rows.map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 /* ---------------- Small UI helpers ---------------- */
 function StatCard({ icon: Icon, label, value, sub }) {
   return (
@@ -143,18 +182,136 @@ function ChartCard({ title, subtitle, children, height = 280 }) {
   );
 }
 
-function SectionHeader({ icon: Icon, title, subtitle }) {
+function AssociationFilter({ value, onChange, options }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const rootRef = useRef(null);
+
+  useEffect(() => {
+    const onClick = (e) => {
+      if (rootRef.current && !rootRef.current.contains(e.target)) {
+        setOpen(false);
+        setQuery("");
+      }
+    };
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        setQuery("");
+      }
+    };
+    document.addEventListener("mousedown", onClick);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, []);
+
+  const filtered = useMemo(() => {
+    if (!query) return options;
+    const q = query.toLowerCase();
+    return options.filter((o) => o.toLowerCase().includes(q));
+  }, [options, query]);
+
   return (
-    <div className="mb-4 mt-8 flex items-center gap-3 first:mt-0">
-      <div className="grid h-9 w-9 place-items-center bg-accent-soft text-foreground">
-        <Icon className="h-4 w-4 text-accent" />
+    <div ref={rootRef} className="relative w-full sm:w-64">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-2 border border-border bg-surface px-3 py-2 text-sm text-foreground hover:border-foreground"
+      >
+        <span className="truncate">{value}</span>
+        <ChevronDown className="h-4 w-4 shrink-0 text-secondary" />
+      </button>
+
+      {open && (
+        <div className="absolute z-20 mt-1 w-full border border-border bg-surface shadow-lg">
+          <div className="flex items-center gap-2 border-b border-border px-3 py-2">
+            <Search className="h-3.5 w-3.5 shrink-0 text-secondary" />
+            <input
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search association…"
+              className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-secondary"
+            />
+          </div>
+          <ul className="max-h-60 overflow-y-auto py-1">
+            {filtered.length === 0 && (
+              <li className="px-3 py-2 text-sm text-secondary">
+                No matches found.
+              </li>
+            )}
+            {filtered.map((option) => (
+              <li key={option}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange(option);
+                    setOpen(false);
+                    setQuery("");
+                  }}
+                  className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm text-foreground hover:bg-muted"
+                >
+                  <span className="truncate">{option}</span>
+                  {option === value && (
+                    <Check className="h-3.5 w-3.5 shrink-0 text-accent" />
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FilterBar({
+  period,
+  onPeriodChange,
+  association,
+  onAssociationChange,
+}) {
+  return (
+    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+      <div className="w-full sm:w-48">
+        <Select
+          value={period}
+          onChange={onPeriodChange}
+          options={PERIOD_OPTIONS}
+        />
       </div>
-      <div>
-        <h2 className="font-display text-xl tracking-tight text-foreground">
-          {title}
-        </h2>
-        {subtitle && <p className="text-xs text-secondary">{subtitle}</p>}
+      <AssociationFilter
+        value={association}
+        onChange={onAssociationChange}
+        options={ASSOCIATIONS}
+      />
+    </div>
+  );
+}
+
+function SectionHeader({ icon: Icon, title, subtitle, onExport }) {
+  return (
+    <div className="mb-4 mt-8 flex items-center justify-between gap-3 first:mt-0">
+      <div className="flex items-center gap-3">
+        <div className="grid h-9 w-9 place-items-center bg-accent-soft text-foreground">
+          <Icon className="h-4 w-4 text-accent" />
+        </div>
+        <div>
+          <h2 className="font-display text-xl tracking-tight text-foreground">
+            {title}
+          </h2>
+          {subtitle && <p className="text-xs text-secondary">{subtitle}</p>}
+        </div>
       </div>
+      {onExport && (
+        <Button variant="outline" onClick={onExport}>
+          <Download className="h-4 w-4" />
+          Export
+        </Button>
+      )}
     </div>
   );
 }
@@ -163,6 +320,10 @@ function SectionHeader({ icon: Icon, title, subtitle }) {
 export function AnalyticsPage() {
   const { user } = useAuth();
   const isGovernor = user?.role === "governor";
+
+  // Filters (period defaults to "This Month"; association defaults to "All")
+  const [period, setPeriod] = useState("month");
+  const [association, setAssociation] = useState("All Associations");
 
   const totalEquipment = equipmentByType.reduce((s, i) => s + i.count, 0);
   const totalLivestock = livestockByCategory.reduce((s, i) => s + i.count, 0);
@@ -195,14 +356,54 @@ export function AnalyticsPage() {
             ["Crop Yield (kg)", totalYield],
           ]),
     ];
-    const csv = rows.map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "agricentral-analytics.csv";
-    a.click();
-    URL.revokeObjectURL(url);
+    exportCsv("agricentral-analytics.csv", rows);
+  };
+
+  const handleExportEquipment = () => {
+    const rows = [
+      ["Type", "Count"],
+      ...equipmentByType.map((e) => [e.type, e.count]),
+      [],
+      ["Status", "Count"],
+      ...equipmentStatus.map((e) => [e.name, e.value]),
+    ];
+    exportCsv("agricentral-equipment.csv", rows);
+  };
+
+  const handleExportLivestock = () => {
+    const rows = [
+      ["Category", "Count"],
+      ...livestockByCategory.map((l) => [l.category, l.count]),
+      [],
+      ["Health Status", "Count"],
+      ...livestockHealth.map((l) => [l.name, l.value]),
+    ];
+    exportCsv("agricentral-livestock.csv", rows);
+  };
+
+  const handleExportFarms = () => {
+    const rows = [
+      ["Farm", "Size (ha)", "Yield (kg)"],
+      ...farmSizeYield.map((f) => [f.farm, f.size, f.yield]),
+      [],
+      ["Metric", "Score"],
+      ...farmPerformance.map((f) => [f.metric, f.value]),
+    ];
+    exportCsv("agricentral-farms.csv", rows);
+  };
+
+  const handleExportCrops = () => {
+    const rows = [
+      ["Crop", "Yield (kg)"],
+      ...cropYield.map((c) => [c.crop, c.yield]),
+      [],
+      ["Status", "Count"],
+      ...cropStatus.map((c) => [c.name, c.value]),
+      [],
+      ["Month", "Rice", "Corn", "Coconut"],
+      ...monthlyYield.map((m) => [m.month, m.rice, m.corn, m.coconut]),
+    ];
+    exportCsv("agricentral-crops.csv", rows);
   };
 
   return (
@@ -220,6 +421,13 @@ export function AnalyticsPage() {
             Export Report
           </Button>
         }
+      />
+
+      <FilterBar
+        period={period}
+        onPeriodChange={setPeriod}
+        association={association}
+        onAssociationChange={setAssociation}
       />
 
       {/* KPI row */}
@@ -282,6 +490,7 @@ export function AnalyticsPage() {
         icon={Tractor}
         title="Equipment"
         subtitle="Fleet composition and status."
+        onExport={handleExportEquipment}
       />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChartCard
@@ -325,6 +534,7 @@ export function AnalyticsPage() {
             icon={Beef}
             title="Livestock"
             subtitle="Population by category and overall health."
+            onExport={handleExportLivestock}
           />
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <ChartCard title="Population by Category">
@@ -367,6 +577,7 @@ export function AnalyticsPage() {
             icon={Wheat}
             title="Farms"
             subtitle="Area, yield, and operational performance."
+            onExport={handleExportFarms}
           />
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <ChartCard
@@ -423,6 +634,7 @@ export function AnalyticsPage() {
             icon={Leaf}
             title="Crops"
             subtitle="Yield, status, and monthly trends."
+            onExport={handleExportCrops}
           />
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <ChartCard
