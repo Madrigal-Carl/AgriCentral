@@ -395,6 +395,7 @@ export const ASSOCIATIONS = [
     {
         id: "AS-001",
         name: "Boac, Marinduque",
+        far: "Fe Aquino",
         members: [
             { name: "Ramon Villanueva", position: "President" },
             { name: "Liza Domingo", position: "Vice President" },
@@ -405,12 +406,12 @@ export const ASSOCIATIONS = [
             { name: "Pedro Santos", position: "Member" },
             { name: "Grace Manalo", position: "Member" },
             { name: "Rico Delacruz", position: "Member" },
-            { name: "Fe Aquino", position: "Member" },
         ],
     },
     {
         id: "AS-002",
         name: "Mogpog, Marinduque",
+        far: "Teresa Lim",
         members: [
             { name: "Corazon Santos", position: "President" },
             { name: "Danilo Cruz", position: "Vice President" },
@@ -424,6 +425,7 @@ export const ASSOCIATIONS = [
     {
         id: "AS-003",
         name: "Santa Cruz, Marinduque",
+        far: "Nenita Flores",
         members: [
             { name: "Eduardo Reyes", position: "President" },
             { name: "Josefina Ramos", position: "Vice President" },
@@ -439,6 +441,7 @@ export const ASSOCIATIONS = [
     {
         id: "AS-004",
         name: "Torrijos, Marinduque",
+        far: "Precious Ventura",
         members: [
             { name: "Marilou Fernandez", position: "President" },
             { name: "Rogelio Ilagan", position: "Secretary" },
@@ -451,6 +454,7 @@ export const ASSOCIATIONS = [
     {
         id: "AS-005",
         name: "Buenavista, Marinduque",
+        far: "Ariel Manansala",
         members: [
             { name: "Antonio Bautista", position: "President" },
             { name: "Leonora Espino", position: "Treasurer" },
@@ -463,6 +467,7 @@ export const ASSOCIATIONS = [
     {
         id: "AS-006",
         name: "Gasan, Marinduque",
+        far: "Samuel Torres",
         // No president currently assigned for this association.
         members: [
             { name: "Josephine Ramos", position: "Vice President" },

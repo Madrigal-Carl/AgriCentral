@@ -26,10 +26,6 @@ const positionTone = {
   Member: "neutral",
 };
 
-function getPresident(row) {
-  return row.members?.find((m) => m.position === "President")?.name || "";
-}
-
 /* ---------------- Page ---------------- */
 export function AssociationsPage() {
   const [rows, setRows] = useState(ASSOCIATIONS);
@@ -93,10 +89,10 @@ export function AssociationsPage() {
             ),
           },
           {
-            key: "president",
-            header: "President",
+            key: "far",
+            header: "Farmers Representative",
             sortable: true,
-            cell: (r) => getPresident(r) || "—",
+            cell: (r) => r.far || "—",
           },
           {
             key: "membersCount",
