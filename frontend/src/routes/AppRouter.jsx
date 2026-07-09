@@ -14,6 +14,7 @@ import {
   SettingsPage,
   UsersPage,
   AnalyticsPage,
+  AssociationsPage,
 } from "@/pages/public";
 
 import DashboardLayout from "@/layouts/DashboardLayout";
@@ -69,6 +70,7 @@ export default function AppRouter() {
             <Route path="overview" element={<OverviewPage />} />
             <Route path="farmers" element={<FarmersPage />} />
             <Route path="farms" element={<FarmsPage />} />
+            <Route path="associations" element={<AssociationsPage />} />
             <Route path="equipments" element={<EquipmentsPage />} />
             <Route path="livestocks" element={<LivestocksPage />} />
             <Route path="farm-maps" element={<FarmMapsPage />} />
@@ -82,6 +84,7 @@ export default function AppRouter() {
           <Route path="/coordinator" element={<DashboardLayout />}>
             <Route path="overview" element={<OverviewPage />} />
             <Route path="farmers" element={<FarmersPage />} />
+            <Route path="associations" element={<AssociationsPage />} />
             <Route path="equipments" element={<EquipmentsPage />} />
             <Route path="livestocks" element={<LivestocksPage />} />
             <Route path="analytics" element={<AnalyticsPage />} />
@@ -122,6 +125,7 @@ export default function AppRouter() {
             <Route path="overview" element={<OverviewPage />} />
             <Route path="farmers" element={<FarmersPage />} />
             <Route path="users" element={<UsersPage />} />
+            <Route path="associations" element={<AssociationsPage />} />
             <Route path="farms" element={<FarmsPage />} />
             <Route path="equipments" element={<EquipmentsPage />} />
             <Route path="livestocks" element={<LivestocksPage />} />

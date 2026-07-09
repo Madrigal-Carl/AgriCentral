@@ -390,3 +390,87 @@ export const USERS = [
         isVerified: false,
     },
 ];
+
+export const ASSOCIATIONS = [
+    {
+        id: "AS-001",
+        name: "Boac, Marinduque",
+        members: [
+            { name: "Ramon Villanueva", position: "President" },
+            { name: "Liza Domingo", position: "Vice President" },
+            { name: "Miguel Torres", position: "Secretary" },
+            { name: "Carmela Rivera", position: "Treasurer" },
+            { name: "Jose Ramirez", position: "Member" },
+            { name: "Ana Bautista", position: "Member" },
+            { name: "Pedro Santos", position: "Member" },
+            { name: "Grace Manalo", position: "Member" },
+            { name: "Rico Delacruz", position: "Member" },
+            { name: "Fe Aquino", position: "Member" },
+        ],
+    },
+    {
+        id: "AS-002",
+        name: "Mogpog, Marinduque",
+        members: [
+            { name: "Corazon Santos", position: "President" },
+            { name: "Danilo Cruz", position: "Vice President" },
+            { name: "Teresa Lim", position: "Member" },
+            { name: "Roberto Diaz", position: "Member" },
+            { name: "Marites Ocampo", position: "Member" },
+            { name: "Fernando Garcia", position: "Member" },
+            { name: "Luz Mercado", position: "Member" },
+        ],
+    },
+    {
+        id: "AS-003",
+        name: "Santa Cruz, Marinduque",
+        members: [
+            { name: "Eduardo Reyes", position: "President" },
+            { name: "Josefina Ramos", position: "Vice President" },
+            { name: "Bayani Castillo", position: "Secretary" },
+            { name: "Nenita Flores", position: "Member" },
+            { name: "Arnel Pascual", position: "Member" },
+            { name: "Divina Salazar", position: "Member" },
+            { name: "Wilfredo Navarro", position: "Member" },
+            { name: "Rosalinda Cortez", position: "Member" },
+            { name: "Bienvenido Aguilar", position: "Member" },
+        ],
+    },
+    {
+        id: "AS-004",
+        name: "Torrijos, Marinduque",
+        members: [
+            { name: "Marilou Fernandez", position: "President" },
+            { name: "Rogelio Ilagan", position: "Secretary" },
+            { name: "Precious Ventura", position: "Member" },
+            { name: "Armando Salvador", position: "Member" },
+            { name: "Cristina Pineda", position: "Member" },
+            { name: "Noel Bautista", position: "Member" },
+        ],
+    },
+    {
+        id: "AS-005",
+        name: "Buenavista, Marinduque",
+        members: [
+            { name: "Antonio Bautista", position: "President" },
+            { name: "Leonora Espino", position: "Treasurer" },
+            { name: "Ariel Manansala", position: "Member" },
+            { name: "Cecilia Domingo", position: "Member" },
+            { name: "Rustom Villareal", position: "Member" },
+            { name: "Marife Cabrera", position: "Member" },
+        ],
+    },
+    {
+        id: "AS-006",
+        name: "Gasan, Marinduque",
+        // No president currently assigned for this association.
+        members: [
+            { name: "Josephine Ramos", position: "Vice President" },
+            { name: "Rodel Andrade", position: "Member" },
+            { name: "Vicky Villamor", position: "Member" },
+            { name: "Samuel Torres", position: "Member" },
+            { name: "Bea Marquez", position: "Member" },
+            { name: "Isagani Ortiz", position: "Member" },
+        ],
+    },
+];

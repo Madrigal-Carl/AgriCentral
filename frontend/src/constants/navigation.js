@@ -1,4 +1,4 @@
-import { LayoutGrid, Users, Wheat, Tractor, Beef, Map, FileText, UserCircle2, Settings, ClipboardList, UserCog, BarChart3 } from "lucide-react";
+import { LayoutGrid, Users, Wheat, Tractor, Beef, Map, FileText, UserCircle2, Settings, ClipboardList, UserCog, BarChart3, Building2 } from "lucide-react";
 
 /* ---------------- FAR ---------------- */
 export const farNavSections = [
@@ -64,8 +64,13 @@ export const aewNavSections = [
     {
         label: "Management",
         items: [
-            { to: "/aew/farmers", label: "Farmer", icon: Users },
             { to: "/aew/farms", label: "Farm", icon: Wheat },
+            { to: "/aew/farmers", label: "Farmer", icon: Users },
+            {
+                to: "/aew/associations",
+                label: "Association",
+                icon: Building2,
+            },
         ],
     },
     {
@@ -87,8 +92,12 @@ export const aewNavSections = [
 
 const aewBreadcrumbs = {
     "/aew/overview": { group: "Dashboard", label: "Overview" },
-    "/aew/farmers": { group: "Management", label: "Farmer" },
     "/aew/farms": { group: "Management", label: "Farm" },
+    "/aew/farmers": { group: "Management", label: "Farmer" },
+    "/aew/associations": {
+        group: "Management",
+        label: "Association",
+    },
     "/aew/equipments": { group: "Resources", label: "Equipment" },
     "/aew/livestocks": { group: "Resources", label: "Livestock" },
     "/aew/farm-maps": { group: "Mapping", label: "Farm Maps" },
@@ -116,6 +125,11 @@ export const coordinatorNavSections = [
                 to: "/coordinator/farmers",
                 label: "Farmer",
                 icon: Users,
+            },
+            {
+                to: "/coordinator/associations",
+                label: "Association",
+                icon: Building2,
             },
         ],
     },
@@ -170,6 +184,10 @@ export const coordinatorBreadcrumbs = {
     "/coordinator/farmers": {
         group: "Management",
         label: "Farmer",
+    },
+    "/coordinator/associations": {
+        group: "Management",
+        label: "Association",
     },
     "/coordinator/equipments": {
         group: "Inventory",
@@ -384,19 +402,24 @@ export const adminNavSections = [
         label: "Management",
         items: [
             {
+                to: "/admin/farms",
+                label: "Farm",
+                icon: Wheat,
+            },
+            {
                 to: "/admin/farmers",
                 label: "Farmer",
                 icon: Users,
             },
             {
+                to: "/admin/associations",
+                label: "Association",
+                icon: Building2,
+            },
+            {
                 to: "/admin/users",
                 label: "User",
                 icon: UserCog,
-            },
-            {
-                to: "/admin/farms",
-                label: "Farm",
-                icon: Wheat,
             },
         ],
     },
@@ -457,17 +480,21 @@ export const adminBreadcrumbs = {
         group: "Dashboard",
         label: "Overview",
     },
+    "/admin/farms": {
+        group: "Management",
+        label: "Farm",
+    },
     "/admin/farmers": {
         group: "Management",
         label: "Farmer",
     },
+    "/admin/associations": {
+        group: "Management",
+        label: "Association",
+    },
     "/admin/users": {
         group: "Management",
         label: "User",
-    },
-    "/admin/farms": {
-        group: "Management",
-        label: "Farm",
     },
     "/admin/equipments": {
         group: "Inventory",
