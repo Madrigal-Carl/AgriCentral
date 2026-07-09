@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   Plus,
   X,
@@ -7,6 +7,9 @@ import {
   KeyRound,
   Mail,
   ShieldCheck,
+  Search,
+  ChevronDown,
+  Check,
 } from "lucide-react";
 
 import {
@@ -42,6 +45,16 @@ const roleTone = {
   governor: "neutral",
   head: "danger",
 };
+
+// Associations a FAR account can be assigned to.
+const ASSOCIATIONS = [
+  "Boac, Marinduque",
+  "Mogpog, Marinduque",
+  "Santa Cruz, Marinduque",
+  "Torrijos, Marinduque",
+  "Buenavista, Marinduque",
+  "Gasan, Marinduque",
+];
 
 const DEFAULT_PASSWORD = "AgriCentral@123";
 
@@ -243,9 +256,99 @@ export function UsersPage() {
   );
 }
 
+/* ---------------- Association Select + Search ---------------- */
+function AssociationSelect({ value, onChange, options = ASSOCIATIONS, error }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const rootRef = useRef(null);
+
+  useEffect(() => {
+    const onClick = (e) => {
+      if (rootRef.current && !rootRef.current.contains(e.target)) {
+        setOpen(false);
+        setQuery("");
+      }
+    };
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        setQuery("");
+      }
+    };
+    document.addEventListener("mousedown", onClick);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, []);
+
+  const filtered = useMemo(() => {
+    if (!query) return options;
+    const q = query.toLowerCase();
+    return options.filter((o) => o.toLowerCase().includes(q));
+  }, [options, query]);
+
+  return (
+    <div ref={rootRef} className="relative w-full">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`flex w-full items-center justify-between gap-2 border bg-surface px-3 py-2.5 text-sm outline-none hover:border-foreground ${
+          error ? "border-danger" : "border-border"
+        } ${value ? "text-foreground" : "text-secondary"}`}
+      >
+        <span className="truncate">{value || "Select association…"}</span>
+        <ChevronDown className="h-4 w-4 shrink-0 text-secondary" />
+      </button>
+
+      {open && (
+        <div className="absolute z-20 mt-1 w-full border border-border bg-surface shadow-lg">
+          <div className="flex items-center gap-2 border-b border-border px-3 py-2">
+            <Search className="h-3.5 w-3.5 shrink-0 text-secondary" />
+            <input
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search association…"
+              className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-secondary"
+            />
+          </div>
+          <ul className="max-h-60 overflow-y-auto py-1">
+            {filtered.length === 0 && (
+              <li className="px-3 py-2 text-sm text-secondary">
+                No matches found.
+              </li>
+            )}
+            {filtered.map((option) => (
+              <li key={option}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange(option);
+                    setOpen(false);
+                    setQuery("");
+                  }}
+                  className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm text-foreground hover:bg-muted"
+                >
+                  <span className="truncate">{option}</span>
+                  {option === value && (
+                    <Check className="h-3.5 w-3.5 shrink-0 text-accent" />
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ---------------- Modal ---------------- */
 function UserModal({ mode, initial, onClose, onSave }) {
   const [form, setForm] = useState(initial);
+  const [touched, setTouched] = useState(false);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   useEffect(() => {
@@ -257,7 +360,10 @@ function UserModal({ mode, initial, onClose, onSave }) {
   const submit = (e) => {
     e.preventDefault();
     if (!form.fullName || !form.email) return;
-    if (form.role === "far" && !form.association.trim()) return;
+    if (form.role === "far" && !form.association.trim()) {
+      setTouched(true);
+      return;
+    }
     onSave(form);
   };
 
@@ -317,16 +423,24 @@ function UserModal({ mode, initial, onClose, onSave }) {
               />
             </Field>
 
-            {/* Association Name only applies to FAR accounts, since FAR
+            {/* Association only applies to FAR accounts, since FAR
                 is tied to a specific association. Shown/required whenever
                 the selected role is FAR, in both add and edit mode. */}
             {form.role === "far" && (
-              <Field label="Association Name" full>
-                <TextInput
+              <Field label="Association" full>
+                <AssociationSelect
                   value={form.association}
-                  onChange={(v) => set("association", v)}
-                  placeholder="e.g. Boac, Marinduque"
+                  onChange={(v) => {
+                    set("association", v);
+                    if (touched) setTouched(false);
+                  }}
+                  error={touched && !form.association.trim()}
                 />
+                {touched && !form.association.trim() && (
+                  <p className="mt-1 text-xs text-danger">
+                    Association is required for FAR accounts.
+                  </p>
+                )}
               </Field>
             )}
 
@@ -460,22 +574,18 @@ function ApproveConfirmModal({
         </p>
 
         <div className="mb-6 text-left">
-          <label className="label-eyebrow mb-1.5 block">Association Name</label>
-          <input
-            autoFocus
+          <label className="label-eyebrow mb-1.5 block">Association</label>
+          <AssociationSelect
             value={association}
-            onChange={(e) => {
-              setAssociation(e.target.value);
+            onChange={(v) => {
+              setAssociation(v);
               if (touched) setTouched(false);
             }}
-            placeholder="e.g. Boac, Marinduque"
-            className={`w-full border bg-surface px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-secondary focus:border-foreground ${
-              touched && !isValid ? "border-danger" : "border-border"
-            }`}
+            error={touched && !isValid}
           />
           {touched && !isValid && (
             <p className="mt-1 text-xs text-danger">
-              Association name is required to approve this account.
+              Association is required to approve this account.
             </p>
           )}
         </div>
