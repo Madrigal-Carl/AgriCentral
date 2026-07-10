@@ -360,7 +360,6 @@ function FarmModal({ mode, initial, onClose, onSave }) {
               <MultiSelect
                 values={cropNames}
                 onChange={onCropsChange}
-                allowCreate={true}
                 options={CROP_OPTIONS}
                 placeholder="Select crops…"
                 searchPlaceholder="Search crop…"

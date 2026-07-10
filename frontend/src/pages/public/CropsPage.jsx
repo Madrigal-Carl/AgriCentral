@@ -1,6 +1,11 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import { Plus, X, Search, ChevronDown, AlertTriangle } from "lucide-react";
-import { PageHeader, DataTable, RowActions } from "@/components/public";
+import {
+  PageHeader,
+  DataTable,
+  RowActions,
+  StatusPill,
+} from "@/components/public";
 import { Button } from "@/components/ui";
 
 /* ---------------- Reference data ---------------- */
@@ -13,23 +18,42 @@ const FARMER_OPTIONS = [
   "FR-006 · Mariam Diallo",
 ];
 
+const CROP_STATUS_OPTIONS = [
+  { value: "planted", label: "Planted" },
+  { value: "not_planted", label: "Not Planted" },
+];
+
 const SEED_CROPS = [
   {
     id: "CR-001",
     name: "Maize",
     kilos: 1200,
     farmer: "FR-002 · Samuel Mwangi",
+    status: "planted",
   },
-  { id: "CR-002", name: "Rice", kilos: 850, farmer: "FR-001 · Lina Okoro" },
+  {
+    id: "CR-002",
+    name: "Rice",
+    kilos: 850,
+    farmer: "FR-001 · Lina Okoro",
+    status: "planted",
+  },
   {
     id: "CR-003",
     name: "Cassava",
     kilos: 430,
     farmer: "FR-004 · Chidi Okafor",
+    status: "not_planted",
   },
 ];
 
-const blankForm = { id: "", name: "", kilos: "", farmer: "" };
+const blankForm = {
+  id: "",
+  name: "",
+  kilos: "",
+  farmer: "",
+  status: "not_planted",
+};
 
 /* ---------------- Page ---------------- */
 export function CropsPage() {
@@ -82,6 +106,14 @@ export function CropsPage() {
       <DataTable
         searchPlaceholder="Search by crop name…"
         data={rows}
+        filters={[
+          {
+            key: "status",
+            label: "Status",
+            options: CROP_STATUS_OPTIONS,
+            predicate: (r, v) => r.status === v,
+          },
+        ]}
         columns={[
           {
             key: "name",
@@ -100,6 +132,16 @@ export function CropsPage() {
             sortable: true,
             accessor: (r) => r.kilos,
             cell: (r) => `${(r.kilos || 0).toLocaleString()} kg`,
+          },
+          {
+            key: "status",
+            header: "Status",
+            sortable: true,
+            cell: (r) => (
+              <StatusPill tone={r.status === "planted" ? "success" : "neutral"}>
+                {r.status === "planted" ? "Planted" : "Not Planted"}
+              </StatusPill>
+            ),
           },
           {
             key: "farmer",
