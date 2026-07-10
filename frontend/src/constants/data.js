@@ -329,6 +329,7 @@ export const USERS = [
         id: "US-001",
         fullName: "Daniel Kiprotich",
         email: "daniel.kiprotich@agritrack.io",
+        association: "Mogpog",
         role: "far",
         isVerified: true,
     },
@@ -336,6 +337,7 @@ export const USERS = [
         id: "US-002",
         fullName: "Lina Okoro",
         email: "lina.okoro@agritrack.io",
+        association: "Boack",
         role: "far",
         isVerified: true,
     },
@@ -677,3 +679,29 @@ export const positionTone = {
     Treasurer: "success",
     Member: "neutral",
 };
+
+export const roleLabel = {
+    far: "FAR",
+    aew: "AEW",
+    coordinator: "Coordinator",
+    governor: "Governor",
+    head: "Head",
+};
+
+export const roleTone = {
+    far: "info",
+    aew: "warning",
+    coordinator: "success",
+    governor: "neutral",
+    head: "danger",
+};
+
+export const DEFAULT_PASSWORD = "AgriCentral@123";
+
+export const ROLE_OPTIONS = [
+    { value: "far", label: "FAR" },
+    { value: "aew", label: "AEW" },
+    { value: "coordinator", label: "Coordinator" },
+    { value: "governor", label: "Governor" },
+    { value: "head", label: "Head" },
+];
