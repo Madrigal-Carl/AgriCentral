@@ -306,7 +306,7 @@ function ImageUpload({ value, onChange }) {
           <button
             type="button"
             onClick={() => onChange("")}
-            className="absolute top-2 right-2 grid h-7 w-7 place-items-center bg-foreground/70 text-white hover:bg-foreground"
+            className="absolute top-2 right-2 grid h-7 w-7 place-items-center bg-foreground-40 text-white hover:bg-foreground"
             aria-label="Remove image"
           >
             <X className="h-3.5 w-3.5" />
@@ -454,7 +454,7 @@ function DeleteConfirmModal({ id, title, onCancel, onConfirm }) {
         className="w-full max-w-sm bg-surface border border-border shadow-xl p-6 text-center"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mx-auto mb-4 grid h-12 w-12 place-items-center bg-danger/10 text-danger">
+        <div className="mx-auto mb-4 grid h-12 w-12 place-items-center bg-danger-10 text-danger">
           <AlertTriangle className="h-6 w-6" />
         </div>
         <h3 className="font-display text-lg tracking-tight text-foreground mb-1">
@@ -496,7 +496,7 @@ function ReviewConfirmModal({ row, action, onCancel, onConfirm }) {
           className={`mx-auto mb-4 grid h-12 w-12 place-items-center ${
             isApprove
               ? "bg-success/10 text-success"
-              : "bg-danger/10 text-danger"
+              : "bg-danger-10 text-danger"
           }`}
         >
           <AlertTriangle className="h-6 w-6" />

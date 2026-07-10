@@ -25,6 +25,7 @@
     --accent-foreground: #ffffff;
     --accent-soft: #d3f3e3;
     --danger: #e53935;
+    --danger-10: rgba(229, 57, 53, 0.1);
     --danger-foreground: #ffffff;
     --border: #e4e7eb;
     --input: #e4e7eb;

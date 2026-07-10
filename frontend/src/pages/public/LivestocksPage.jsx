@@ -790,7 +790,7 @@ function DeleteConfirmModal({ row, onCancel, onConfirm }) {
         className="w-full max-w-sm bg-surface border border-border shadow-xl p-6 text-center"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mx-auto mb-4 grid h-12 w-12 place-items-center bg-danger/10 text-danger">
+        <div className="mx-auto mb-4 grid h-12 w-12 place-items-center bg-danger-10 text-danger">
           <Trash2 className="h-6 w-6" />
         </div>
         <h3 className="font-display text-lg tracking-tight text-foreground mb-1">

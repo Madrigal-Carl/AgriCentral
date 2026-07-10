@@ -27,6 +27,7 @@ export default {
         foreground: "var(--foreground)",
         "foreground-40": "var(--foreground-40)",
         "muted-40": "var(--muted-40)",
+        "danger-10": "var(--danger-10)",
         card: {
           DEFAULT: "var(--card)",
           foreground: "var(--card-foreground)",
@@ -52,8 +53,8 @@ export default {
           foreground: "var(--accent-foreground)",
         },
         danger: {
-          DEFAULT: "var(--destructive)",
-          foreground: "var(--destructive-foreground)",
+          DEFAULT: "var(--danger)",
+          foreground: "var(--danger-foreground)",
         },
         success: {
           DEFAULT: "var(--success)",

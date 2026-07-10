@@ -11,7 +11,7 @@ export function DeleteConfirmModal({ id, name, onCancel, onConfirm }) {
         className="w-full max-w-sm bg-surface border border-border shadow-xl p-6 text-center"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mx-auto mb-4 grid h-12 w-12 place-items-center text-[var(--danger)]">
+        <div className="mx-auto mb-4 grid h-12 w-12 place-items-center text-danger bg-danger-10">
           <AlertTriangle className="h-6 w-6" />
         </div>
         <h3 className="font-display text-lg tracking-tight text-foreground mb-1">
