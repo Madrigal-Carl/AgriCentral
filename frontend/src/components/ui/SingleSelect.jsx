@@ -23,7 +23,7 @@ export function SingleSelect({
   };
 
   return (
-    <div ref={ref} className="relative w-full">
+    <div className="relative w-full">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}

@@ -51,7 +51,7 @@ export default {
           DEFAULT: "var(--accent)",
           foreground: "var(--accent-foreground)",
         },
-        destructive: {
+        danger: {
           DEFAULT: "var(--destructive)",
           foreground: "var(--destructive-foreground)",
         },
