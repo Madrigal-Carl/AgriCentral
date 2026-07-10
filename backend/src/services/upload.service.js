@@ -1,20 +1,26 @@
 import cloudinary from "../config/cloudinary.js";
 
-const FOLDER_MAP = {
+const SUBFOLDER_MAP = {
     farmer: "farmers",
     report: "reports",
 };
 
 export const createUploadSignature = ({ type, fileName }) => {
-    const folder = FOLDER_MAP[type];
+    const subfolder = SUBFOLDER_MAP[type];
 
-    if (!folder) {
+    if (!subfolder) {
         throw new Error("Invalid upload type");
     }
 
+    const rootFolder = process.env.CLOUDINARY_ROOT_FOLDER;
+
+    if (!rootFolder) {
+        throw new Error("CLOUDINARY_ROOT_FOLDER is not configured");
+    }
+
+    const folder = `${rootFolder}/${subfolder}`;
     const timestamp = Math.round(Date.now() / 1000);
 
-    // Only params that will actually be sent to Cloudinary get signed.
     const paramsToSign = {
         timestamp,
         folder,
