@@ -18,6 +18,7 @@
     --primary-foreground: #ffffff;
     --secondary: #5b6270;
     --secondary-foreground: #ffffff;
+    --muted-30: rgba(241, 243, 245, 0.3);
     --muted-40: rgba(241, 243, 245, 0.4);
     --muted-40: #f1f3f5;
     --muted-foreground: #5b6270;

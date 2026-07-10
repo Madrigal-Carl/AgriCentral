@@ -1,6 +1,6 @@
 import { DefList, ItemList, Section } from "@/components/drawer";
 import { StatusPill } from "@/components/public";
-import { statusTone, statusLabel } from "@/constants/data";
+import { statusTone } from "@/constants/data";
 import {
   X,
   Info,
@@ -33,7 +33,7 @@ export function FarmerDrawer({ row, onClose }) {
                 </h2>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <StatusPill tone={statusTone[row.status]}>
-                    {statusLabel[row.status]}
+                    {row.status}
                   </StatusPill>
                 </div>
               </div>
@@ -60,7 +60,7 @@ export function FarmerDrawer({ row, onClose }) {
                 ["Gender", row.gender === "male" ? "Male" : "Female"],
                 ["Birth Date", fmtDate(row.dob)],
                 ["Address", row.address || "—"],
-                ["Status", statusLabel[row.status]],
+                ["Status", row.status],
               ]}
             />
           </Section>
@@ -103,7 +103,7 @@ export function FarmerDrawer({ row, onClose }) {
                 {row.files.map((f) => (
                   <li
                     key={f.id}
-                    className="flex items-center gap-3 border border-border bg-muted-40 px-3 py-2"
+                    className="flex items-center gap-3 border border-border bg-muted-30 px-3 py-2"
                   >
                     <div className="grid h-9 w-9 shrink-0 place-items-center bg-surface text-secondary">
                       <FileText className="h-4 w-4" />

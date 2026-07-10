@@ -234,7 +234,7 @@ export const EQUIPMENTS = [
         id: "EQ-003",
         name: "Plow P-08",
         condition: "maintenance",
-        status: "repair",
+        status: "available",
         farmer: "",
         acquisitionDate: "2020-06-15",
         history: [{ name: "Plow P-08", date: "2020-06-15" }],
@@ -484,13 +484,8 @@ export const ASSOCIATIONS = [
 export const statusTone = {
     active: "success",
     inactive: "neutral",
-    pending: "warning",
-};
-
-export const statusLabel = {
-    active: "Active",
-    inactive: "Inactive",
-    pending: "Pending",
+    assigned: "success",
+    available: "neutral",
 };
 
 export const GENDER_OPTIONS = [
@@ -528,4 +523,43 @@ export const CROP_STATUS_OPTIONS = [
     { value: "growing", label: "Growing" },
     { value: "harvested", label: "Harvested" },
     { value: "fallow", label: "Fallow" },
+];
+
+export const condTone = {
+    excellent: "success",
+    good: "info",
+    maintenance: "warning",
+    damaged: "danger",
+};
+
+export const condLabel = {
+    excellent: "Excellent",
+    good: "Good",
+    maintenance: "Maintenance",
+    damaged: "Damaged",
+};
+
+export const EQUIPMENT_CATALOG = [
+    "Tractor T-204",
+    "Harvester H-12",
+    "Plow P-08",
+    "Sprayer S-31",
+    "Seeder SD-15",
+    "Rotavator RV-09",
+    "Cultivator C-22",
+    "Baler B-17",
+    "Irrigation Pump IP-05",
+    "Thresher TR-11",
+];
+
+export const EQUIPMENT_CONDITION_OPTIONS = [
+    { value: "excellent", label: "Excellent" },
+    { value: "good", label: "Good" },
+    { value: "maintenance", label: "Maintenance" },
+    { value: "damaged", label: "Damaged" },
+];
+
+export const EQUIPMENT_STATUS_OPTIONS = [
+    { value: "assigned", label: "Assigned" },
+    { value: "available", label: "Available" },
 ];

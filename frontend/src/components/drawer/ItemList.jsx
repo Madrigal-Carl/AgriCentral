@@ -6,7 +6,7 @@ export function ItemList({ items, empty }) {
       {items.map((i) => (
         <li
           key={i}
-          className="flex items-center justify-between border border-border bg-muted-40 px-3 py-2 text-sm font-medium text-foreground"
+          className="flex items-center justify-between border border-border bg-muted-30 px-3 py-2 text-sm font-medium text-foreground"
         >
           <span className="truncate">{i}</span>
         </li>

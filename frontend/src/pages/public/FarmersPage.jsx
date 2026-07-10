@@ -30,7 +30,7 @@ import {
 } from "@/components/modal";
 import { Button, Select } from "@/components/ui";
 
-import { FARMERS, statusTone, statusLabel } from "@/constants/data";
+import { FARMERS, statusTone } from "@/constants/data";
 import { usePermissions } from "@/constants/permissions";
 import useAuth from "@/hooks/useAuth";
 
@@ -214,22 +214,6 @@ export function FarmersPage() {
             options: STATUS_OPTIONS,
             predicate: (r, v) => r.status === v,
           },
-          {
-            key: "farms",
-            label: "Farms",
-            allLabel: "Any Farm Count",
-            options: [
-              { value: "0", label: "0 farms" },
-              { value: "1-2", label: "1–2 farms" },
-              { value: "3+", label: "3+ farms" },
-            ],
-            predicate: (r, v) => {
-              const n = r.farms.length;
-              if (v === "0") return n === 0;
-              if (v === "1-2") return n >= 1 && n <= 2;
-              return n >= 3;
-            },
-          },
         ]}
         columns={[
           {
@@ -273,9 +257,7 @@ export function FarmersPage() {
             key: "status",
             header: "Status",
             cell: (r) => (
-              <StatusPill tone={statusTone[r.status]}>
-                {statusLabel[r.status]}
-              </StatusPill>
+              <StatusPill tone={statusTone[r.status]}>{r.status}</StatusPill>
             ),
           },
           {

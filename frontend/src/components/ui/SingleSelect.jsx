@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { ChevronDown, Search } from "lucide-react";
 
 export function SingleSelect({
@@ -11,6 +11,14 @@ export function SingleSelect({
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const ref = useRef(null);
+
+  useEffect(() => {
+    const h = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    window.addEventListener("mousedown", h);
+    return () => window.removeEventListener("mousedown", h);
+  }, []);
 
   const filtered = useMemo(
     () => options.filter((o) => o.toLowerCase().includes(q.toLowerCase())),

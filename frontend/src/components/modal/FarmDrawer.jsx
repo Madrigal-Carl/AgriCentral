@@ -55,7 +55,7 @@ export function FarmDrawer({ row, onClose }) {
           </Section>
 
           <Section icon={Scale} title="Crop Yield">
-            <div className="flex items-center gap-3 border border-border bg-muted-40 px-3 py-2">
+            <div className="flex items-center gap-3 border border-border bg-muted-30 px-3 py-2">
               <div className="grid h-8 w-8 place-items-center bg-accent-soft text-foreground">
                 <Scale className="h-4 w-4" />
               </div>
@@ -80,7 +80,7 @@ export function FarmDrawer({ row, onClose }) {
                 {row.crops.map((c) => (
                   <li
                     key={c.crop}
-                    className="flex items-center justify-between border border-border bg-muted-40 px-3 py-2 text-sm"
+                    className="flex items-center justify-between border border-border bg-muted-30 px-3 py-2 text-sm"
                   >
                     <span className="font-medium text-foreground">
                       {c.crop}
