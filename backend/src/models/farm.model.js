@@ -17,7 +17,7 @@ const farmSchema = new mongoose.Schema(
         assignedFarmers: [
             {
                 type: mongoose.Schema.Types.ObjectId,
-                ref: "User",
+                ref: "Farmer",
             },
         ],
         latitude: {

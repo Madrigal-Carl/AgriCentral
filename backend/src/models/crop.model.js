@@ -17,7 +17,7 @@ const cropSchema = new mongoose.Schema(
         },
         assignedFarmer: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
+            ref: "Farmer",
             required: true,
         },
         status: {
