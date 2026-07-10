@@ -7,10 +7,7 @@ import {
   TextInput,
 } from "@/components/ui";
 import { ModalShell } from "./ModalShell";
-import {
-  EQUIPMENT_CONDITION_OPTIONS,
-  EQUIPMENT_STATUS_OPTIONS,
-} from "@/constants/data";
+import { EQUIPMENT_CONDITION_OPTIONS, STATUS_OPTIONS } from "@/constants/data";
 
 export function ManagerEquipmentModal({
   mode,

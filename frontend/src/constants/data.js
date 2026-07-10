@@ -148,7 +148,7 @@ export const LIVESTOCKS = [
         weight: 480,
         farmer: "Lina Okoro",
         health: "healthy",
-        status: "active",
+        status: "assigned",
         acquisitionDate: "2022-05-01",
         history: [
             { farmer: "Lina Okoro", date: "2022-05-01" },
@@ -165,7 +165,7 @@ export const LIVESTOCKS = [
         weight: 52,
         farmer: "Samuel Mwangi",
         health: "pregnant",
-        status: "active",
+        status: "assigned",
         acquisitionDate: "2023-02-10",
         history: [
             { farmer: "Joseph Kamau", date: "2023-02-10" },
@@ -183,7 +183,7 @@ export const LIVESTOCKS = [
         weight: 64,
         farmer: "Aisha Bello",
         health: "sick",
-        status: "quarantine",
+        status: "assigned",
         acquisitionDate: "2023-01-15",
         history: [{ farmer: "Aisha Bello", date: "2023-01-15" }],
     },
@@ -198,7 +198,7 @@ export const LIVESTOCKS = [
         weight: 420,
         farmer: "Chidi Okafor",
         health: "deceased",
-        status: "active",
+        status: "available",
         acquisitionDate: "2021-08-20",
         history: [
             { farmer: "Grace Mensah", date: "2021-08-20" },
@@ -559,7 +559,60 @@ export const EQUIPMENT_CONDITION_OPTIONS = [
     { value: "damaged", label: "Damaged" },
 ];
 
-export const EQUIPMENT_STATUS_OPTIONS = [
+export const STATUS_OPTIONS = [
     { value: "assigned", label: "Assigned" },
     { value: "available", label: "Available" },
+];
+
+export const healthTone = {
+    healthy: "success",
+    pregnant: "info",
+    sick: "warning",
+    deceased: "danger",
+};
+
+export const LIVESTOCK_HEALTH_OPTIONS = [
+    { value: "healthy", label: "Healthy" },
+    { value: "pregnant", label: "Pregnant" },
+    { value: "sick", label: "Sick" },
+    { value: "deceased", label: "Deceased" },
+];
+
+export const LIVESTOCK_CATALOG = [
+    { id: "LS-101", animal: "Cow", breed: "Friesian", gender: "female" },
+    { id: "LS-102", animal: "Cow", breed: "Jersey", gender: "female" },
+    { id: "LS-103", animal: "Cow", breed: "Angus", gender: "male" },
+    { id: "LS-104", animal: "Goat", breed: "Boer", gender: "male" },
+    { id: "LS-105", animal: "Goat", breed: "Nubian", gender: "female" },
+    { id: "LS-106", animal: "Sheep", breed: "Merino", gender: "female" },
+    { id: "LS-107", animal: "Sheep", breed: "Dorper", gender: "male" },
+    { id: "LS-108", animal: "Pig", breed: "Yorkshire", gender: "female" },
+    { id: "LS-109", animal: "Chicken", breed: "Leghorn", gender: "female" },
+    {
+        id: "LS-110",
+        animal: "Chicken",
+        breed: "Rhode Island Red",
+        gender: "male",
+    },
+];
+
+export const LIVESTOCK_LIST = [
+    "Cow - Friesian (Female) [LS-101]",
+    "Cow - Jersey (Female) [LS-102]",
+    "Cow - Angus (Male) [LS-103]",
+    "Goat - Boer (Male) [LS-104]",
+    "Goat - Nubian (Female) [LS-105]",
+    "Sheep - Merino (Female) [LS-106]",
+    "Sheep - Dorper (Male) [LS-107]",
+    "Pig - Yorkshire (Female) [LS-108]",
+    "Chicken - Leghorn (Female) [LS-109]",
+    "Chicken - Rhode Island Red (Male) [LS-110]",
+];
+
+export const ANIMAL_OPTIONS = [
+    { value: "Cow", label: "Cow" },
+    { value: "Goat", label: "Goat" },
+    { value: "Sheep", label: "Sheep" },
+    { value: "Pig", label: "Pig" },
+    { value: "Chicken", label: "Chicken" },
 ];

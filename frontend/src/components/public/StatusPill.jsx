@@ -5,8 +5,6 @@ export function StatusPill({ tone = "neutral", children }) {
     danger: "bg-[#ffecec] text-foreground border-danger",
     neutral: "bg-muted text-foreground border-border",
     info: "bg-[#e8f1ff] text-foreground border-[#3b82f6]",
-    assigned: "bg-[#e8f1ff] text-foreground border-[#3b82f6]",
-    available: "bg-muted text-foreground border-border",
   };
   return (
     <span

@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo, useEffect } from "react";
-import { ChevronDown, Search } from "lucide-react";
+import { ChevronDown, Search, Plus } from "lucide-react";
 
 export function SingleSelect({
   value,
@@ -7,6 +7,7 @@ export function SingleSelect({
   options,
   placeholder,
   searchPlaceholder,
+  allowCreate = false,
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -25,10 +26,24 @@ export function SingleSelect({
     [q, options],
   );
 
+  const trimmed = q.trim();
+  const exactMatch = useMemo(
+    () => options.some((o) => o.toLowerCase() === trimmed.toLowerCase()),
+    [options, trimmed],
+  );
+  // Only offer "create" once search has genuinely turned up nothing.
+  const canCreate =
+    allowCreate && trimmed.length > 0 && filtered.length === 0 && !exactMatch;
+
   const select = (o) => {
     onChange(o);
     setOpen(false);
     setQ("");
+  };
+
+  const handleCreate = () => {
+    if (!canCreate) return;
+    select(trimmed);
   };
 
   return (
@@ -53,12 +68,18 @@ export function SingleSelect({
               autoFocus
               value={q}
               onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && canCreate) {
+                  e.preventDefault();
+                  handleCreate();
+                }
+              }}
               placeholder={searchPlaceholder}
               className="w-full bg-surface py-2.5 pl-9 pr-3 text-sm outline-none"
             />
           </div>
           <ul className="max-h-56 overflow-auto">
-            {filtered.length === 0 ? (
+            {filtered.length === 0 && !canCreate ? (
               <li className="px-3 py-3 text-sm text-secondary">No results.</li>
             ) : (
               filtered.map((o) => {
@@ -78,6 +99,18 @@ export function SingleSelect({
                   </li>
                 );
               })
+            )}
+            {canCreate && (
+              <li className="border-t border-border">
+                <button
+                  type="button"
+                  onClick={handleCreate}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-semibold text-accent hover:bg-muted"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add &ldquo;{trimmed}&rdquo;
+                </button>
+              </li>
             )}
           </ul>
         </div>

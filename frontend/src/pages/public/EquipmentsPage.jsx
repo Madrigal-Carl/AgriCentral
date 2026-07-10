@@ -29,7 +29,7 @@ import {
   statusTone,
   EQUIPMENT_CATALOG,
   EQUIPMENT_CONDITION_OPTIONS,
-  EQUIPMENT_STATUS_OPTIONS,
+  STATUS_OPTIONS,
 } from "@/constants/data";
 import { usePermissions } from "@/constants/permissions";
 import { Button, IconButton } from "@/components/ui";
@@ -60,13 +60,11 @@ const FARMERS = [
 export function EquipmentsPage() {
   const can = usePermissions("equipments");
   const { role } = useAuth();
-  const currentRole = role;
 
   // Coordinators and admins manage equipment directly (id/name/condition/status)
   // via a simpler add/edit modal and plain View/Edit/Delete actions. FAR keeps the
   // assign/update-status/return workflow.
-  const isManagerRole =
-    currentRole === "coordinator" || currentRole === "admin";
+  const isManagerRole = role === "coordinator" || role === "admin";
 
   const [rows, setRows] = useState(EQUIPMENTS);
   const [catalog, setCatalog] = useState(EQUIPMENT_CATALOG);
@@ -247,7 +245,7 @@ export function EquipmentsPage() {
           {
             key: "status",
             label: "Status",
-            options: EQUIPMENT_STATUS_OPTIONS,
+            options: STATUS_OPTIONS,
             predicate: (r, v) => r.status === v,
           },
         ]}
@@ -360,6 +358,10 @@ export function EquipmentsPage() {
           row={statusRow}
           onClose={() => setStatusRow(null)}
           onSave={handleStatusUpdate}
+          entityLabel="Equipment"
+          fieldLabel="Condition"
+          statusField="condition"
+          options={EQUIPMENT_CONDITION_OPTIONS}
         />
       )}
       {returnRow && can.delete && !isManagerRole && (
