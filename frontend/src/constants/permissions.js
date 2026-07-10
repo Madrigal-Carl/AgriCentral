@@ -26,9 +26,22 @@ const PERMISSIONS = {
         coordinator: { view: true, add: true, edit: true, delete: true },
         admin: { view: true, add: true, edit: true, delete: true },
     },
+    requests: {
+        far: { view: true, add: true, edit: true, delete: true, review: false },
+        admin: { view: true, add: false, edit: false, delete: false, review: false },
+        governor: { view: true, add: false, edit: false, delete: false, review: true },
+        head: { view: true, add: false, edit: false, delete: false, review: true },
+        coordinator: { view: true, add: false, edit: false, delete: false, review: true },
+    },
 };
 
-const DEFAULT_CAPABILITIES = { view: true, add: false, edit: false, delete: false };
+const DEFAULT_CAPABILITIES = {
+    view: true,
+    add: false,
+    edit: false,
+    delete: false,
+    review: true,
+};
 
 function normalizeRole(role) {
     return role ? String(role).toLowerCase() : "";

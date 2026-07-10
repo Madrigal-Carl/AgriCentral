@@ -486,6 +486,10 @@ export const statusTone = {
     inactive: "neutral",
     assigned: "success",
     available: "neutral",
+    pending: "warning",
+    approved: "info",
+    fulfilled: "success",
+    rejected: "danger",
 };
 
 export const GENDER_OPTIONS = [
@@ -615,4 +619,42 @@ export const ANIMAL_OPTIONS = [
     { value: "Sheep", label: "Sheep" },
     { value: "Pig", label: "Pig" },
     { value: "Chicken", label: "Chicken" },
+];
+
+export const typeLabel = { equipment: "Equipment", livestock: "Livestock" };
+
+export const typeTone = { equipment: "info", livestock: "warning" };
+
+export const sevTone = {
+    low: "neutral",
+    medium: "info",
+    high: "warning",
+    critical: "danger",
+};
+
+export const sevLabel = {
+    low: "Low",
+    medium: "Medium",
+    high: "High",
+    critical: "Critical",
+};
+
+
+export const SEVERITY_OPTIONS = [
+    { value: "low", label: "Low" },
+    { value: "medium", label: "Medium" },
+    { value: "high", label: "High" },
+    { value: "critical", label: "Critical" },
+];
+
+export const REQUEST_STATUS_OPTIONS = [
+    { value: "pending", label: "Pending" },
+    { value: "approved", label: "Approved" },
+    { value: "fulfilled", label: "Fulfilled" },
+    { value: "rejected", label: "Rejected" },
+];
+
+export const TYPE_OPTIONS = [
+    { value: "equipment", label: "Equipment" },
+    { value: "livestock", label: "Livestock" },
 ];
