@@ -13,6 +13,10 @@ const POSITIONS = [
 ];
 
 export const createFarmerSchema = z.object({
+    userId: z
+        .string()
+        .regex(/^[0-9a-fA-F]{24}$/, "Invalid user id")
+        .optional(),
     fullName: z
         .string({ required_error: "Full name is required" })
         .trim()
@@ -40,6 +44,5 @@ export const createFarmerSchema = z.object({
         .trim()
         .min(2, "Address must be at least 2 characters"),
     position: z.enum(POSITIONS).optional().default("member"),
-    // URLs returned by Cloudinary after the frontend uploads directly.
     attachments: z.array(z.string().trim().url("Invalid attachment URL")).optional().default([]),
 });

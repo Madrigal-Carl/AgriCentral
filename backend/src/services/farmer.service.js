@@ -1,15 +1,19 @@
 import Farmer from "../models/farmer.model.js";
 
-export const createFarmer = async (data, userId) => {
-    const existing = await Farmer.findOne({ emailAddress: data.emailAddress });
+export const createFarmer = async (data, authenticatedUserId) => {
+    const { userId, ...farmerData } = data;
+
+    const existing = await Farmer.findOne({ emailAddress: farmerData.emailAddress });
 
     if (existing) {
         throw new Error("A farmer with this email already exists");
     }
 
+    const resolvedUserId = userId || authenticatedUserId;
+
     const farmer = await Farmer.create({
-        ...data,
-        user: userId || undefined,
+        ...farmerData,
+        user: resolvedUserId || undefined,
     });
 
     return farmer;
