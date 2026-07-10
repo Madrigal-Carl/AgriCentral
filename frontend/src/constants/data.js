@@ -669,3 +669,11 @@ export const REPORT_TYPE_OPTIONS = [
     { value: "equipment", label: "Equipment" },
     { value: "livestock", label: "Livestock" },
 ];
+
+export const positionTone = {
+    President: "danger",
+    "Vice President": "warning",
+    Secretary: "info",
+    Treasurer: "success",
+    Member: "neutral",
+};
