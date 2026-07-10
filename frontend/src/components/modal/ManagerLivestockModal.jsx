@@ -1,11 +1,5 @@
 import { useState } from "react";
-import {
-  Button,
-  Field,
-  FullSelect,
-  TextInput,
-  SingleSelect,
-} from "@/components/ui";
+import { Button, Field, FullSelect, TextInput } from "@/components/ui";
 import { ModalShell } from "./ModalShell";
 import {
   ANIMAL_OPTIONS,
@@ -56,23 +50,17 @@ export function ManagerLivestockModal({
           />
         </Field>
         <Field label="Animal Type">
-          <SingleSelect
+          <TextInput
             value={form.animal}
             onChange={(v) => set("animal", v)}
-            options={animalCatalog}
-            placeholder="Select animal type…"
-            searchPlaceholder="Search or add animal type…"
-            allowCreate
+            placeholder="e.g. Cow, Goat, Sheep"
           />
         </Field>
-        <Field label="Breed">
-          <SingleSelect
+        <Field label="Breed Type">
+          <TextInput
             value={form.breed}
             onChange={(v) => set("breed", v)}
-            options={breedCatalog}
-            placeholder="Select breed…"
-            searchPlaceholder="Search or add breed…"
-            allowCreate
+            placeholder="e.g. Hereford, Angus"
           />
         </Field>
         <Field label="Gender">

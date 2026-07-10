@@ -1,11 +1,5 @@
 import { useState } from "react";
-import {
-  Button,
-  Field,
-  FullSelect,
-  SingleSelect,
-  TextInput,
-} from "@/components/ui";
+import { Button, Field, FullSelect, TextInput } from "@/components/ui";
 import { ModalShell } from "./ModalShell";
 import { EQUIPMENT_CONDITION_OPTIONS, STATUS_OPTIONS } from "@/constants/data";
 
@@ -50,13 +44,10 @@ export function ManagerEquipmentModal({
           />
         </Field>
         <Field label="Equipment Name">
-          <SingleSelect
+          <TextInput
             value={form.name}
             onChange={(v) => set("name", v)}
-            options={catalog}
-            placeholder="Select equipment…"
-            searchPlaceholder="Search or add equipment…"
-            allowCreate
+            placeholder="Tractor, Plough, Harvester…"
           />
         </Field>
         <Field label="Condition">
