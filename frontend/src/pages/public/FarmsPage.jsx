@@ -101,6 +101,28 @@ export function FarmsPage() {
     return { added, removed };
   };
 
+  const setCropStatus = (crop, status) => {
+    set(
+      "crops",
+      form.crops.map((c) =>
+        c.crop === crop
+          ? {
+              ...c,
+              status,
+              yieldKg: status === "harvested" ? (c.yieldKg ?? "") : undefined,
+            }
+          : c,
+      ),
+    );
+  };
+
+  const setCropYield = (crop, yieldKg) => {
+    set(
+      "crops",
+      form.crops.map((c) => (c.crop === crop ? { ...c, yieldKg } : c)),
+    );
+  };
+
   const handleSave = (data) => {
     if (!can.add && !can.edit) return;
     setRows((r) => {
@@ -312,14 +334,6 @@ function FarmModal({ mode, initial, onClose, onSave }) {
                 placeholder="FM-001"
               />
             </Field>
-            <Field label="Crop Yield (kg)" full>
-              <TextInput
-                type="number"
-                value={form.yieldKg}
-                onChange={(v) => set("yieldKg", v)}
-                placeholder="1250"
-              />
-            </Field>
             <Field label="Address" full>
               <TextInput
                 value={form.address}
@@ -353,13 +367,13 @@ function FarmModal({ mode, initial, onClose, onSave }) {
               />
             </Field>
             {form.crops.length > 0 && (
-              <Field label="Crop Status" full>
-                <div className="space-y-2 border border-border bg-muted/30 p-3">
-                  {form.crops.map((c) => (
-                    <div
-                      key={c.crop}
-                      className="flex items-center justify-between gap-3 bg-surface border border-border px-3 py-2"
-                    >
+              <div className="sm:col-span-2 space-y-2">
+                {form.crops.map((c) => (
+                  <div
+                    key={c.crop}
+                    className="flex flex-col gap-2 bg-surface border border-border px-3 py-2"
+                  >
+                    <div className="flex items-center justify-between gap-3 w-full">
                       <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                         <Wheat className="h-4 w-4 text-accent" />
                         {c.crop}
@@ -370,9 +384,17 @@ function FarmModal({ mode, initial, onClose, onSave }) {
                         options={CROP_STATUS_OPTIONS}
                       />
                     </div>
-                  ))}
-                </div>
-              </Field>
+                    {c.status === "harvested" && (
+                      <TextInput
+                        type="number"
+                        value={c.yieldKg ?? ""}
+                        onChange={(v) => setCropYield(c.crop, v)}
+                        placeholder="Yield (kg)"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </form>
