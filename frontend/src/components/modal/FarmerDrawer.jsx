@@ -10,7 +10,7 @@ import {
   Calendar,
   FileText,
 } from "lucide-react";
-import { fmtDate } from "@/utils/format";
+import { fmtDate, fmtBytes } from "@/utils/format";
 
 export function FarmerDrawer({ row, onClose }) {
   return (
@@ -118,7 +118,7 @@ export function FarmerDrawer({ row, onClose }) {
                         {f.name}
                       </a>
                       <div className="text-xs text-secondary">
-                        {formatBytes(f.size)}
+                        {fmtBytes(f.size)}
                       </div>
                     </div>
                     <a

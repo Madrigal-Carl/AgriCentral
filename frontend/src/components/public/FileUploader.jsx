@@ -1,9 +1,9 @@
 import { fmtBytes } from "@/utils/format";
-import { Upload } from "lucide-react";
+import { Upload, FileText, Check, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 export function FileUploader({ value = [], onChange }) {
-  const files = value;
+  const files = Array.isArray(value) ? value : [];
   const filesRef = useRef(files);
 
   useEffect(() => {

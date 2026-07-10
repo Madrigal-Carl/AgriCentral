@@ -33,6 +33,14 @@ const PERMISSIONS = {
         head: { view: true, add: false, edit: false, delete: false, review: true },
         coordinator: { view: true, add: false, edit: false, delete: false, review: true },
     },
+    reports: {
+        far: { view: true, add: true, edit: true, delete: true, review: false },
+        aew: { view: true, add: true, edit: true, delete: true, review: true },
+        coordinator: { view: true, add: false, edit: false, delete: false, review: true },
+        head: { view: true, add: false, edit: false, delete: false, review: true },
+        governor: { view: true, add: false, edit: false, delete: false, review: true },
+        admin: { view: true, add: false, edit: false, delete: false, review: false },
+    },
 };
 
 const DEFAULT_CAPABILITIES = {
@@ -43,15 +51,10 @@ const DEFAULT_CAPABILITIES = {
     review: true,
 };
 
-function normalizeRole(role) {
-    return role ? String(role).toLowerCase() : "";
-}
-
 export function getCapabilities(resource, role) {
-    const roleKey = normalizeRole(role);
     const resourceConfig = PERMISSIONS[resource];
     if (!resourceConfig) return DEFAULT_CAPABILITIES;
-    return resourceConfig[roleKey] ?? DEFAULT_CAPABILITIES;
+    return resourceConfig[role] ?? DEFAULT_CAPABILITIES;
 }
 
 export function usePermissions(resource) {
