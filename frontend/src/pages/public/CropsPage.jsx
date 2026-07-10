@@ -254,7 +254,7 @@ function CropModal({ mode, initial, onClose, onSave }) {
           </div>
         </form>
 
-        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-muted/40 px-6 py-4">
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-muted-40 px-6 py-4">
           <Button variant="outline" onClick={onClose} type="button">
             Cancel
           </Button>
@@ -362,7 +362,7 @@ function SearchSelect({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between gap-2 border border-border bg-surface px-3 py-2.5 text-left text-sm hover:border-foreground/30"
+        className="flex w-full items-center justify-between gap-2 border border-border bg-surface px-3 py-2.5 text-left text-sm hover:border-foreground-40"
       >
         <span className={value ? "text-foreground" : "text-secondary"}>
           {value || placeholder}

@@ -207,7 +207,7 @@ function AssociationModal({ mode, initial, onClose, onSave }) {
           )}
         </form>
 
-        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-muted/40 px-6 py-4">
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-muted-40 px-6 py-4">
           <Button variant="outline" onClick={onClose} type="button">
             Cancel
           </Button>
@@ -297,7 +297,7 @@ function AssociationDrawer({ row, onClose }) {
 
         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
           <Section icon={Building2} title="Association">
-            <div className="flex items-center gap-3 border border-border bg-muted/40 p-3">
+            <div className="flex items-center gap-3 border border-border bg-muted-40 p-3">
               <div className="grid h-10 w-10 shrink-0 place-items-center bg-accent-soft rounded-full text-accent">
                 <Building2 className="h-5 w-5" />
               </div>

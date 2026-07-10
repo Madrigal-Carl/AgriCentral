@@ -461,7 +461,7 @@ function ModalShell({
         </div>
         <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
         {footer && (
-          <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-muted/40 px-6 py-4">
+          <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-muted-40 px-6 py-4">
             {footer}
           </div>
         )}
@@ -764,7 +764,7 @@ function TextInput({ value, onChange, type = "text", ...rest }) {
       type={type}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-secondary focus:border-foreground disabled:cursor-not-allowed disabled:bg-muted/50 disabled:text-secondary"
+      className="w-full border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-secondary focus:border-foreground disabled:cursor-not-allowed disabled:bg-muted-40 disabled:text-secondary"
       {...rest}
     />
   );
@@ -817,7 +817,7 @@ function SearchableSelect({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between border border-border bg-surface px-3 py-2.5 text-left text-sm hover:border-foreground/30"
+        className="flex w-full items-center justify-between border border-border bg-surface px-3 py-2.5 text-left text-sm hover:border-foreground-40"
       >
         <span className={value ? "text-foreground" : "text-secondary"}>
           {value || placeholder}
@@ -942,7 +942,7 @@ function EquipmentDrawer({ row, onClose }) {
 
           <Section icon={User} title="Assigned Farmer">
             {row.farmer ? (
-              <div className="flex items-center gap-3 border border-border bg-muted/40 p-3">
+              <div className="flex items-center gap-3 border border-border bg-muted-40 p-3">
                 <div className="grid h-10 w-10 shrink-0 place-items-center bg-accent-soft rounded-full font-display text-sm text-accent">
                   {row.farmer[0]}
                 </div>

@@ -148,7 +148,7 @@ export function DataTable({
               paged.map((row, i) => (
                 <tr
                   key={row.id ?? i}
-                  className="border-t border-border transition-colors hover:bg-muted/60"
+                  className="border-t border-border transition-colors hover:bg-muted-40"
                 >
                   {columns.map((c) => (
                     <td

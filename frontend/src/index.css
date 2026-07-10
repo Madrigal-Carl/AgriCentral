@@ -18,13 +18,14 @@
     --primary-foreground: #ffffff;
     --secondary: #5b6270;
     --secondary-foreground: #ffffff;
-    --muted: #f1f3f5;
+    --muted-40: rgba(241, 243, 245, 0.4);
+    --muted-40: #f1f3f5;
     --muted-foreground: #5b6270;
     --accent: #00a86b;
     --accent-foreground: #ffffff;
     --accent-soft: #d3f3e3;
-    --destructive: #e53935;
-    --destructive-foreground: #ffffff;
+    --danger: #e53935;
+    --danger-foreground: #ffffff;
     --border: #e4e7eb;
     --input: #e4e7eb;
     --ring: #0e1016;

@@ -26,6 +26,7 @@ export default {
         background: "var(--background)",
         foreground: "var(--foreground)",
         "foreground-40": "var(--foreground-40)",
+        "muted-40": "var(--muted-40)",
         card: {
           DEFAULT: "var(--card)",
           foreground: "var(--card-foreground)",

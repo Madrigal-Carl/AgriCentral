@@ -398,7 +398,7 @@ function FarmModal({ mode, initial, onClose, onSave }) {
           </div>
         </form>
 
-        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-muted/40 px-6 py-4">
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-muted-40 px-6 py-4">
           <Button variant="outline" onClick={onClose} type="button">
             Cancel
           </Button>
@@ -524,7 +524,7 @@ function MultiSelect({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between gap-2 border border-border bg-surface px-3 py-2.5 text-left text-sm hover:border-foreground/30"
+        className="flex w-full items-center justify-between gap-2 border border-border bg-surface px-3 py-2.5 text-left text-sm hover:border-foreground-40"
       >
         <div className="flex flex-1 flex-wrap items-center gap-1.5">
           {values.length === 0 ? (
@@ -671,7 +671,7 @@ function FarmDrawer({ row, onClose }) {
           </Section>
 
           <Section icon={Scale} title="Crop Yield">
-            <div className="flex items-center gap-3 border border-border bg-muted/40 px-3 py-2">
+            <div className="flex items-center gap-3 border border-border bg-muted-40 px-3 py-2">
               <div className="grid h-8 w-8 place-items-center bg-accent-soft text-foreground">
                 <Scale className="h-4 w-4" />
               </div>
@@ -696,7 +696,7 @@ function FarmDrawer({ row, onClose }) {
                 {row.crops.map((c) => (
                   <li
                     key={c.crop}
-                    className="flex items-center justify-between border border-border bg-muted/40 px-3 py-2 text-sm"
+                    className="flex items-center justify-between border border-border bg-muted-40 px-3 py-2 text-sm"
                   >
                     <span className="font-medium text-foreground">
                       {c.crop}
@@ -751,7 +751,7 @@ function ItemList({ items, empty }) {
       {items.map((i) => (
         <li
           key={i}
-          className="flex items-center justify-between border border-border bg-muted/40 px-3 py-2 text-sm font-medium text-foreground"
+          className="flex items-center justify-between border border-border bg-muted-40 px-3 py-2 text-sm font-medium text-foreground"
         >
           <span className="truncate">{i}</span>
         </li>
@@ -1029,7 +1029,7 @@ function LocationPicker({ value, onChange }) {
   };
 
   return (
-    <div className="space-y-3 border border-border bg-muted/30 p-3">
+    <div className="space-y-3 border border-border p-3">
       <div className="flex items-start gap-2 text-xs text-secondary">
         <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" />
         <span>

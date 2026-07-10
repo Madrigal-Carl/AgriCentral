@@ -16,10 +16,10 @@ export function StatCard({ label, value, icon: Icon, trend, trendDir = "up" }) {
       {trend && (
         <div className="mt-3 flex items-center gap-1.5 text-xs">
           <TrendIcon
-            className={`h-3.5 w-3.5 ${trendDir === "up" ? "text-accent" : "text-destructive"}`}
+            className={`h-3.5 w-3.5 ${trendDir === "up" ? "text-accent" : "text-danger"}`}
           />
           <span
-            className={`font-semibold ${trendDir === "up" ? "text-foreground" : "text-destructive"}`}
+            className={`font-semibold ${trendDir === "up" ? "text-foreground" : "text-danger"}`}
           >
             {trend}
           </span>

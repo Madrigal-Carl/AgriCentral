@@ -316,7 +316,7 @@ function ImageUpload({ value, onChange }) {
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="flex w-full flex-col items-center justify-center gap-2 border border-dashed border-border bg-muted/40 px-3 py-8 text-secondary hover:border-foreground hover:text-foreground"
+          className="flex w-full flex-col items-center justify-center gap-2 border border-dashed border-border bg-muted-40 px-3 py-8 text-secondary hover:border-foreground hover:text-foreground"
         >
           <ImagePlus className="h-5 w-5" />
           <span className="text-xs">Click to upload an image</span>
@@ -430,7 +430,7 @@ function ReportModal({ mode, initial, onClose, onSave }) {
           </div>
         </form>
 
-        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-muted/40 px-6 py-4">
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-muted-40 px-6 py-4">
           <Button variant="outline" onClick={onClose} type="button">
             Cancel
           </Button>
@@ -625,7 +625,7 @@ function ReportDrawer({ row, onClose }) {
 
           <Section icon={User} title="Reported By">
             {row.reportedBy ? (
-              <div className="flex items-center gap-3 border border-border bg-muted/40 p-3">
+              <div className="flex items-center gap-3 border border-border bg-muted-40 p-3">
                 <div className="grid h-10 w-10 shrink-0 place-items-center bg-accent-soft rounded-full font-display text-sm text-accent">
                   {row.reportedBy[0]}
                 </div>

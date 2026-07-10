@@ -18,7 +18,7 @@ export function Select({ value, onChange, options, placeholder = "Select" }) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between gap-2 border border-border bg-surface px-3 py-2.5 text-left text-sm text-foreground hover:border-foreground/30"
+        className="flex w-full items-center justify-between gap-2 border border-border bg-surface px-3 py-2.5 text-left text-sm text-foreground hover:border-foreground-40"
       >
         <span className={current ? "" : "text-secondary"}>
           {current ? current.label : placeholder}

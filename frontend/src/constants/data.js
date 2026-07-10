@@ -479,3 +479,37 @@ export const ASSOCIATIONS = [
         ],
     },
 ];
+
+
+export const statusTone = {
+    active: "success",
+    inactive: "neutral",
+    pending: "warning",
+};
+
+export const statusLabel = {
+    active: "Active",
+    inactive: "Inactive",
+    pending: "Pending",
+};
+
+export const GENDER_OPTIONS = [
+    { value: "male", label: "Male" },
+    { value: "female", label: "Female" },
+];
+
+export const ASSOCIATION_OPTIONS = [
+    "Boac, Marinduque",
+    "Gasan, Marinduque",
+    "Buenavista, Marinduque",
+    "Mogpog, Marinduque",
+    "Santa Cruz, Marinduque",
+    "Torrijos, Marinduque",
+];
+
+export const POSITION_OPTIONS = [
+    { value: "president", label: "President" },
+    { value: "vice_president", label: "Vice President" },
+    { value: "secretary", label: "Secretary" },
+    { value: "member", label: "Member" },
+];

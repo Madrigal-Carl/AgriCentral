@@ -472,7 +472,7 @@ function UserModal({ mode, initial, onClose, onSave }) {
           </div>
         </form>
 
-        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-muted/40 px-6 py-4">
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-muted-40 px-6 py-4">
           <Button variant="outline" onClick={onClose} type="button">
             Cancel
           </Button>
@@ -658,7 +658,7 @@ function TextInput({ value, onChange, type = "text", ...rest }) {
       type={type}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-secondary focus:border-foreground disabled:cursor-not-allowed disabled:bg-muted/50 disabled:text-secondary"
+      className="w-full border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-secondary focus:border-foreground disabled:cursor-not-allowed disabled:bg-muted-40 disabled:text-secondary"
       {...rest}
     />
   );
@@ -737,7 +737,7 @@ function UserDrawer({ row, onClose }) {
           </Section>
 
           <Section icon={ShieldCheck} title="Security">
-            <div className="flex items-center justify-between gap-3 border border-border bg-muted/40 p-3">
+            <div className="flex items-center justify-between gap-3 border border-border bg-muted-40 p-3">
               <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <KeyRound className="h-4 w-4 text-secondary" />
                 Password

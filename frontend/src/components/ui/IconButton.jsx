@@ -1,7 +1,7 @@
 export function IconButton({ icon: Icon, label, tone = "default", onClick }) {
   const tones = {
     default: "text-secondary hover:bg-muted hover:text-foreground",
-    danger: "text-secondary hover:bg-[#ffecec] hover:text-destructive",
+    danger: "text-secondary hover:bg-[#ffecec] hover:text-danger",
   };
   return (
     <button
