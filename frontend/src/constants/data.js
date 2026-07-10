@@ -513,3 +513,19 @@ export const POSITION_OPTIONS = [
     { value: "secretary", label: "Secretary" },
     { value: "member", label: "Member" },
 ];
+
+export const FARMER_OPTIONS = [
+    "FR-001 · Lina Okoro",
+    "FR-002 · Samuel Mwangi",
+    "FR-003 · Aisha Bello",
+    "FR-004 · Chidi Okafor",
+    "FR-005 · Joseph Kamau",
+    "FR-006 · Mariam Diallo",
+];
+
+export const CROP_STATUS_OPTIONS = [
+    { value: "planted", label: "Planted" },
+    { value: "growing", label: "Growing" },
+    { value: "harvested", label: "Harvested" },
+    { value: "fallow", label: "Fallow" },
+];

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import { ChevronDown, Search } from "lucide-react";
 
 export function SingleSelect({
@@ -10,6 +10,7 @@ export function SingleSelect({
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
+  const ref = useRef(null);
 
   const filtered = useMemo(
     () => options.filter((o) => o.toLowerCase().includes(q.toLowerCase())),
@@ -23,7 +24,7 @@ export function SingleSelect({
   };
 
   return (
-    <div className="relative w-full">
+    <div ref={ref} className="relative w-full">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}

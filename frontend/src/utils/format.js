@@ -14,3 +14,8 @@ export function fmtBytes(b) {
     if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
     return `${(b / 1024 / 1024).toFixed(2)} MB`;
 }
+
+export function fmtCoord(n, pos, neg) {
+    const dir = n >= 0 ? pos : neg;
+    return `${Math.abs(n).toFixed(4)}° ${dir}`;
+}
