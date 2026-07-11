@@ -1,6 +1,84 @@
 import { fmtBytes } from "@/utils/format";
-import { Upload, FileText, Check, X } from "lucide-react";
+import { Upload, FileText, Eye, X } from "lucide-react";
 import { useEffect, useRef } from "react";
+
+function fileNameFromUrl(url) {
+  try {
+    const clean = url.split("?")[0];
+    return decodeURIComponent(clean.split("/").pop() || url);
+  } catch {
+    return url;
+  }
+}
+
+function FileRow({ name, url, onView, onRemove }) {
+  return (
+    <li className="flex items-center gap-3 border border-border bg-surface px-3 py-2.5">
+      <div className="grid h-9 w-9 shrink-0 place-items-center bg-muted text-secondary">
+        <FileText className="h-4 w-4" />
+      </div>
+      <div className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+        {name}
+      </div>
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+        className="grid h-7 w-7 shrink-0 place-items-center text-secondary hover:bg-muted hover:text-foreground"
+        aria-label="View file"
+      >
+        <Eye className="h-3.5 w-3.5" />
+      </a>
+      <button
+        type="button"
+        onClick={onRemove}
+        className="grid h-7 w-7 shrink-0 place-items-center text-secondary hover:bg-muted hover:text-foreground"
+        aria-label="Remove file"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </li>
+  );
+}
+
+function UploadingRow({ name, size, progress, onRemove }) {
+  return (
+    <li className="flex items-center gap-3 border border-border bg-surface px-3 py-2.5">
+      <div className="grid h-9 w-9 shrink-0 place-items-center bg-muted text-secondary">
+        <FileText className="h-4 w-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center justify-between gap-2">
+          <span className="truncate text-sm font-medium text-foreground">
+            {name}
+          </span>
+          <span className="shrink-0 text-xs text-secondary">
+            {fmtBytes(size)}
+          </span>
+        </div>
+        <div className="mt-1.5 flex items-center gap-2">
+          <div className="h-1.5 flex-1 bg-muted">
+            <div
+              className="h-full bg-accent transition-all"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <span className="w-10 text-right text-xs text-secondary">
+            {progress}%
+          </span>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onRemove}
+        className="grid h-7 w-7 shrink-0 place-items-center text-secondary hover:bg-muted hover:text-foreground"
+        aria-label="Remove file"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </li>
+  );
+}
 
 export function FileUploader({ value = [], onChange }) {
   const files = Array.isArray(value) ? value : [];
@@ -22,7 +100,8 @@ export function FileUploader({ value = [], onChange }) {
       let stillRunning = false;
       setFiles((prev) => {
         const next = prev.map((f) => {
-          if (f.id !== id || f.progress >= 100) return f;
+          if (typeof f === "string" || f.id !== id || f.progress >= 100)
+            return f;
           const inc = Math.floor(Math.random() * 18) + 7;
           const np = Math.min(100, f.progress + inc);
           if (np < 100) stillRunning = true;
@@ -44,6 +123,7 @@ export function FileUploader({ value = [], onChange }) {
     if (!picked.length) return;
     const mapped = picked.map((f, i) => ({
       id: `${Date.now()}-${i}-${f.name}`,
+      file: f,
       name: f.name,
       size: f.size,
       url: URL.createObjectURL(f),
@@ -55,8 +135,12 @@ export function FileUploader({ value = [], onChange }) {
     e.target.value = "";
   };
 
-  const remove = (id) => {
-    setFiles((prev) => prev.filter((f) => f.id !== id));
+  const remove = (idOrUrl) => {
+    setFiles((prev) =>
+      prev.filter((f) =>
+        typeof f === "string" ? f !== idOrUrl : f.id !== idOrUrl,
+      ),
+    );
   };
 
   return (
@@ -81,56 +165,37 @@ export function FileUploader({ value = [], onChange }) {
       />
       {files.length > 0 && (
         <ul className="space-y-2">
-          {files.map((f) => (
-            <li
-              key={f.id}
-              className="flex items-center gap-3 border border-border bg-surface px-3 py-2.5"
-            >
-              <div className="grid h-9 w-9 shrink-0 place-items-center bg-muted text-secondary">
-                <FileText className="h-4 w-4" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <a
-                    href={f.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="truncate text-sm font-medium text-foreground hover:underline"
-                  >
-                    {f.name}
-                  </a>
-                  <span className="shrink-0 text-xs text-secondary">
-                    {fmtBytes(f.size)}
-                  </span>
-                </div>
-                <div className="mt-1.5 flex items-center gap-2">
-                  <div className="h-1.5 flex-1 bg-muted">
-                    <div
-                      className={`h-full transition-all ${
-                        f.status === "done" ? "bg-success" : "bg-accent"
-                      }`}
-                      style={{ width: `${f.progress}%` }}
-                    />
-                  </div>
-                  <span className="w-10 text-right text-xs text-secondary">
-                    {f.status === "done" ? (
-                      <Check className="ml-auto h-3.5 w-3.5 text-success" />
-                    ) : (
-                      `${f.progress}%`
-                    )}
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => remove(f.id)}
-                className="grid h-7 w-7 shrink-0 place-items-center text-secondary hover:bg-muted hover:text-foreground"
-                aria-label="Remove file"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </li>
-          ))}
+          {files.map((f) => {
+            if (typeof f === "string") {
+              return (
+                <FileRow
+                  key={f}
+                  name={fileNameFromUrl(f)}
+                  url={f}
+                  onRemove={() => remove(f)}
+                />
+              );
+            }
+            if (f.status !== "done") {
+              return (
+                <UploadingRow
+                  key={f.id}
+                  name={f.name}
+                  size={f.size}
+                  progress={f.progress}
+                  onRemove={() => remove(f.id)}
+                />
+              );
+            }
+            return (
+              <FileRow
+                key={f.id}
+                name={f.name}
+                url={f.url}
+                onRemove={() => remove(f.id)}
+              />
+            );
+          })}
         </ul>
       )}
     </div>
