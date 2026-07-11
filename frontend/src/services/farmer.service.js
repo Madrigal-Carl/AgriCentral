@@ -5,6 +5,11 @@ export async function getFarmers(params) {
     return response.data;
 }
 
+export async function getFarmerByUserId(userId) {
+    const response = await api.get(`/farmers/${userId}`);
+    return response.data;
+}
+
 export async function createFarmer(data) {
     const response = await api.post("/farmers", data);
     return response.data;

@@ -21,14 +21,20 @@ export function SingleSelect({
     return () => window.removeEventListener("mousedown", h);
   }, []);
 
+  const selectedOption = useMemo(
+    () => options.find((o) => o.value === value),
+    [options, value],
+  );
+
   const filtered = useMemo(
-    () => options.filter((o) => o.toLowerCase().includes(q.toLowerCase())),
+    () =>
+      options.filter((o) => o.label.toLowerCase().includes(q.toLowerCase())),
     [q, options],
   );
 
   const trimmed = q.trim();
   const exactMatch = useMemo(
-    () => options.some((o) => o.toLowerCase() === trimmed.toLowerCase()),
+    () => options.some((o) => o.label.toLowerCase() === trimmed.toLowerCase()),
     [options, trimmed],
   );
   // Only offer "create" once search has genuinely turned up nothing.
@@ -36,14 +42,14 @@ export function SingleSelect({
     allowCreate && trimmed.length > 0 && filtered.length === 0 && !exactMatch;
 
   const select = (o) => {
-    onChange(o);
+    onChange(o.value);
     setOpen(false);
     setQ("");
   };
 
   const handleCreate = () => {
     if (!canCreate) return;
-    select(trimmed);
+    select({ value: trimmed, label: trimmed });
   };
 
   return (
@@ -53,8 +59,8 @@ export function SingleSelect({
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center justify-between gap-2 border border-border bg-surface px-3 py-2.5 text-left text-sm hover:border-foreground-40"
       >
-        <span className={value ? "text-foreground" : "text-secondary"}>
-          {value || placeholder}
+        <span className={selectedOption ? "text-foreground" : "text-secondary"}>
+          {selectedOption ? selectedOption.label : placeholder}
         </span>
         <ChevronDown
           className={`h-4 w-4 shrink-0 text-secondary transition-transform ${open ? "rotate-180" : ""}`}
@@ -83,9 +89,9 @@ export function SingleSelect({
               <li className="px-3 py-3 text-sm text-secondary">No results.</li>
             ) : (
               filtered.map((o) => {
-                const selected = o === value;
+                const selected = o.value === value;
                 return (
-                  <li key={o}>
+                  <li key={o.value}>
                     <button
                       type="button"
                       onClick={() => select(o)}
@@ -93,7 +99,7 @@ export function SingleSelect({
                         selected ? "bg-accent-soft font-semibold" : ""
                       }`}
                     >
-                      {o}
+                      {o.label}
                       {selected && <span className="h-1.5 w-1.5 bg-accent" />}
                     </button>
                   </li>

@@ -45,8 +45,7 @@ export function EquipmentModal({ nextId, catalog, onClose, onSave }) {
             onChange={setName}
             options={catalog}
             placeholder="Select equipment…"
-            searchPlaceholder="Search or add equipment…"
-            allowCreate
+            searchPlaceholder="Search equipment…"
           />
         </Field>
         <Field label="Condition">

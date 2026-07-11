@@ -40,8 +40,7 @@ export function LivestockModal({ initial, existingIds, onClose, onSave }) {
             onChange={(v) => set("catalogId", v)}
             options={available}
             placeholder="Select livestock…"
-            searchPlaceholder="Search or add livestock…"
-            allowCreate
+            searchPlaceholder="Search livestock…"
           />
         </Field>
         <Field label="Status (Health)" full>

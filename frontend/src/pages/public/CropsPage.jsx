@@ -1,86 +1,94 @@
-import { useState, useRef, useMemo, useEffect } from "react";
-import { Plus, X, Search, ChevronDown, AlertTriangle } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Plus } from "lucide-react";
+
 import {
   PageHeader,
   DataTable,
   RowActions,
   StatusPill,
 } from "@/components/public";
-import { Button, SingleSelect } from "@/components/ui";
 import { DeleteConfirmModal, CropModal } from "@/components/modal";
+import { Button } from "@/components/ui";
+
+import { useFarmers } from "@/hooks/useFarmers";
+import { useCrops, useDeleteCrop } from "@/hooks/useCrops";
 
 const CROP_STATUS_OPTIONS = [
   { value: "planted", label: "Planted" },
   { value: "not_planted", label: "Not Planted" },
 ];
 
-const SEED_CROPS = [
-  {
-    id: "CR-001",
-    name: "Maize",
-    kilos: 1200,
-    farmer: "FR-002 · Samuel Mwangi",
-    status: "planted",
-  },
-  {
-    id: "CR-002",
-    name: "Rice",
-    kilos: 850,
-    farmer: "FR-001 · Lina Okoro",
-    status: "planted",
-  },
-  {
-    id: "CR-003",
-    name: "Cassava",
-    kilos: 430,
-    farmer: "FR-004 · Chidi Okafor",
-    status: "not_planted",
-  },
-];
-
 const blankForm = {
   id: "",
   name: "",
-  kilos: "",
-  farmer: "",
+  kilo: "",
+  assignedFarmer: "",
   status: "not_planted",
 };
 
-/* ---------------- Page ---------------- */
 export function CropsPage() {
-  const [rows, setRows] = useState(SEED_CROPS);
-  const [modal, setModal] = useState(null);
-  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const [page, setPage] = useState(1);
+  const limit = 10;
 
-  const openAdd = () =>
-    setModal({
-      mode: "add",
-      data: {
-        ...blankForm,
-        id: `CR-${String(rows.length + 1).padStart(3, "0")}`,
-      },
-    });
-  const openEdit = (row) => setModal({ mode: "edit", data: { ...row } });
-  const openView = (row) => setDrawer(row);
-  const askDelete = (row) => setConfirmDelete(row);
-  const confirmRemove = () => {
-    if (!confirmDelete) return;
-    setRows((r) => r.filter((x) => x.id !== confirmDelete.id));
-    setConfirmDelete(null);
+  const filters = {
+    page,
+    limit,
+    ...(status ? { status } : {}),
+    ...(search ? { search } : {}),
   };
 
-  const handleSave = (data) => {
-    const cleaned = {
-      ...data,
-      kilos: Number(data.kilos) || 0,
-    };
-    setRows((r) => {
-      const exists = r.find((x) => x.id === data.id);
-      if (exists)
-        return r.map((x) => (x.id === data.id ? { ...x, ...cleaned } : x));
-      return [...r, cleaned];
+  const { data, isLoading, isError, error } = useCrops(filters);
+  const rows = data?.crops ?? [];
+  const pagination = data?.pagination;
+
+  // Fetch all farmers to resolve assignedFarmer -> display name,
+  // since the crop endpoints don't populate that field.
+  const { data: farmersData } = useFarmers({ all: true });
+  const farmerNameById = useMemo(() => {
+    const map = {};
+    (farmersData?.farmers ?? []).forEach((f) => {
+      map[f._id] = f.fullName;
     });
-    setModal(null);
+    return map;
+  }, [farmersData]);
+
+  const [modal, setModal] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
+
+  const { mutate: deleteCropMutate, isPending: isDeleting } = useDeleteCrop({
+    onSuccess: () => {
+      setConfirmDelete(null);
+      setDeleteError(null);
+    },
+    onError: (err) => {
+      setDeleteError(
+        err?.response?.data?.message || err.message || "Failed to delete crop",
+      );
+    },
+  });
+
+  const openAdd = () => setModal({ mode: "add", data: { ...blankForm } });
+  const openEdit = (row) =>
+    setModal({
+      mode: "edit",
+      data: {
+        id: row._id,
+        name: row.name,
+        kilo: row.kilo,
+        assignedFarmer: row.assignedFarmer,
+        status: row.status,
+      },
+    });
+  const askDelete = (row) => {
+    setDeleteError(null);
+    setConfirmDelete(row);
+  };
+  const confirmRemove = () => {
+    if (!confirmDelete) return;
+    deleteCropMutate(confirmDelete._id);
   };
 
   return (
@@ -94,35 +102,60 @@ export function CropsPage() {
           </Button>
         }
       />
+
+      {isError && (
+        <div className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+          {error?.response?.data?.message ||
+            error?.message ||
+            "Failed to load crops"}
+        </div>
+      )}
+
       <DataTable
         searchPlaceholder="Search by crop name…"
+        search={search}
+        onSearchChange={(v) => {
+          setPage(1);
+          setSearch(v);
+        }}
+        loading={isLoading}
         data={rows}
         filters={[
           {
             key: "status",
             label: "Status",
             options: CROP_STATUS_OPTIONS,
-            predicate: (r, v) => r.status === v,
+            value: status,
+            onChange: (v) => {
+              setPage(1);
+              setStatus(v);
+            },
           },
         ]}
+        pagination={
+          pagination
+            ? {
+                page: pagination.page,
+                limit: pagination.limit,
+                total: pagination.total,
+                onPageChange: setPage,
+              }
+            : undefined
+        }
         columns={[
           {
             key: "name",
             header: "Crop Name",
             sortable: true,
             cell: (r) => (
-              <div>
-                <div className="font-semibold text-foreground">{r.name}</div>
-                <div className="text-xs text-secondary">{r.id}</div>
-              </div>
+              <div className="font-semibold text-foreground">{r.name}</div>
             ),
           },
           {
-            key: "kilos",
+            key: "kilo",
             header: "Kilogram",
             sortable: true,
-            accessor: (r) => r.kilos,
-            cell: (r) => `${(r.kilos || 0).toLocaleString()} kg`,
+            cell: (r) => `${(r.kilo || 0).toLocaleString()} kg`,
           },
           {
             key: "status",
@@ -135,10 +168,9 @@ export function CropsPage() {
             ),
           },
           {
-            key: "farmer",
+            key: "assignedFarmer",
             header: "Assigned Farmer",
-            sortable: true,
-            cell: (r) => r.farmer || "—",
+            cell: (r) => farmerNameById[r.assignedFarmer] || "—",
           },
           {
             key: "actions",
@@ -159,13 +191,15 @@ export function CropsPage() {
           mode={modal.mode}
           initial={modal.data}
           onClose={() => setModal(null)}
-          onSave={handleSave}
+          onSave={() => setModal(null)}
         />
       )}
       {confirmDelete && (
         <DeleteConfirmModal
-          id={confirmDelete.id}
+          id={confirmDelete._id}
           name={confirmDelete.name}
+          error={deleteError}
+          busy={isDeleting}
           onCancel={() => setConfirmDelete(null)}
           onConfirm={confirmRemove}
         />

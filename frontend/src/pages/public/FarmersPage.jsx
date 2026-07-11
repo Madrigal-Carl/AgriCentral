@@ -251,6 +251,7 @@ export function FarmersPage() {
       {drawer && <FarmerDrawer row={drawer} onClose={() => setDrawer(null)} />}
       {confirmDelete && can.delete && (
         <DeleteConfirmModal
+          id={confirmDelete._id}
           name={confirmDelete.fullName}
           error={deleteError}
           busy={isDeleting}

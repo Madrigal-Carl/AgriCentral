@@ -1,16 +1,73 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import { Button, Field, TextInput, SingleSelect } from "@/components/ui";
-import { FARMER_OPTIONS } from "@/constants/data";
+import useAuth from "@/hooks/useAuth"; // adjust to your actual auth hook/context
+import { useFarmerByUserId } from "@/hooks/useFarmers";
+import { useCreateCrop, useUpdateCrop } from "@/hooks/useCrops";
 
 export function CropModal({ mode, initial, onClose, onSave }) {
   const [form, setForm] = useState(initial);
+  const [submitError, setSubmitError] = useState(null);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-  const submit = (e) => {
+  // Only the farmer(s) assigned to the current user — via GET /farmers/:userId —
+  // rather than every farmer in the system.
+  const { user } = useAuth();
+  const { data: farmersData, isLoading: farmersLoading } = useFarmerByUserId(
+    user?._id,
+  );
+  const farmerOptions = (farmersData?.farmers ?? []).map((f) => ({
+    value: f._id,
+    label: f.fullName,
+  }));
+
+  const { mutateAsync: createMutateAsync, isPending: isCreating } =
+    useCreateCrop({
+      onError: (err) => {
+        setSubmitError(
+          err?.response?.data?.message || err.message || "Something went wrong",
+        );
+      },
+    });
+
+  const { mutateAsync: updateMutateAsync, isPending: isUpdating } =
+    useUpdateCrop({
+      onError: (err) => {
+        setSubmitError(
+          err?.response?.data?.message || err.message || "Something went wrong",
+        );
+      },
+    });
+
+  const busy = isCreating || isUpdating;
+
+  const submit = async (e) => {
     e.preventDefault();
-    if (!form.name) return;
-    onSave(form);
+    setSubmitError(null);
+
+    if (!form.name || !form.assignedFarmer) return;
+
+    const payload = {
+      name: form.name,
+      kilo: Number(form.kilo) || 0,
+      assignedFarmer: form.assignedFarmer,
+      status: form.status,
+    };
+
+    try {
+      if (mode === "add") {
+        const { crop } = await createMutateAsync(payload);
+        onSave?.(crop);
+      } else {
+        const { crop } = await updateMutateAsync({
+          id: initial.id,
+          ...payload,
+        });
+        onSave?.(crop);
+      }
+    } catch (err) {
+      setSubmitError(err.message || "Failed to save crop");
+    }
   };
 
   return (
@@ -39,6 +96,11 @@ export function CropModal({ mode, initial, onClose, onSave }) {
         </div>
 
         <form onSubmit={submit} className="flex-1 overflow-y-auto px-6 py-5">
+          {submitError && (
+            <div className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+              {submitError}
+            </div>
+          )}
           <div className="grid grid-cols-1 gap-4">
             <Field label="Crop Name">
               <TextInput
@@ -50,17 +112,19 @@ export function CropModal({ mode, initial, onClose, onSave }) {
             <Field label="Kilogram">
               <TextInput
                 type="number"
-                value={form.kilos}
-                onChange={(v) => set("kilos", v)}
+                value={form.kilo}
+                onChange={(v) => set("kilo", v)}
                 placeholder="e.g. 1200"
               />
             </Field>
             <Field label="Assign Farmer">
               <SingleSelect
-                value={form.farmer}
-                onChange={(v) => set("farmer", v)}
-                options={FARMER_OPTIONS}
-                placeholder="Select farmer…"
+                value={form.assignedFarmer}
+                onChange={(v) => set("assignedFarmer", v)}
+                options={farmerOptions}
+                placeholder={
+                  farmersLoading ? "Loading farmers…" : "Select farmer…"
+                }
                 searchPlaceholder="Search farmer…"
               />
             </Field>
@@ -68,11 +132,21 @@ export function CropModal({ mode, initial, onClose, onSave }) {
         </form>
 
         <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-muted-40 px-6 py-4">
-          <Button variant="outline" onClick={onClose} type="button">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            type="button"
+            disabled={busy}
+          >
             Cancel
           </Button>
-          <Button variant="accent" onClick={submit} type="submit">
-            {mode === "add" ? "Add Crop" : "Save Changes"}
+          <Button
+            variant="accent"
+            onClick={submit}
+            type="submit"
+            disabled={busy}
+          >
+            {busy ? "Saving…" : mode === "add" ? "Add Crop" : "Save Changes"}
           </Button>
         </div>
       </div>

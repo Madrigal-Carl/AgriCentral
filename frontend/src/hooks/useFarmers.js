@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
     getFarmers,
+    getFarmerByUserId,
     createFarmer,
     updateFarmer,
     deleteFarmer,
@@ -14,6 +15,7 @@ export const farmerKeys = {
     list: (filters) => [...farmerKeys.lists(), filters],
     details: () => [...farmerKeys.all, "detail"],
     detail: (id) => [...farmerKeys.details(), id],
+    byUser: (userId) => [...farmerKeys.all, "byUser", userId],
 };
 
 /* ---------------- Shared: files -> attachments ---------------- */
@@ -30,12 +32,21 @@ async function resolveAttachments(files = []) {
 }
 
 /* ---------------- Queries ---------------- */
-// filters: { status?, search?, all?, page?, limit? } — passed straight through as query params.
 export function useFarmers(filters = {}, options = {}) {
     return useQuery({
         queryKey: farmerKeys.list(filters),
         queryFn: () => getFarmers(filters),
-        keepPreviousData: true, // avoids a flash of empty state when paginating/filtering
+        keepPreviousData: true,
+        ...options,
+    });
+}
+
+// Fetches the farmer(s) assigned to a specific user via GET /farmers/:userId
+export function useFarmerByUserId(userId, options = {}) {
+    return useQuery({
+        queryKey: farmerKeys.byUser(userId),
+        queryFn: () => getFarmerByUserId(userId),
+        enabled: !!userId,
         ...options,
     });
 }
