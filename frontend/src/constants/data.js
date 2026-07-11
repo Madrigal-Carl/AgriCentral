@@ -513,6 +513,11 @@ export const POSITION_OPTIONS = [
     { value: "president", label: "President" },
     { value: "vice_president", label: "Vice President" },
     { value: "secretary", label: "Secretary" },
+    { value: "treasurer", label: "Treasurer" },
+    { value: "auditor", label: "Auditor" },
+    { value: "pio", label: "PIO" },
+    { value: "project_manager", label: "Project Manager" },
+    { value: "director", label: "Board of Directors" },
     { value: "member", label: "Member" },
 ];
 

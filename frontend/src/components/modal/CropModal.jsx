@@ -1,14 +1,26 @@
 import { useState } from "react";
 import { X } from "lucide-react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, Field, TextInput, SingleSelect } from "@/components/ui";
 import useAuth from "@/hooks/useAuth"; // adjust to your actual auth hook/context
 import { useFarmerByUserId } from "@/hooks/useFarmers";
 import { useCreateCrop, useUpdateCrop } from "@/hooks/useCrops";
+import { cropFormSchema, cropUpdateSchema } from "@/schemas/crop.schema";
 
 export function CropModal({ mode, initial, onClose, onSave }) {
-  const [form, setForm] = useState(initial);
+  const isEdit = mode === "edit";
   const [submitError, setSubmitError] = useState(null);
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const {
+    register,
+    handleSubmit,
+    control,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(isEdit ? cropUpdateSchema : cropFormSchema),
+    defaultValues: initial,
+  });
 
   // Only the farmer(s) assigned to the current user — via GET /farmers/:userId —
   // rather than every farmer in the system.
@@ -41,17 +53,14 @@ export function CropModal({ mode, initial, onClose, onSave }) {
 
   const busy = isCreating || isUpdating;
 
-  const submit = async (e) => {
-    e.preventDefault();
+  const onSubmit = async (values) => {
     setSubmitError(null);
 
-    if (!form.name || !form.assignedFarmer) return;
-
     const payload = {
-      name: form.name,
-      kilo: Number(form.kilo) || 0,
-      assignedFarmer: form.assignedFarmer,
-      status: form.status,
+      name: values.name,
+      kilo: values.kilo,
+      assignedFarmer: values.assignedFarmer,
+      status: initial.status, // preserved, never user-editable from this modal
     };
 
     try {
@@ -95,37 +104,44 @@ export function CropModal({ mode, initial, onClose, onSave }) {
           </button>
         </div>
 
-        <form onSubmit={submit} className="flex-1 overflow-y-auto px-6 py-5">
+        <form
+          id="crop-form"
+          onSubmit={handleSubmit(onSubmit)}
+          className="flex-1 overflow-y-auto px-6 py-5"
+        >
           {submitError && (
             <div className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
               {submitError}
             </div>
           )}
           <div className="grid grid-cols-1 gap-4">
-            <Field label="Crop Name">
-              <TextInput
-                value={form.name}
-                onChange={(v) => set("name", v)}
-                placeholder="Maize"
-              />
+            <Field label="Crop Name" error={errors.name?.message}>
+              <TextInput {...register("name")} placeholder="Maize" />
             </Field>
-            <Field label="Kilogram">
+            <Field label="Kilogram" error={errors.kilo?.message}>
               <TextInput
                 type="number"
-                value={form.kilo}
-                onChange={(v) => set("kilo", v)}
+                {...register("kilo", { valueAsNumber: true })}
+                error={errors.kilo?.message}
                 placeholder="e.g. 1200"
               />
             </Field>
-            <Field label="Assign Farmer">
-              <SingleSelect
-                value={form.assignedFarmer}
-                onChange={(v) => set("assignedFarmer", v)}
-                options={farmerOptions}
-                placeholder={
-                  farmersLoading ? "Loading farmers…" : "Select farmer…"
-                }
-                searchPlaceholder="Search farmer…"
+            <Field label="Assign Farmer" error={errors.assignedFarmer?.message}>
+              <Controller
+                name="assignedFarmer"
+                control={control}
+                render={({ field }) => (
+                  <SingleSelect
+                    value={field.value}
+                    onChange={field.onChange}
+                    options={farmerOptions}
+                    error={errors.assignedFarmer?.message}
+                    placeholder={
+                      farmersLoading ? "Loading farmers…" : "Select farmer…"
+                    }
+                    searchPlaceholder="Search farmer…"
+                  />
+                )}
               />
             </Field>
           </div>
@@ -142,8 +158,8 @@ export function CropModal({ mode, initial, onClose, onSave }) {
           </Button>
           <Button
             variant="accent"
-            onClick={submit}
             type="submit"
+            form="crop-form"
             disabled={busy}
           >
             {busy ? "Saving…" : mode === "add" ? "Add Crop" : "Save Changes"}

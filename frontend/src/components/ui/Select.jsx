@@ -1,9 +1,16 @@
 import { ChevronDown } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 
-export function Select({ value, onChange, options, placeholder = "Select" }) {
+export function Select({
+  value,
+  onChange,
+  options,
+  placeholder = "Select",
+  defaultValue,
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+
   useEffect(() => {
     const handler = (e) => {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false);
@@ -11,6 +18,19 @@ export function Select({ value, onChange, options, placeholder = "Select" }) {
     window.addEventListener("mousedown", handler);
     return () => window.removeEventListener("mousedown", handler);
   }, []);
+
+  // Seed a default only when the field genuinely has no value yet
+  // (e.g. add mode) — never overrides a value the user or an edit already set.
+  useEffect(() => {
+    if (
+      (value === undefined || value === null || value === "") &&
+      defaultValue !== undefined
+    ) {
+      onChange(defaultValue);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultValue]);
+
   const current = options.find((o) => o.value === value);
 
   return (

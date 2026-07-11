@@ -55,7 +55,10 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
     formState: { errors },
   } = useForm({
     resolver: zodResolver(isEdit ? farmerUpdateSchema : farmerFormSchema),
-    defaultValues: initial,
+    defaultValues: {
+      position: "member",
+      ...initial,
+    },
   });
 
   const { mutateAsync: createMutateAsync, isPending: isCreating } =
@@ -171,13 +174,14 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
 
           <Field label="Gender" error={errors.gender?.message}>
             <Controller
-              name="gender"
+              name="position"
               control={control}
               render={({ field }) => (
                 <FullSelect
                   value={field.value}
                   onChange={field.onChange}
-                  options={GENDER_OPTIONS}
+                  options={POSITION_OPTIONS}
+                  defaultValue="member"
                 />
               )}
             />
