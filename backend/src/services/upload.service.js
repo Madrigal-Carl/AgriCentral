@@ -5,7 +5,7 @@ const SUBFOLDER_MAP = {
     report: "reports",
 };
 
-export const createUploadSignature = ({ type, fileName }) => {
+export const createUploadSignature = ({ type }) => {
     const subfolder = SUBFOLDER_MAP[type];
 
     if (!subfolder) {
@@ -24,7 +24,8 @@ export const createUploadSignature = ({ type, fileName }) => {
     const paramsToSign = {
         timestamp,
         folder,
-        ...(fileName ? { public_id: fileName.replace(/\.[^/.]+$/, "") } : {}),
+        use_filename: true,
+        unique_filename: true,
     };
 
     const signature = cloudinary.utils.api_sign_request(
@@ -38,6 +39,7 @@ export const createUploadSignature = ({ type, fileName }) => {
         timestamp,
         signature,
         folder,
-        ...(paramsToSign.public_id ? { publicId: paramsToSign.public_id } : {}),
+        useFilename: true,
+        uniqueFilename: true,
     };
 };

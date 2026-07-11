@@ -1,7 +1,7 @@
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui";
 
-export function DeleteConfirmModal({ id, name, onCancel, onConfirm }) {
+export function DeleteConfirmModal({ name, error, busy, onCancel, onConfirm }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-foreground-40 p-4"
@@ -17,19 +17,22 @@ export function DeleteConfirmModal({ id, name, onCancel, onConfirm }) {
         <h3 className="font-display text-lg tracking-tight text-foreground mb-1">
           Delete Farmer?
         </h3>
-        <p className="text-sm text-secondary mb-6">
+        <p className="text-sm text-secondary mb-4">
           Are you sure you want to delete{" "}
-          <strong className="text-foreground">
-            {id} ({name})
-          </strong>
-          ? This action cannot be undone.
+          <strong className="text-foreground">{name}</strong>? This action
+          cannot be undone.
         </p>
+        {error && (
+          <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+            {error}
+          </p>
+        )}
         <div className="flex items-center justify-center gap-2">
-          <Button variant="outline" onClick={onCancel}>
+          <Button variant="outline" onClick={onCancel} disabled={busy}>
             Cancel
           </Button>
-          <Button variant="danger" onClick={onConfirm}>
-            Delete
+          <Button variant="danger" onClick={onConfirm} disabled={busy}>
+            {busy ? "Deleting…" : "Delete"}
           </Button>
         </div>
       </div>

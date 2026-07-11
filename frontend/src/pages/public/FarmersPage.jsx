@@ -1,21 +1,5 @@
-import { useState, useMemo, useRef, useEffect } from "react";
-import {
-  Plus,
-  X,
-  Search,
-  ChevronDown,
-  User,
-  Calendar,
-  Activity,
-  Info,
-  AlertTriangle,
-  Wheat,
-  Beef,
-  Tractor,
-  Upload,
-  FileText,
-  Check,
-} from "lucide-react";
+import { useState } from "react";
+import { Plus } from "lucide-react";
 
 import {
   PageHeader,
@@ -28,40 +12,11 @@ import {
   FarmerModal,
   DeleteConfirmModal,
 } from "@/components/modal";
-import { Button, Select } from "@/components/ui";
+import { Button } from "@/components/ui";
 
-import { FARMERS, statusTone } from "@/constants/data";
+import { statusTone } from "@/constants/data";
 import { usePermissions } from "@/constants/permissions";
-import useAuth from "@/hooks/useAuth";
-
-/* ---------------- Reference data ---------------- */
-const FARM_OPTIONS = [
-  "Greenfield Farm",
-  "Sunrise Acres",
-  "Riverbend Estate",
-  "Highland Pastures",
-  "Maple Hollow",
-  "Cedar Ridge",
-  "Willow Creek",
-  "Goldenrod Plains",
-];
-
-const LIVESTOCK_OPTIONS = [
-  "LS-001 · Cow #A-204",
-  "LS-002 · Goat #G-12",
-  "LS-003 · Sheep #S-08",
-  "LS-004 · Cow #A-117",
-  "LS-005 · Pig #P-22",
-  "LS-006 · Chicken #C-90",
-];
-
-const EQUIPMENT_OPTIONS = [
-  "EQ-001 · Tractor T-204",
-  "EQ-002 · Harvester H-12",
-  "EQ-003 · Plow P-08",
-  "EQ-004 · Sprayer S-31",
-  "EQ-005 · Seeder SE-14",
-];
+import { useFarmers, useDeleteFarmer } from "@/hooks/useFarmers";
 
 const STATUS_OPTIONS = [
   { value: "active", label: "Active" },
@@ -96,99 +51,77 @@ const blankForm = {
 export function FarmersPage() {
   const can = usePermissions("farmers");
 
-  const [rows, setRows] = useState(FARMERS);
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const [page, setPage] = useState(1);
+  const limit = 10;
+
+  const filters = {
+    page,
+    limit,
+    ...(status ? { status } : {}),
+    ...(search ? { search } : {}),
+  };
+
+  const { data, isLoading, isError, error } = useFarmers(filters);
+  const rows = data?.farmers ?? [];
+  const pagination = data?.pagination;
+
   const [modal, setModal] = useState(null);
   const [drawer, setDrawer] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
+
+  const { mutate: deleteFarmerMutate, isPending: isDeleting } = useDeleteFarmer(
+    {
+      onSuccess: () => {
+        setConfirmDelete(null);
+        setDeleteError(null);
+      },
+      onError: (err) => {
+        setDeleteError(
+          err?.response?.data?.message ||
+            err.message ||
+            "Failed to delete farmer",
+        );
+      },
+    },
+  );
 
   const openAdd = () => {
     if (!can.add) return;
-    setModal({
-      mode: "add",
-      data: {
-        ...blankForm,
-        id: `FR-${String(rows.length + 1).padStart(3, "0")}`,
-      },
-    });
+    setModal({ mode: "add", data: { ...blankForm } });
   };
   const openEdit = (row) => {
     if (!can.edit) return;
-    setModal({ mode: "edit", data: { ...row } });
+    setModal({
+      mode: "edit",
+      data: {
+        id: row._id,
+        name: row.fullName,
+        contact: row.contactNumber,
+        email: row.emailAddress,
+        gender: row.gender,
+        dob: row.birthDate?.slice ? row.birthDate.slice(0, 10) : row.birthDate,
+        address: row.address,
+        position: row.position,
+        status: row.status,
+        files: row.attachments || [],
+        farms: row.farms || [],
+        livestock: row.livestock || [],
+        equipment: row.equipment || [],
+      },
+    });
   };
   const openView = (row) => setDrawer(row);
   const askDelete = (row) => {
     if (!can.delete) return;
+    setDeleteError(null);
     setConfirmDelete(row);
   };
   const confirmRemove = () => {
     if (!confirmDelete || !can.delete) return;
-    setRows((r) => r.filter((x) => x.id !== confirmDelete.id));
-    setConfirmDelete(null);
-  };
-
-  const diff = (next, prev) => {
-    const added = next.filter((x) => !prev.includes(x));
-    const removed = prev.filter((x) => !next.includes(x));
-    return { added, removed };
-  };
-
-  const handleSave = (data) => {
-    if (!can.add && !can.edit) return;
-    setRows((r) => {
-      const exists = r.find((x) => x.id === data.id);
-      const today = new Date().toISOString().slice(0, 10);
-      if (exists) {
-        const ls = diff(data.livestock, exists.livestock);
-        const eq = diff(data.equipment, exists.equipment);
-        const newEvents = [
-          ...ls.added.map((i) => ({
-            kind: "livestock",
-            action: "Received",
-            item: i,
-            date: today,
-          })),
-          ...ls.removed.map((i) => ({
-            kind: "livestock",
-            action: "Released",
-            item: i,
-            date: today,
-          })),
-          ...eq.added.map((i) => ({
-            kind: "equipment",
-            action: "Received",
-            item: i,
-            date: today,
-          })),
-          ...eq.removed.map((i) => ({
-            kind: "equipment",
-            action: "Returned",
-            item: i,
-            date: today,
-          })),
-        ];
-        return r.map((x) =>
-          x.id === data.id
-            ? { ...x, ...data, history: [...(x.history || []), ...newEvents] }
-            : x,
-        );
-      }
-      const initialHistory = [
-        ...data.livestock.map((i) => ({
-          kind: "livestock",
-          action: "Received",
-          item: i,
-          date: today,
-        })),
-        ...data.equipment.map((i) => ({
-          kind: "equipment",
-          action: "Received",
-          item: i,
-          date: today,
-        })),
-      ];
-      return [...r, { ...data, history: initialHistory }];
-    });
-    setModal(null);
+    deleteFarmerMutate(confirmDelete._id);
   };
 
   return (
@@ -204,17 +137,46 @@ export function FarmersPage() {
           ) : null
         }
       />
+
+      {isError && (
+        <div className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+          {error?.response?.data?.message ||
+            error?.message ||
+            "Failed to load farmers"}
+        </div>
+      )}
+
       <DataTable
-        searchPlaceholder="Search farmer by name…"
+        searchPlaceholder="Search farmer by name..."
+        search={search}
+        onSearchChange={(v) => {
+          setPage(1);
+          setSearch(v);
+        }}
+        loading={isLoading}
         data={rows}
         filters={[
           {
             key: "status",
             label: "Status",
             options: STATUS_OPTIONS,
-            predicate: (r, v) => r.status === v,
+            value: status,
+            onChange: (v) => {
+              setPage(1);
+              setStatus(v);
+            },
           },
         ]}
+        pagination={
+          pagination
+            ? {
+                page: pagination.page,
+                limit: pagination.limit,
+                total: pagination.total,
+                onPageChange: setPage,
+              }
+            : undefined
+        }
         columns={[
           {
             key: "name",
@@ -223,11 +185,10 @@ export function FarmersPage() {
             cell: (r) => (
               <div className="flex items-center gap-3">
                 <div className="grid h-9 w-9 shrink-0 place-items-center bg-accent-soft font-display text-xs text-accent rounded-full">
-                  {r.name[0]}
+                  {r.fullName?.[0]}
                 </div>
-                <div>
-                  <div className="font-semibold text-foreground">{r.name}</div>
-                  <div className="text-xs text-secondary">{r.id}</div>
+                <div className="font-semibold text-foreground">
+                  {r.fullName}
                 </div>
               </div>
             ),
@@ -235,23 +196,17 @@ export function FarmersPage() {
           {
             key: "farms",
             header: "Farms",
-            sortable: true,
-            accessor: (r) => r.farms.length,
-            cell: (r) => r.farms.length,
+            cell: (r) => (r.farms || []).length,
           },
           {
             key: "livestock",
             header: "Livestock",
-            sortable: true,
-            accessor: (r) => r.livestock.length,
-            cell: (r) => r.livestock.length,
+            cell: (r) => (r.livestock || []).length,
           },
           {
             key: "equipment",
             header: "Equipment",
-            sortable: true,
-            accessor: (r) => r.equipment.length,
-            cell: (r) => r.equipment.length,
+            cell: (r) => (r.equipment || []).length,
           },
           {
             key: "status",
@@ -290,14 +245,15 @@ export function FarmersPage() {
           mode={modal.mode}
           initial={modal.data}
           onClose={() => setModal(null)}
-          onSave={handleSave}
+          onSave={() => setModal(null)}
         />
       )}
       {drawer && <FarmerDrawer row={drawer} onClose={() => setDrawer(null)} />}
       {confirmDelete && can.delete && (
         <DeleteConfirmModal
-          id={confirmDelete.id}
-          name={confirmDelete.name}
+          name={confirmDelete.fullName}
+          error={deleteError}
+          busy={isDeleting}
           onCancel={() => setConfirmDelete(null)}
           onConfirm={confirmRemove}
         />

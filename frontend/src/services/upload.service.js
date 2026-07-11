@@ -1,14 +1,13 @@
 import api from "@/api/axios";
 
-export async function getUploadSignature({ type, fileName }) {
-    const response = await api.post("/uploads/signature", { type, fileName });
-
+export async function getUploadSignature({ type }) {
+    const response = await api.post("/uploads/signature", { type });
     return response.data;
 }
 
 export async function uploadToCloudinary(file, type) {
-    const { url, apiKey, timestamp, signature, folder, publicId } =
-        await getUploadSignature({ type, fileName: file.name });
+    const { url, apiKey, timestamp, signature, folder, useFilename, uniqueFilename } =
+        await getUploadSignature({ type });
 
     const formData = new FormData();
     formData.append("file", file);
@@ -16,7 +15,8 @@ export async function uploadToCloudinary(file, type) {
     formData.append("timestamp", timestamp);
     formData.append("signature", signature);
     formData.append("folder", folder);
-    if (publicId) formData.append("public_id", publicId);
+    formData.append("use_filename", useFilename);
+    formData.append("unique_filename", uniqueFilename);
 
     const response = await fetch(url, {
         method: "POST",

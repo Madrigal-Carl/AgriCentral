@@ -6,8 +6,11 @@ import { Select } from "@/components/ui";
 export function DataTable({
   columns,
   data,
+  search = "",
+  onSearchChange,
   searchPlaceholder = "Search…",
   filters = [],
+  pagination,
   emptyTitle = "No records found",
   emptyDescription = "Try adjusting your filters or add a new record.",
   loading = false,
@@ -72,8 +75,8 @@ export function DataTable({
         <div className="relative min-w-[200px] flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary" />
           <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            value={search}
+            onChange={(e) => onSearchChange?.(e.target.value)}
             placeholder={searchPlaceholder}
             className="w-full border border-border bg-surface py-2.5 pl-9 pr-3 text-sm text-foreground outline-none placeholder:text-secondary focus:border-foreground"
           />
@@ -81,8 +84,8 @@ export function DataTable({
         {filters.map((f) => (
           <Select
             key={f.key}
-            value={filterValues[f.key]}
-            onChange={(v) => setFilterValues((s) => ({ ...s, [f.key]: v }))}
+            value={f.value || "all"}
+            onChange={(v) => f.onChange?.(v === "all" ? "" : v)}
             options={[
               { value: "all", label: f.allLabel ?? `All ${f.label}` },
               ...f.options,
@@ -100,19 +103,9 @@ export function DataTable({
               {columns.map((c) => (
                 <th
                   key={c.key}
-                  className={`label-eyebrow !text-[10px] px-4 py-3 text-left ${c.sortable ? "cursor-pointer select-none" : ""} ${c.align === "right" ? "text-right" : ""}`}
-                  onClick={() => c.sortable && toggleSort(c.key)}
+                  className={`label-eyebrow !text-[10px] px-4 py-3 text-left ${c.align === "right" ? "text-right" : ""}`}
                 >
-                  <span className="inline-flex items-center gap-1">
-                    {c.header}
-                    {c.sortable &&
-                      sort.key === c.key &&
-                      (sort.dir === "asc" ? (
-                        <ChevronUp className="h-3 w-3 text-accent" />
-                      ) : (
-                        <ChevronDown className="h-3 w-3 text-accent" />
-                      ))}
-                  </span>
+                  {c.header}
                 </th>
               ))}
             </tr>
@@ -128,7 +121,7 @@ export function DataTable({
                   ))}
                 </tr>
               ))
-            ) : paged.length === 0 ? (
+            ) : data.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="px-4 py-16 text-center">
                   <div className="mx-auto max-w-sm">
@@ -145,9 +138,9 @@ export function DataTable({
                 </td>
               </tr>
             ) : (
-              paged.map((row, i) => (
+              data.map((row, i) => (
                 <tr
-                  key={row.id ?? i}
+                  key={row.id ?? row._id ?? i}
                   className="border-t border-border transition-colors hover:bg-muted-40"
                 >
                   {columns.map((c) => (
@@ -169,12 +162,14 @@ export function DataTable({
         </table>
       </div>
 
-      <Pagination
-        page={page}
-        pageSize={pageSize}
-        total={filtered.length}
-        onPage={setPage}
-      />
+      {pagination && (
+        <Pagination
+          page={pagination.page}
+          pageSize={pagination.limit}
+          total={pagination.total}
+          onPage={pagination.onPageChange}
+        />
+      )}
     </div>
   );
 }

@@ -16,12 +16,37 @@ import {
 } from "@/constants/data";
 import { FileUploader } from "@/components/public";
 import { ModalShell } from "./ModalShell";
-import { farmerFormSchema } from "@/schemas/farmer.schema";
-import { useCreateFarmer } from "@/hooks/useFarmers";
+import { farmerFormSchema, farmerUpdateSchema } from "@/schemas/farmer.schema";
+import { useCreateFarmer, useUpdateFarmer } from "@/hooks/useFarmers";
+
+const STATUS_OPTIONS = [
+  { value: "active", label: "Active" },
+  { value: "inactive", label: "Inactive" },
+];
+
+// Maps a backend farmer record onto the form's field names.
+function toFormShape(farmer, extra = {}) {
+  return {
+    id: farmer._id,
+    name: farmer.fullName,
+    contact: farmer.contactNumber,
+    email: farmer.emailAddress,
+    gender: farmer.gender,
+    dob: farmer.birthDate?.slice
+      ? farmer.birthDate.slice(0, 10)
+      : farmer.birthDate,
+    address: farmer.address,
+    position: farmer.position,
+    status: farmer.status,
+    files: farmer.attachments || [],
+    ...extra,
+  };
+}
 
 export function FarmerModal({ mode, initial, onClose, onSave }) {
   const { role } = useAuth();
   const [submitError, setSubmitError] = useState(null);
+  const isEdit = mode === "edit";
 
   const {
     register,
@@ -29,17 +54,27 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
     control,
     formState: { errors },
   } = useForm({
-    resolver: zodResolver(farmerFormSchema),
+    resolver: zodResolver(isEdit ? farmerUpdateSchema : farmerFormSchema),
     defaultValues: initial,
   });
 
-  const { mutateAsync, isPending } = useCreateFarmer({
-    onError: (err) => {
-      setSubmitError(
-        err?.response?.data?.message || err.message || "Something went wrong",
-      );
-    },
-  });
+  const { mutateAsync: createMutateAsync, isPending: isCreating } =
+    useCreateFarmer({
+      onError: (err) => {
+        setSubmitError(
+          err?.response?.data?.message || err.message || "Something went wrong",
+        );
+      },
+    });
+
+  const { mutateAsync: updateMutateAsync, isPending: isUpdating } =
+    useUpdateFarmer({
+      onError: (err) => {
+        setSubmitError(
+          err?.response?.data?.message || err.message || "Something went wrong",
+        );
+      },
+    });
 
   const onSubmit = async (values) => {
     setSubmitError(null);
@@ -56,28 +91,34 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
       };
 
       if (mode === "add") {
-        const { farmer } = await mutateAsync(payload);
-        onSave?.({
-          ...farmer,
-          name: farmer.fullName,
-          contact: farmer.contactNumber,
-          email: farmer.emailAddress,
-          dob: farmer.birthDate,
-          files: farmer.attachments,
-          farms: values.farms,
-          livestock: values.livestock,
-          equipment: values.equipment,
-        });
+        const { farmer } = await createMutateAsync(payload);
+        onSave?.(
+          toFormShape(farmer, {
+            farms: values.farms,
+            livestock: values.livestock,
+            equipment: values.equipment,
+          }),
+        );
       } else {
-        // Edit flow: hook up to an update endpoint later; for now keep local behavior.
-        onSave?.({ ...values });
+        const { farmer } = await updateMutateAsync({
+          id: initial.id,
+          ...payload,
+          status: values.status, // only relevant/sent on edit
+        });
+        onSave?.(
+          toFormShape(farmer, {
+            farms: values.farms,
+            livestock: values.livestock,
+            equipment: values.equipment,
+          }),
+        );
       }
     } catch (err) {
       setSubmitError(err.message || "Failed to save farmer");
     }
   };
 
-  const busy = isPending;
+  const busy = isCreating || isUpdating;
 
   return (
     <ModalShell
@@ -146,9 +187,25 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
             <TextInput type="date" {...register("dob")} />
           </Field>
 
-          <Field label="Address" full error={errors.address?.message}>
+          <Field label="Address" full={!isEdit} error={errors.address?.message}>
             <TextInput {...register("address")} placeholder="Street, City" />
           </Field>
+
+          {isEdit && (
+            <Field label="Status" error={errors.status?.message}>
+              <Controller
+                name="status"
+                control={control}
+                render={({ field }) => (
+                  <FullSelect
+                    value={field.value}
+                    onChange={field.onChange}
+                    options={STATUS_OPTIONS}
+                  />
+                )}
+              />
+            </Field>
+          )}
 
           {role !== "far" && (
             <Field label="Association" full>

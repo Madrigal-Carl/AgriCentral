@@ -57,6 +57,14 @@ const farmerSchema = new mongoose.Schema(
                 trim: true,
             },
         ],
+        status: {
+            type: String,
+            enum: [
+                "active",
+                "inactive",
+            ],
+            default: "active",
+        },
     },
     {
         timestamps: true,

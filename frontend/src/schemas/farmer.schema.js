@@ -12,6 +12,8 @@ export const POSITIONS = [
     "member",
 ];
 
+export const STATUSES = ["active", "inactive"];
+
 export const farmerFormSchema = z.object({
     name: z
         .string({ required_error: "Full name is required" })
@@ -43,6 +45,12 @@ export const farmerFormSchema = z.object({
     farms: z.array(z.string()).optional().default([]),
     livestock: z.array(z.string()).optional().default([]),
     equipment: z.array(z.string()).optional().default([]),
-    // Files are local File objects at this stage — uploaded separately, not validated by shape here.
     files: z.array(z.any()).optional().default([]),
 });
+
+// All fields optional — mirrors backend's PATCH semantics (partial update).
+export const farmerUpdateSchema = farmerFormSchema
+    .extend({
+        status: z.enum(STATUSES).optional(),
+    })
+    .partial();

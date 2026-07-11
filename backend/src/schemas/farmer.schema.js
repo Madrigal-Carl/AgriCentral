@@ -12,6 +12,8 @@ const POSITIONS = [
     "member",
 ];
 
+const STATUSES = ["active", "inactive"];
+
 export const createFarmerSchema = z.object({
     userId: z
         .string()
@@ -45,4 +47,29 @@ export const createFarmerSchema = z.object({
         .min(2, "Address must be at least 2 characters"),
     position: z.enum(POSITIONS).optional().default("member"),
     attachments: z.array(z.string().trim().url("Invalid attachment URL")).optional().default([]),
+});
+
+export const updateFarmerSchema = createFarmerSchema
+    .omit({ userId: true })
+    .extend({
+        status: z.enum(STATUSES).optional(),
+    })
+    .partial()
+    .refine((data) => Object.keys(data).length > 0, {
+        message: "At least one field must be provided",
+    });
+
+export const farmerIdParamSchema = z.object({
+    id: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid farmer id"),
+});
+
+export const getFarmersQuerySchema = z.object({
+    status: z.enum(STATUSES).optional(),
+    search: z.string().trim().min(1).max(100).optional(),
+    all: z
+        .enum(["true", "false"])
+        .optional()
+        .transform((v) => v === "true"),
+    page: z.coerce.number().int().positive().optional().default(1),
+    limit: z.coerce.number().int().positive().optional().default(10),
 });
