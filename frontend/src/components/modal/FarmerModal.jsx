@@ -57,6 +57,7 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
     resolver: zodResolver(isEdit ? farmerUpdateSchema : farmerFormSchema),
     defaultValues: {
       position: "member",
+      gender: "male",
       ...initial,
     },
   });
@@ -174,14 +175,14 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
 
           <Field label="Gender" error={errors.gender?.message}>
             <Controller
-              name="position"
+              name="gender"
               control={control}
               render={({ field }) => (
                 <FullSelect
                   value={field.value}
                   onChange={field.onChange}
-                  options={POSITION_OPTIONS}
-                  defaultValue="member"
+                  options={GENDER_OPTIONS}
+                  defaultValue="male"
                 />
               )}
             />
@@ -239,6 +240,7 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
                     value={field.value}
                     onChange={field.onChange}
                     options={POSITION_OPTIONS}
+                    defaultValue="member"
                   />
                 )}
               />

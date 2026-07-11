@@ -24,8 +24,8 @@ const positionLabel = {
   member: "Member",
 };
 
-// Attachments are stored as plain Cloudinary URL strings, not file objects —
-// derive a readable name from the URL for display.
+// Attachments are { url, publicId, resourceType } objects — derive a
+// readable name from the url for display.
 function fileNameFromUrl(url) {
   try {
     const clean = url.split("?")[0];
@@ -130,9 +130,9 @@ export function FarmerDrawer({ row, onClose }) {
           <Section icon={FileText} title="Uploaded Files">
             {attachments.length > 0 ? (
               <ul className="space-y-2">
-                {attachments.map((url) => (
+                {attachments.map((a) => (
                   <li
-                    key={url}
+                    key={a.publicId}
                     className="flex items-center gap-3 border border-border bg-muted-30 px-3 py-2"
                   >
                     <div className="grid h-9 w-9 shrink-0 place-items-center bg-surface text-secondary">
@@ -140,17 +140,17 @@ export function FarmerDrawer({ row, onClose }) {
                     </div>
                     <div className="min-w-0 flex-1">
                       <a
-                        href={url}
+                        href={a.url}
                         target="_blank"
                         rel="noreferrer"
                         className="block truncate text-sm font-medium text-foreground hover:underline"
                       >
-                        {fileNameFromUrl(url)}
+                        {fileNameFromUrl(a.url)}
                       </a>
                     </div>
 
                     <a
-                      href={url}
+                      href={a.url}
                       target="_blank"
                       rel="noreferrer"
                       className="shrink-0 border border-border bg-surface px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-muted"

@@ -14,6 +14,12 @@ const POSITIONS = [
 
 const STATUSES = ["active", "inactive"];
 
+const attachmentSchema = z.object({
+    url: z.string().trim().url("Invalid attachment URL"),
+    publicId: z.string().trim().min(1, "Missing attachment public id"),
+    resourceType: z.enum(["image", "raw", "video"]).optional().default("image"),
+});
+
 export const createFarmerSchema = z.object({
     userId: z
         .string()
@@ -46,7 +52,7 @@ export const createFarmerSchema = z.object({
         .trim()
         .min(2, "Address must be at least 2 characters"),
     position: z.enum(POSITIONS).optional().default("member"),
-    attachments: z.array(z.string().trim().url("Invalid attachment URL")).optional().default([]),
+    attachments: z.array(attachmentSchema).optional().default([]),
 });
 
 export const updateFarmerSchema = createFarmerSchema

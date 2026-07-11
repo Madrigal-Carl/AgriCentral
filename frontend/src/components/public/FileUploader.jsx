@@ -176,7 +176,7 @@ export function FileUploader({ value = [], onChange }) {
                 />
               );
             }
-            if (f.status !== "done") {
+            if (f.status === "uploading") {
               return (
                 <UploadingRow
                   key={f.id}
@@ -189,10 +189,10 @@ export function FileUploader({ value = [], onChange }) {
             }
             return (
               <FileRow
-                key={f.id}
-                name={f.name}
+                key={f.id ?? f.url}
+                name={f.name || fileNameFromUrl(f.url)}
                 url={f.url}
-                onRemove={() => remove(f.id)}
+                onRemove={() => remove(f.id ?? f.url)}
               />
             );
           })}

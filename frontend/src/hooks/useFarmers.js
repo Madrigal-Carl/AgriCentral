@@ -20,15 +20,25 @@ export const farmerKeys = {
 
 /* ---------------- Shared: files -> attachments ---------------- */
 async function resolveAttachments(files = []) {
-    const existingUrls = files.filter((f) => typeof f === "string");
+    const existingAttachments = files.filter(
+        (f) => f && typeof f === "object" && !(f?.file instanceof File),
+    );
     const newFiles = files.filter((f) => f?.file instanceof File);
 
-    if (!newFiles.length) return existingUrls;
+    if (!newFiles.length) return existingAttachments;
 
     const uploads = await Promise.all(
         newFiles.map((f) => uploadToCloudinary(f.file, "farmer"))
     );
-    return [...existingUrls, ...uploads.map((u) => u.secure_url)];
+
+    return [
+        ...existingAttachments,
+        ...uploads.map((u) => ({
+            url: u.secure_url,
+            publicId: u.public_id,
+            resourceType: u.resource_type,
+        })),
+    ];
 }
 
 /* ---------------- Queries ---------------- */

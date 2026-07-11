@@ -1,5 +1,26 @@
 import mongoose from "mongoose";
 
+const attachmentSchema = new mongoose.Schema(
+    {
+        url: {
+            type: String,
+            required: true,
+            trim: true,
+        },
+        publicId: {
+            type: String,
+            required: true,
+            trim: true,
+        },
+        resourceType: {
+            type: String,
+            enum: ["image", "raw", "video"],
+            default: "image",
+        },
+    },
+    { _id: false },
+);
+
 const farmerSchema = new mongoose.Schema(
     {
         user: {
@@ -51,18 +72,10 @@ const farmerSchema = new mongoose.Schema(
             ],
             default: "member",
         },
-        attachments: [
-            {
-                type: String,
-                trim: true,
-            },
-        ],
+        attachments: [attachmentSchema],
         status: {
             type: String,
-            enum: [
-                "active",
-                "inactive",
-            ],
+            enum: ["active", "inactive"],
             default: "active",
         },
     },

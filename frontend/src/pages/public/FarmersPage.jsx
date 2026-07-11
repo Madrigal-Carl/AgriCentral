@@ -36,7 +36,7 @@ const blankForm = {
   name: "",
   contact: "",
   email: "",
-  gender: "female",
+  gender: "",
   dob: "",
   address: "",
   association: "",
