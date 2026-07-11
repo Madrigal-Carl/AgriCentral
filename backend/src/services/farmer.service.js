@@ -58,6 +58,11 @@ export const deleteFarmer = async (id) => {
     return farmer;
 };
 
+export const getFarmersByUserId = async (userId) => {
+    const farmers = await Farmer.find({ user: userId }).sort({ createdAt: -1 });
+    return farmers;
+};
+
 export const getFarmers = async ({ status, search, all, page, limit }) => {
     const filter = {};
     if (status) filter.status = status;
