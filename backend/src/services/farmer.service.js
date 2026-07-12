@@ -1,4 +1,5 @@
 import Farmer from "../models/farmer.model.js";
+import Farm from "../models/farm.model.js";
 import cloudinary from "../config/cloudinary.js";
 
 export const createFarmer = async (data, authenticatedUserId) => {
@@ -83,9 +84,34 @@ export const deleteFarmer = async (id) => {
     return farmer;
 };
 
+const attachFarmCounts = async (farmers) => {
+    const farmerIds = farmers.map((f) => f._id);
+
+    if (!farmerIds.length) return [];
+
+    const counts = await Farm.aggregate([
+        { $match: { assignedFarmers: { $in: farmerIds } } },
+        { $unwind: "$assignedFarmers" },
+        { $match: { assignedFarmers: { $in: farmerIds } } },
+        { $group: { _id: "$assignedFarmers", count: { $sum: 1 } } },
+    ]);
+
+    const countByFarmerId = new Map(
+        counts.map((c) => [c._id.toString(), c.count]),
+    );
+
+    return farmers.map((f) => {
+        const obj = typeof f.toObject === "function" ? f.toObject() : f;
+        return {
+            ...obj,
+            farmCount: countByFarmerId.get(obj._id.toString()) ?? 0,
+        };
+    });
+};
+
 export const getFarmersByUserId = async (userId) => {
     const farmers = await Farmer.find({ user: userId }).sort({ createdAt: -1 });
-    return farmers;
+    return attachFarmCounts(farmers);
 };
 
 export const getFarmers = async ({ status, search, userId, all, page, limit }) => {
@@ -100,7 +126,7 @@ export const getFarmers = async ({ status, search, userId, all, page, limit }) =
     if (all) {
         const farmers = await Farmer.find(filter).sort({ createdAt: -1 });
         return {
-            farmers,
+            farmers: await attachFarmCounts(farmers),
             pagination: null,
         };
     }
@@ -113,7 +139,7 @@ export const getFarmers = async ({ status, search, userId, all, page, limit }) =
     ]);
 
     return {
-        farmers,
+        farmers: await attachFarmCounts(farmers),
         pagination: {
             page,
             limit,

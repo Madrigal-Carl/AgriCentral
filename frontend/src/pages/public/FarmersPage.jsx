@@ -189,7 +189,7 @@ export function FarmersPage() {
           {
             key: "farms",
             header: "Farms",
-            cell: (r) => (r.farms || []).length,
+            cell: (r) => r.farmCount ?? 0,
           },
           {
             key: "livestock",
