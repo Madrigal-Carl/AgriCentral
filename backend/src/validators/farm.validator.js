@@ -2,6 +2,7 @@ import {
     createFarmSchema,
     updateFarmSchema,
     farmIdParamSchema,
+    farmUserIdParamSchema,
     getFarmsQuerySchema,
 } from "../schemas/farm.schema.js";
 
@@ -58,4 +59,5 @@ const validateQuery = (schema) => (req, res, next) => {
 export const validateCreateFarm = validate(createFarmSchema);
 export const validateUpdateFarm = validate(updateFarmSchema);
 export const validateFarmIdParam = validateParams(farmIdParamSchema);
+export const validateFarmUserIdParam = validateParams(farmUserIdParamSchema);
 export const validateGetFarmsQuery = validateQuery(getFarmsQuerySchema);

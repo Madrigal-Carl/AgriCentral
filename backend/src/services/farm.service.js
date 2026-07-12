@@ -1,4 +1,5 @@
 import Farm from "../models/farm.model.js";
+import Crop from "../models/crop.model.js";
 
 const CROP_POPULATE = { path: "crops.crop" };
 const FARMER_POPULATE = { path: "assignedFarmers", select: "fullName emailAddress" };
@@ -49,6 +50,14 @@ export const deleteFarm = async (id) => {
     }
 
     return farm;
+};
+
+export const getFarmsByUserId = async (userId) => {
+    const farms = await Farm.find({ user: userId })
+        .sort({ createdAt: -1 })
+        .populate([FARMER_POPULATE, CROP_POPULATE]);
+
+    return farms;
 };
 
 export const getFarms = async ({ search, crop, userId, all, page, limit }) => {
