@@ -32,7 +32,7 @@ export const createCrop = async (data, authenticatedUserId) => {
             entityType: "farmer",
             entityId: farmer._id,
             association: crop.association,
-            message: `${farmer.fullName} received a new crop batch: ${crop.name}.`,
+            message: `${farmer.fullName} received a new crop batch: ${crop.name} (${crop.quantity} kg).`,
         });
     }
 
@@ -68,7 +68,7 @@ export const updateCrop = async (id, data) => {
                 entityType: "farmer",
                 entityId: farmer._id,
                 association: crop.association,
-                message: `${farmer.fullName} received a new crop batch: ${crop.name}.`,
+                message: `${farmer.fullName} received a new crop batch: ${crop.name} (${crop.quantity} kg).`,
             });
         }
     }

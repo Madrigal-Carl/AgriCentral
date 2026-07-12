@@ -134,9 +134,7 @@ export function FarmDrawer({ row, onClose }) {
                 {row.history.map((h, i) => (
                   <li key={i} className="relative pl-5 pb-4 last:pb-0">
                     <span className="absolute -left-[5px] top-1.5 h-2.5 w-2.5 bg-accent" />
-                    <div className="font-semibold text-sm text-foreground">
-                      {h.action} {h.item}
-                    </div>
+                    <div className="text-sm text-foreground">{h.message}</div>
                     <div className="text-xs text-secondary">
                       {fmtDate(h.date)}
                     </div>

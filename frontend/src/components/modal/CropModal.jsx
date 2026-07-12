@@ -120,9 +120,11 @@ export function CropModal({ mode, initial, onClose, onSave }) {
             <Field label="Kilogram" error={errors.kilo?.message}>
               <TextInput
                 type="number"
+                step="0.01"
+                inputMode="decimal"
                 {...register("kilo", { valueAsNumber: true })}
                 error={errors.kilo?.message}
-                placeholder="e.g. 1200"
+                placeholder="e.g. 1200.5"
               />
             </Field>
             <Field label="Assign Farmer" error={errors.assignedFarmer?.message}>

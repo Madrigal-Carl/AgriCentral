@@ -11,7 +11,12 @@ export const cropFormSchema = z.object({
             if (val === "" || val === null || val === undefined) return undefined;
             if (typeof val === "number" && Number.isNaN(val)) return undefined;
             return val;
-        }, z.number().min(0, "Kilo cannot be negative").optional())
+        }, z.coerce
+            .number({ invalid_type_error: "Kilo must be a number" })
+            .min(0, "Kilo cannot be negative")
+            .transform((v) => Math.round(v * 100) / 100)
+            .optional()
+        )
         .refine((val) => val !== undefined, {
             message: "Kilogram is required",
         }),

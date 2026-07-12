@@ -2,7 +2,7 @@ import Farm from "../models/farm.model.js";
 import Crop from "../models/crop.model.js";
 import Farmer from "../models/farmer.model.js";
 import User from "../models/user.model.js";
-import { createLog, humanize } from "./log.service.js";
+import { createLog, getLogsForEntities, humanize } from "./log.service.js";
 
 const CROP_POPULATE = { path: "crops.crop" };
 const FARMER_POPULATE = { path: "assignedFarmers", select: "fullName emailAddress" };
@@ -45,6 +45,22 @@ const logCropStatusChanges = async ({ farm, changes, cropIdToName }) => {
             message,
         });
     }
+};
+
+const attachFarmHistory = async (farms, associationId) => {
+    const farmIds = farms.map((f) => f._id);
+    if (!farmIds.length) return [];
+
+    const logsByFarmId = await getLogsForEntities("farm", farmIds, associationId);
+
+    return farms.map((f) => {
+        const obj = typeof f.toObject === "function" ? f.toObject() : f;
+        const key = obj._id.toString();
+        return {
+            ...obj,
+            history: logsByFarmId.get(key) ?? [],
+        };
+    });
 };
 
 // Logs both additions and removals from a farm's assignedFarmers list,
@@ -122,19 +138,22 @@ export const createFarm = async (data, authenticatedUserId) => {
         const crops = await Crop.find({ _id: { $in: cropIds } }).select("name");
         const cropIdToName = new Map(crops.map((c) => [c._id.toString(), c.name]));
 
-        if (farmData.assignedFarmers?.length) {
-            await logFarmerAssignmentChanges({
-                farm,
-                addedFarmerIds: farmData.assignedFarmers,
-                removedFarmerIds: [],
-            });
-        }
+        await logCropStatusChanges({
+            farm,
+            changes: farmData.crops.map((c) => ({
+                cropId: c.crop.toString(),
+                fromStatus: null,
+                toStatus: c.status ?? "planted",
+            })),
+            cropIdToName,
+        });
     }
 
     if (farmData.assignedFarmers?.length) {
-        await logNewFarmerAssignments({
+        await logFarmerAssignmentChanges({
             farm,
-            newlyAssignedFarmerIds: farmData.assignedFarmers,
+            addedFarmerIds: farmData.assignedFarmers,
+            removedFarmerIds: [],
         });
     }
 
@@ -306,7 +325,7 @@ export const getFarms = async ({ search, crop, associationId, all, page, limit }
             .populate([FARMER_POPULATE, CROP_POPULATE]);
 
         return {
-            farms: farms.map(filterActiveCrops),
+            farms: await attachFarmHistory(farms.map(filterActiveCrops), associationId),
             pagination: null,
         };
     }
@@ -323,7 +342,7 @@ export const getFarms = async ({ search, crop, associationId, all, page, limit }
     ]);
 
     return {
-        farms: farms.map(filterActiveCrops),
+        farms: await attachFarmHistory(farms.map(filterActiveCrops), associationId),
         pagination: {
             page,
             limit,

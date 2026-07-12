@@ -126,7 +126,7 @@ export function FarmModal({
         const ownerId = c.assignedFarmer?._id ?? c.assignedFarmer;
         return assignedFarmers.includes(ownerId);
       })
-      .map((c) => ({ value: c._id, label: c.name }));
+      .map((c) => ({ value: c._id, label: `${c.name} (${c.kilo} kg)` }));
   }, [cropsData, assignedFarmers]);
 
   // Keep track of the previous assignedFarmers so we only react to actual
