@@ -5,8 +5,8 @@ export async function getCrops(params) {
     return response.data;
 }
 
-export async function getCropsByUserId(userId) {
-    const response = await api.get(`/crops/${userId}`);
+export async function getCropsByFarmId(farmId) {
+    const response = await api.get(`/crops/${farmId}`);
     return response.data;
 }
 

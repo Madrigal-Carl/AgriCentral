@@ -1,4 +1,5 @@
 import Crop from "../models/crop.model.js";
+import Farm from "../models/farm.model.js";
 
 export const createCrop = async (data, authenticatedUserId) => {
     const { userId, ...cropData } = data;
@@ -41,8 +42,19 @@ export const deleteCrop = async (id) => {
     return crop;
 };
 
-export const getCropsByUserId = async (userId) => {
-    const crops = await Crop.find({ user: userId }).sort({ createdAt: -1 });
+export const getCropsByFarmId = async (farmId) => {
+    const farm = await Farm.findById(farmId).select("assignedFarmers");
+
+    if (!farm) {
+        const notFoundError = new Error("Farm not found");
+        notFoundError.statusCode = 404;
+        throw notFoundError;
+    }
+
+    const crops = await Crop.find({
+        assignedFarmer: { $in: farm.assignedFarmers },
+    }).sort({ createdAt: -1 });
+
     return crops;
 };
 

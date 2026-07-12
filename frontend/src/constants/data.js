@@ -534,7 +534,8 @@ export const CROP_STATUS_OPTIONS = [
     { value: "planted", label: "Planted" },
     { value: "growing", label: "Growing" },
     { value: "harvested", label: "Harvested" },
-    { value: "fallow", label: "Fallow" },
+    { value: "withered", label: "Withered" },
+    { value: "destroyed", label: "Destroyed" },
 ];
 
 export const condTone = {

@@ -12,8 +12,7 @@ import { CROP_STATUS_OPTIONS } from "@/constants/data";
 import { LocationPicker } from "@/components/public";
 import { ModalShell } from "./ModalShell";
 import { useFarmers } from "@/hooks/useFarmers";
-import { useCropsByUserId } from "@/hooks/useCrops";
-import useAuth from "@/hooks/useAuth";
+import { useCropsByFarmId } from "@/hooks/useCrops";
 import { farmFormSchema, farmUpdateSchema } from "@/schemas/farm.schema";
 
 export function FarmModal({
@@ -25,13 +24,16 @@ export function FarmModal({
   onSave,
 }) {
   const isEdit = mode === "edit";
-  const { user } = useAuth();
 
   const { data: farmersData, isLoading: farmersLoading } = useFarmers({
     all: true,
   });
-  const { data: cropsData, isLoading: cropsLoading } = useCropsByUserId(
-    user?._id,
+  // Crops shown here are scoped to the farm itself: the backend resolves
+  // farmId -> farm.assignedFarmers -> crops whose assignedFarmer is one of
+  // those farmers. Only relevant in edit mode (see isEdit gate on the
+  // Crops field below) since a brand-new farm has no id yet to scope by.
+  const { data: cropsData, isLoading: cropsLoading } = useCropsByFarmId(
+    initial?.id,
   );
 
   const farmerOptions = (farmersData?.farmers ?? []).map((f) => ({
@@ -142,7 +144,11 @@ export function FarmModal({
             <TextInput {...register("address")} placeholder="Nakuru, KE" />
           </Field>
 
-          <Field label="Assign Farmers" full>
+          <Field
+            label="Assign Farmers"
+            full
+            error={errors.assignedFarmers?.message}
+          >
             <Controller
               name="assignedFarmers"
               control={control}
@@ -160,38 +166,42 @@ export function FarmModal({
             />
           </Field>
 
-          <Field label="Crops" full>
-            <Controller
-              name="crops"
-              control={control}
-              render={({ field }) => {
-                const cropIds = field.value.map((c) => c.crop);
-                const onCropsChange = (nextIds) => {
-                  const existing = new Map(field.value.map((c) => [c.crop, c]));
-                  field.onChange(
-                    nextIds.map((id) => ({
-                      crop: id,
-                      status: existing.get(id)?.status ?? "planted",
-                      yield: existing.get(id)?.yield ?? 0,
-                    })),
+          {isEdit && (
+            <Field label="Crops" full error={errors.crops?.message}>
+              <Controller
+                name="crops"
+                control={control}
+                render={({ field }) => {
+                  const cropIds = field.value.map((c) => c.crop);
+                  const onCropsChange = (nextIds) => {
+                    const existing = new Map(
+                      field.value.map((c) => [c.crop, c]),
+                    );
+                    field.onChange(
+                      nextIds.map((id) => ({
+                        crop: id,
+                        status: existing.get(id)?.status ?? "planted",
+                        yield: existing.get(id)?.yield ?? 0,
+                      })),
+                    );
+                  };
+                  return (
+                    <MultiSelect
+                      values={cropIds}
+                      onChange={onCropsChange}
+                      options={cropOptions}
+                      placeholder={
+                        cropsLoading ? "Loading crops…" : "Select crops…"
+                      }
+                      searchPlaceholder="Search crop…"
+                    />
                   );
-                };
-                return (
-                  <MultiSelect
-                    values={cropIds}
-                    onChange={onCropsChange}
-                    options={cropOptions}
-                    placeholder={
-                      cropsLoading ? "Loading crops…" : "Select crops…"
-                    }
-                    searchPlaceholder="Search crop…"
-                  />
-                );
-              }}
-            />
-          </Field>
+                }}
+              />
+            </Field>
+          )}
 
-          {crops.length > 0 && (
+          {isEdit && crops.length > 0 && (
             <div className="sm:col-span-2 space-y-2">
               {crops.map((c) => {
                 const label =

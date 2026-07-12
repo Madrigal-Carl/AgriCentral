@@ -6,6 +6,7 @@ import {
     updateFarm,
     deleteFarm,
 } from "@/services/farm.service";
+import { cropKeys } from "./useCrops";
 
 /* ---------------- Query Keys ---------------- */
 export const farmKeys = {
@@ -57,6 +58,7 @@ export function useUpdateFarm(options = {}) {
         mutationFn: ({ id, ...data }) => updateFarm(id, data),
         onSuccess: (data, variables, context) => {
             queryClient.invalidateQueries({ queryKey: farmKeys.lists() });
+            queryClient.invalidateQueries({ queryKey: cropKeys.byFarm(variables.id) });
             options.onSuccess?.(data, variables, context);
         },
         onError: options.onError,

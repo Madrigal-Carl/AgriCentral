@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
     getCrops,
-    getCropsByUserId,
+    getCropsByFarmId,
     createCrop,
     updateCrop,
     deleteCrop,
@@ -14,7 +14,7 @@ export const cropKeys = {
     list: (filters) => [...cropKeys.lists(), filters],
     details: () => [...cropKeys.all, "detail"],
     detail: (id) => [...cropKeys.details(), id],
-    byUser: (userId) => [...cropKeys.all, "byUser", userId],
+    byFarm: (farmId) => [...cropKeys.all, "byFarm", farmId],
 };
 
 /* ---------------- Queries ---------------- */
@@ -27,12 +27,11 @@ export function useCrops(filters = {}, options = {}) {
     });
 }
 
-// Fetches the crop(s) belonging to a specific user via GET /crops/:userId
-export function useCropsByUserId(userId, options = {}) {
+export function useCropsByFarmId(farmId, options = {}) {
     return useQuery({
-        queryKey: cropKeys.byUser(userId),
-        queryFn: () => getCropsByUserId(userId),
-        enabled: !!userId,
+        queryKey: cropKeys.byFarm(farmId),
+        queryFn: () => getCropsByFarmId(farmId),
+        enabled: !!farmId,
         ...options,
     });
 }
