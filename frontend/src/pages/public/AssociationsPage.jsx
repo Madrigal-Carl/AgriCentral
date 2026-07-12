@@ -16,11 +16,6 @@ import {
   useDeleteAssociation,
 } from "@/hooks/useAssociations";
 
-const blankForm = {
-  name: "",
-  members: [], // not yet supported by backend — kept for UI compatibility
-};
-
 /* ---------------- Page ---------------- */
 export function AssociationsPage() {
   const [search, setSearch] = useState("");
@@ -66,7 +61,7 @@ export function AssociationsPage() {
 
   const busy = createMutation.isPending || updateMutation.isPending;
 
-  const openAdd = () => setModal({ mode: "add", data: { ...blankForm } });
+  const openAdd = () => setModal({ mode: "add" });
   const openEdit = (row) => setModal({ mode: "edit", data: { ...row } });
   const openView = (row) => setDrawer(row);
   const askDelete = (row) => {

@@ -26,8 +26,7 @@ export function AssociationModal({
       isEdit ? associationUpdateSchema : associationFormSchema,
     ),
     defaultValues: {
-      name: "",
-      ...initial,
+      name: initial?.name ?? "",
     },
   });
 

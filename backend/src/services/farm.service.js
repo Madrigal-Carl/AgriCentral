@@ -45,8 +45,13 @@ export const createFarm = async (data, authenticatedUserId) => {
 };
 
 export const updateFarm = async (id, data) => {
-    if (data.tag) {
-        const existing = await Farm.findOne({ tag: data.tag, _id: { $ne: id } });
+    const { userId, ...farmData } = data;
+    if (userId !== undefined) {
+        farmData.user = userId;
+    }
+
+    if (farmData.tag) {
+        const existing = await Farm.findOne({ tag: farmData.tag, _id: { $ne: id } });
 
         if (existing) {
             throw new Error("A farm with this tag already exists");
@@ -54,13 +59,13 @@ export const updateFarm = async (id, data) => {
     }
 
     // Grab the pre-update crop list so we can diff added vs. removed crops below.
-    const previousFarm = data.crops
+    const previousFarm = farmData.crops
         ? await Farm.findById(id).select("crops.crop")
         : null;
 
     const farm = await Farm.findByIdAndUpdate(
         id,
-        { $set: data },
+        { $set: farmData },
         { new: true, runValidators: true }
     ).populate([FARMER_POPULATE, CROP_POPULATE]);
 
@@ -70,8 +75,8 @@ export const updateFarm = async (id, data) => {
         throw notFoundError;
     }
 
-    if (data.crops) {
-        const newCropIds = data.crops.map((c) => c.crop.toString());
+    if (farmData.crops) {
+        const newCropIds = farmData.crops.map((c) => c.crop.toString());
         const previousCropIds = (previousFarm?.crops ?? []).map((c) =>
             c.crop.toString()
         );

@@ -44,7 +44,12 @@ const attachMembers = async (associations) => {
         return associations.map((a) => {
             const obj = typeof a.toObject === "function" ? a.toObject() : a;
             const { assignedUser, ...rest } = obj;
-            return { ...rest, far: assignedUser?.fullname ?? null, members: [] };
+            return {
+                ...rest,
+                assignedUser: assignedUser?._id ?? null,
+                far: assignedUser?.fullname ?? null,
+                members: [],
+            };
         });
     }
 
@@ -69,6 +74,7 @@ const attachMembers = async (associations) => {
         const key = assignedUser?._id?.toString();
         return {
             ...rest,
+            assignedUser: assignedUser?._id ?? null,
             far: assignedUser?.fullname ?? null,
             members: key ? membersByUserId.get(key) ?? [] : [],
         };

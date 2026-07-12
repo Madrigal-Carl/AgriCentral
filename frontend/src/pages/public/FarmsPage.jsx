@@ -7,6 +7,7 @@ import { DeleteConfirmModal, FarmModal, FarmDrawer } from "@/components/modal";
 import { Button } from "@/components/ui";
 
 import { usePermissions } from "@/constants/permissions";
+import useAuth from "@/hooks/useAuth";
 import {
   useFarms,
   useCreateFarm,
@@ -14,6 +15,7 @@ import {
   useDeleteFarm,
 } from "@/hooks/useFarms";
 import { useCrops } from "@/hooks/useCrops";
+import { useAssociations } from "@/hooks/useAssociations";
 
 const blankForm = {
   id: "",
@@ -22,12 +24,15 @@ const blankForm = {
   latitude: "",
   longitude: "",
   assignedFarmers: [],
+  association: "",
   crops: [],
 };
 
 /* ---------------- Page ---------------- */
 export function FarmsPage() {
   const can = usePermissions("farms");
+  const { role } = useAuth();
+  const isFar = role === "far";
 
   const [search, setSearch] = useState("");
   const [crop, setCrop] = useState("");
@@ -53,6 +58,22 @@ export function FarmsPage() {
   const cropOptions = Array.from(
     new Set((cropsData?.crops ?? []).map((c) => c.name)),
   ).map((name) => ({ value: name, label: name }));
+
+  // Needed to resolve association -> assignedUser (the actual "owner" id
+  // sent to the backend as userId) for non-FAR users. Only fetched for
+  // non-FAR roles since FAR users never touch associations.
+  const { data: associationsData } = useAssociations(
+    { all: true },
+    { enabled: !isFar },
+  );
+
+  const findAssociationById = (associationId) =>
+    (associationsData?.associations ?? []).find((a) => a._id === associationId);
+
+  const findAssociationByAssignedUser = (userId) =>
+    (associationsData?.associations ?? []).find(
+      (a) => (a.assignedUser?._id ?? a.assignedUser) === userId,
+    );
 
   const [modal, setModal] = useState(null);
   const [drawer, setDrawer] = useState(null);
@@ -109,6 +130,12 @@ export function FarmsPage() {
         assignedFarmers: (row.assignedFarmers || []).map((f) =>
           typeof f === "string" ? f : f._id,
         ),
+        // row.user is the farm's owner id (a User id). For non-FAR roles,
+        // reverse-lookup which association that owner is assignedUser on,
+        // so the Association select shows the right current value.
+        association: !isFar
+          ? (findAssociationByAssignedUser(row.user)?._id ?? "")
+          : "",
         crops: (row.crops || []).map((c) => ({
           crop: typeof c.crop === "string" ? c.crop : c.crop?._id,
           status: c.status,
@@ -139,6 +166,20 @@ export function FarmsPage() {
         assignedFarmers: values.assignedFarmers,
         crops: values.crops,
       };
+
+      // Non-FAR users don't pick farmers directly — the farm is owned by
+      // whichever User is assignedUser on the selected association, not
+      // by the association document itself.
+      if (!isFar) {
+        const selectedAssociation = findAssociationById(values.association);
+        const assignedUserId =
+          selectedAssociation?.assignedUser?._id ??
+          selectedAssociation?.assignedUser;
+
+        if (assignedUserId) {
+          payload.userId = assignedUserId;
+        }
+      }
 
       if (modal.mode === "add") {
         await createMutateAsync(payload);

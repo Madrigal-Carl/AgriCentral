@@ -14,6 +14,8 @@ import { LocationPicker } from "@/components/public";
 import { ModalShell } from "./ModalShell";
 import { useFarmers } from "@/hooks/useFarmers";
 import { useCropsByFarmId } from "@/hooks/useCrops";
+import { useAssociations } from "@/hooks/useAssociations";
+import useAuth from "@/hooks/useAuth";
 import { farmFormSchema, farmUpdateSchema } from "@/schemas/farm.schema";
 
 export function FarmModal({
@@ -25,14 +27,23 @@ export function FarmModal({
   onSave,
 }) {
   const isEdit = mode === "edit";
+  const { role } = useAuth();
+  const isFar = role === "far";
 
+  // FAR users pick individual farmers to assign; everyone else assigns the
+  // farm to an association instead. Only fetch whichever list is relevant.
   const { data: farmersData, isLoading: farmersLoading } = useFarmers({
     all: true,
+    enabled: isFar,
   });
+
+  const { data: associationsData, isLoading: associationsLoading } =
+    useAssociations({ all: true }, { enabled: !isFar });
+
   // Crops shown here are scoped to the farm itself: the backend resolves
   // farmId -> farm.assignedFarmers -> crops whose assignedFarmer is one of
-  // those farmers. Only relevant in edit mode (see isEdit gate on the
-  // Crops field below) since a brand-new farm has no id yet to scope by.
+  // those farmers. Only relevant in edit mode (see isEdit gate below) since
+  // a brand-new farm has no id yet to scope by.
   const { data: cropsData, isLoading: cropsLoading } = useCropsByFarmId(
     initial?.id,
   );
@@ -42,9 +53,13 @@ export function FarmModal({
     label: f.fullName,
   }));
 
-  // The farm object returned by the backend has assignedFarmers/crops.crop
-  // populated (full objects), but the form + MultiSelect components work
-  // with plain id strings. Normalize before handing to useForm so all
+  const associationOptions = (associationsData?.associations ?? []).map(
+    (a) => ({ value: a._id, label: a.name }),
+  );
+
+  // The farm object returned by the backend has assignedFarmers/crops.crop/
+  // association populated (full objects), but the form + Select components
+  // work with plain id strings. Normalize before handing to useForm so all
   // downstream comparisons (.includes(id), Map lookups, etc.) work.
   const normalizedInitial = useMemo(() => {
     if (!initial) return initial;
@@ -57,6 +72,12 @@ export function FarmModal({
         ...c,
         crop: typeof c.crop === "string" ? c.crop : c.crop._id,
       })),
+      association:
+        initial.association == null
+          ? initial.association
+          : typeof initial.association === "string"
+            ? initial.association
+            : initial.association._id,
     };
   }, [initial]);
 
@@ -74,6 +95,7 @@ export function FarmModal({
       address: "",
       assignedFarmers: [],
       crops: [],
+      association: "",
       latitude: "",
       longitude: "",
       ...normalizedInitial,
@@ -208,59 +230,82 @@ export function FarmModal({
             <TextInput {...register("address")} placeholder="Nakuru, KE" />
           </Field>
 
-          <Field
-            label="Assign Farmers"
-            full
-            error={errors.assignedFarmers?.message}
-          >
-            <Controller
-              name="assignedFarmers"
-              control={control}
-              render={({ field }) => (
-                <MultiSelect
-                  values={field.value}
-                  onChange={field.onChange}
-                  options={farmerOptions}
-                  placeholder={
-                    farmersLoading ? "Loading farmers…" : "Select farmers…"
-                  }
-                  searchPlaceholder="Search farmer…"
-                />
-              )}
-            />
-          </Field>
-
-          {isEdit && (
-            <Field label="Crops" full error={errors.crops?.message}>
-              <Controller
-                name="crops"
-                control={control}
-                render={({ field }) => {
-                  const cropIds = field.value.map((c) => c.crop);
-                  const onCropsChange = (nextIds) => {
-                    const existing = new Map(
-                      field.value.map((c) => [c.crop, c]),
-                    );
-                    field.onChange(
-                      nextIds.map((id) => ({
-                        crop: id,
-                        status: existing.get(id)?.status ?? "planted",
-                        yield: existing.get(id)?.yield ?? 0,
-                      })),
-                    );
-                  };
-                  return (
+          {isFar ? (
+            <>
+              <Field
+                label="Assign Farmers"
+                full
+                error={errors.assignedFarmers?.message}
+              >
+                <Controller
+                  name="assignedFarmers"
+                  control={control}
+                  render={({ field }) => (
                     <MultiSelect
-                      values={cropIds}
-                      onChange={onCropsChange}
-                      options={cropOptions}
+                      values={field.value}
+                      onChange={field.onChange}
+                      options={farmerOptions}
                       placeholder={
-                        cropsLoading ? "Loading crops…" : "Select crops…"
+                        farmersLoading ? "Loading farmers…" : "Select farmers…"
                       }
-                      searchPlaceholder="Search crop…"
+                      searchPlaceholder="Search farmer…"
                     />
-                  );
-                }}
+                  )}
+                />
+              </Field>
+
+              {isEdit && (
+                <Field label="Crops" full error={errors.crops?.message}>
+                  <Controller
+                    name="crops"
+                    control={control}
+                    render={({ field }) => {
+                      const cropIds = field.value.map((c) => c.crop);
+                      const onCropsChange = (nextIds) => {
+                        const existing = new Map(
+                          field.value.map((c) => [c.crop, c]),
+                        );
+                        field.onChange(
+                          nextIds.map((id) => ({
+                            crop: id,
+                            status: existing.get(id)?.status ?? "planted",
+                            yield: existing.get(id)?.yield ?? 0,
+                          })),
+                        );
+                      };
+                      return (
+                        <MultiSelect
+                          values={cropIds}
+                          onChange={onCropsChange}
+                          options={cropOptions}
+                          placeholder={
+                            cropsLoading ? "Loading crops…" : "Select crops…"
+                          }
+                          searchPlaceholder="Search crop…"
+                        />
+                      );
+                    }}
+                  />
+                </Field>
+              )}
+            </>
+          ) : (
+            <Field label="Association" full error={errors.association?.message}>
+              <Controller
+                name="association"
+                control={control}
+                render={({ field }) => (
+                  <FullSelect
+                    value={field.value}
+                    onChange={field.onChange}
+                    options={associationOptions}
+                    placeholder={
+                      associationsLoading
+                        ? "Loading associations…"
+                        : "Select association…"
+                    }
+                  />
+                )}
               />
             </Field>
           )}
