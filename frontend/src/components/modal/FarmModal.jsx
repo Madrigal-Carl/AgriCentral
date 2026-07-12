@@ -1,4 +1,5 @@
 import { Wheat } from "lucide-react";
+import { useEffect, useMemo, useRef } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -40,10 +41,24 @@ export function FarmModal({
     value: f._id,
     label: f.fullName,
   }));
-  const cropOptions = (cropsData?.crops ?? []).map((c) => ({
-    value: c._id,
-    label: c.name,
-  }));
+
+  // The farm object returned by the backend has assignedFarmers/crops.crop
+  // populated (full objects), but the form + MultiSelect components work
+  // with plain id strings. Normalize before handing to useForm so all
+  // downstream comparisons (.includes(id), Map lookups, etc.) work.
+  const normalizedInitial = useMemo(() => {
+    if (!initial) return initial;
+    return {
+      ...initial,
+      assignedFarmers: (initial.assignedFarmers ?? []).map((f) =>
+        typeof f === "string" ? f : f._id,
+      ),
+      crops: (initial.crops ?? []).map((c) => ({
+        ...c,
+        crop: typeof c.crop === "string" ? c.crop : c.crop._id,
+      })),
+    };
+  }, [initial]);
 
   const {
     register,
@@ -61,13 +76,62 @@ export function FarmModal({
       crops: [],
       latitude: "",
       longitude: "",
-      ...initial,
+      ...normalizedInitial,
     },
   });
 
   const crops = watch("crops") || [];
+  const assignedFarmers = watch("assignedFarmers") || [];
   const latitude = watch("latitude");
   const longitude = watch("longitude");
+
+  // crop._id -> assignedFarmer id, so we can tell which farmer "owns" a
+  // crop and filter/strip crops when that farmer is unassigned.
+  const cropOwnerMap = useMemo(() => {
+    const map = new Map();
+    (cropsData?.crops ?? []).forEach((c) => {
+      map.set(c._id, c.assignedFarmer?._id ?? c.assignedFarmer);
+    });
+    return map;
+  }, [cropsData]);
+
+  // Only offer crops whose owner is a farmer currently checked in the form.
+  // Recomputes live as assignedFarmers changes, before saving — so
+  // unchecking a farmer immediately drops their crops from the options list.
+  const cropOptions = useMemo(() => {
+    return (cropsData?.crops ?? [])
+      .filter((c) => {
+        const ownerId = c.assignedFarmer?._id ?? c.assignedFarmer;
+        return assignedFarmers.includes(ownerId);
+      })
+      .map((c) => ({ value: c._id, label: c.name }));
+  }, [cropsData, assignedFarmers]);
+
+  // Keep track of the previous assignedFarmers so we only react to actual
+  // removals (avoids stripping crops on unrelated re-renders).
+  const prevAssignedFarmersRef = useRef(assignedFarmers);
+
+  useEffect(() => {
+    const prev = prevAssignedFarmersRef.current;
+    const removedFarmerIds = prev.filter((id) => !assignedFarmers.includes(id));
+
+    if (removedFarmerIds.length > 0) {
+      const currentCrops = watch("crops") || [];
+      const filtered = currentCrops.filter((c) => {
+        const ownerId = cropOwnerMap.get(c.crop);
+        // Keep the crop if we don't know its owner (safe default) or its
+        // owner is still assigned; drop it only if the owner was just removed.
+        return !ownerId || !removedFarmerIds.includes(ownerId);
+      });
+
+      if (filtered.length !== currentCrops.length) {
+        setValue("crops", filtered, { shouldValidate: true });
+      }
+    }
+
+    prevAssignedFarmersRef.current = assignedFarmers;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assignedFarmers, cropOwnerMap]);
 
   const setCropStatus = (cropId, status) => {
     setValue(

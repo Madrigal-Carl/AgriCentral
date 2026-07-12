@@ -4,6 +4,17 @@ import Crop from "../models/crop.model.js";
 const CROP_POPULATE = { path: "crops.crop" };
 const FARMER_POPULATE = { path: "assignedFarmers", select: "fullName emailAddress" };
 
+const ACTIVE_CROP_STATUSES = ["planted", "growing"];
+
+function filterActiveCrops(farm) {
+    if (!farm) return farm;
+    const farmObj = typeof farm.toObject === "function" ? farm.toObject() : farm;
+    farmObj.crops = (farmObj.crops ?? []).filter((c) =>
+        ACTIVE_CROP_STATUSES.includes(c.status)
+    );
+    return farmObj;
+}
+
 export const createFarm = async (data, authenticatedUserId) => {
     const { userId, ...farmData } = data;
 
@@ -20,7 +31,17 @@ export const createFarm = async (data, authenticatedUserId) => {
         user: resolvedUserId || undefined,
     });
 
-    return farm.populate([FARMER_POPULATE, CROP_POPULATE]);
+    // A brand-new farm has no "previous" crops, so anything in crops[] here is newly assigned.
+    if (farmData.crops?.length) {
+        const cropIds = farmData.crops.map((c) => c.crop);
+        await Crop.updateMany(
+            { _id: { $in: cropIds } },
+            { $set: { status: "planted" } }
+        );
+    }
+
+    const populated = await farm.populate([FARMER_POPULATE, CROP_POPULATE]);
+    return filterActiveCrops(populated);
 };
 
 export const updateFarm = async (id, data) => {
@@ -31,6 +52,11 @@ export const updateFarm = async (id, data) => {
             throw new Error("A farm with this tag already exists");
         }
     }
+
+    // Grab the pre-update crop list so we can diff added vs. removed crops below.
+    const previousFarm = data.crops
+        ? await Farm.findById(id).select("crops.crop")
+        : null;
 
     const farm = await Farm.findByIdAndUpdate(
         id,
@@ -44,7 +70,36 @@ export const updateFarm = async (id, data) => {
         throw notFoundError;
     }
 
-    return farm;
+    if (data.crops) {
+        const newCropIds = data.crops.map((c) => c.crop.toString());
+        const previousCropIds = (previousFarm?.crops ?? []).map((c) =>
+            c.crop.toString()
+        );
+
+        const addedCropIds = newCropIds.filter(
+            (cid) => !previousCropIds.includes(cid)
+        );
+        const removedCropIds = previousCropIds.filter(
+            (cid) => !newCropIds.includes(cid)
+        );
+
+        if (addedCropIds.length) {
+            await Crop.updateMany(
+                { _id: { $in: addedCropIds } },
+                { $set: { status: "planted" } }
+            );
+        }
+
+        // Crop removed from this farm — free it back up so it's assignable elsewhere again.
+        if (removedCropIds.length) {
+            await Crop.updateMany(
+                { _id: { $in: removedCropIds } },
+                { $set: { status: "not_planted" } }
+            );
+        }
+    }
+
+    return filterActiveCrops(farm);
 };
 
 export const deleteFarm = async (id) => {
@@ -56,6 +111,15 @@ export const deleteFarm = async (id) => {
         throw notFoundError;
     }
 
+    // Crops attached to a deleted farm are orphaned — free them back up.
+    if (farm.crops?.length) {
+        const cropIds = farm.crops.map((c) => c.crop);
+        await Crop.updateMany(
+            { _id: { $in: cropIds } },
+            { $set: { status: "not_planted" } }
+        );
+    }
+
     return farm;
 };
 
@@ -64,7 +128,7 @@ export const getFarmsByUserId = async (userId) => {
         .sort({ createdAt: -1 })
         .populate([FARMER_POPULATE, CROP_POPULATE]);
 
-    return farms;
+    return farms.map(filterActiveCrops);
 };
 
 export const getFarms = async ({ search, crop, userId, all, page, limit }) => {
@@ -104,7 +168,7 @@ export const getFarms = async ({ search, crop, userId, all, page, limit }) => {
             .populate([FARMER_POPULATE, CROP_POPULATE]);
 
         return {
-            farms,
+            farms: farms.map(filterActiveCrops),
             pagination: null,
         };
     }
@@ -121,7 +185,7 @@ export const getFarms = async ({ search, crop, userId, all, page, limit }) => {
     ]);
 
     return {
-        farms,
+        farms: farms.map(filterActiveCrops),
         pagination: {
             page,
             limit,
@@ -131,9 +195,6 @@ export const getFarms = async ({ search, crop, userId, all, page, limit }) => {
     };
 };
 
-// Escapes regex special characters in user input so a search like "a.b+c"
-// is treated literally instead of as a regex pattern (which could throw
-// or match unintended results).
 function escapeRegex(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

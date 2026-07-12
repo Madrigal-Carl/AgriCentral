@@ -43,7 +43,7 @@ export const deleteCrop = async (id) => {
 };
 
 export const getCropsByFarmId = async (farmId) => {
-    const farm = await Farm.findById(farmId).select("assignedFarmers");
+    const farm = await Farm.findById(farmId).select("assignedFarmers crops.crop");
 
     if (!farm) {
         const notFoundError = new Error("Farm not found");
@@ -51,8 +51,14 @@ export const getCropsByFarmId = async (farmId) => {
         throw notFoundError;
     }
 
+    const plantedOnThisFarmIds = farm.crops.map((c) => c.crop);
+
     const crops = await Crop.find({
         assignedFarmer: { $in: farm.assignedFarmers },
+        $or: [
+            { status: "not_planted" },
+            { _id: { $in: plantedOnThisFarmIds } },
+        ],
     }).sort({ createdAt: -1 });
 
     return crops;
