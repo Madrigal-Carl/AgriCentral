@@ -2,7 +2,7 @@ import Farmer from "../models/farmer.model.js";
 import Farm from "../models/farm.model.js";
 import User from "../models/user.model.js";
 import cloudinary from "../config/cloudinary.js";
-import { createLog, humanize } from "./log.service.js";
+import { createLog, getLogsForEntities, humanize } from "./log.service.js";
 
 // If the caller explicitly picked an association, use it. Otherwise fall
 // back to the authenticated user's own association (this is the FAR-user
@@ -161,10 +161,7 @@ export const deleteFarmer = async (id) => {
     return farmer;
 };
 
-// Attaches each farmer's related records — farms, and (once those models
-// exist) livestock/equipment — as full lightweight objects rather than
-// just a count, so the frontend can list them, not just tally them.
-const attachRelatedRecords = async (farmers) => {
+const attachRelatedRecords = async (farmers, associationId) => {
     const farmerIds = farmers.map((f) => f._id);
 
     if (!farmerIds.length) return [];
@@ -182,6 +179,8 @@ const attachRelatedRecords = async (farmers) => {
         }
     }
 
+    const logsByFarmerId = await getLogsForEntities("farmer", farmerIds, associationId);
+
     // TODO: livestock, equipment — same fetch-group-attach pattern once
     // those models exist.
 
@@ -193,6 +192,7 @@ const attachRelatedRecords = async (farmers) => {
             farms: farmsByFarmerId.get(key) ?? [],
             livestock: obj.livestock ?? [],
             equipment: obj.equipment ?? [],
+            history: logsByFarmerId.get(key) ?? [],
         };
     });
 };
@@ -201,7 +201,7 @@ export const getFarmersByAssociationId = async (associationId) => {
     const farmers = await Farmer.find({ association: associationId }).sort({
         createdAt: -1,
     });
-    return attachRelatedRecords(farmers);
+    return attachRelatedRecords(farmers, associationId);
 };
 
 export const getFarmers = async ({ status, search, associationId, all, page, limit }) => {
@@ -216,7 +216,7 @@ export const getFarmers = async ({ status, search, associationId, all, page, lim
     if (all) {
         const farmers = await Farmer.find(filter).sort({ createdAt: -1 });
         return {
-            farmers: await attachRelatedRecords(farmers),
+            farmers: await attachRelatedRecords(farmers, associationId),
             pagination: null,
         };
     }
@@ -229,7 +229,7 @@ export const getFarmers = async ({ status, search, associationId, all, page, lim
     ]);
 
     return {
-        farmers: await attachRelatedRecords(farmers),
+        farmers: await attachRelatedRecords(farmers, associationId),
         pagination: {
             page,
             limit,

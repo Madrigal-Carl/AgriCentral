@@ -21,3 +21,24 @@ export const humanize = (value) =>
         .filter(Boolean)
         .map((w) => w[0].toUpperCase() + w.slice(1))
         .join(" ");
+
+export const getLogsForEntities = async (entityType, entityIds, associationId) => {
+    if (!entityIds.length) return new Map();
+
+    const filter = { entityType, entityId: { $in: entityIds } };
+    if (associationId) filter.association = associationId;
+
+    const logs = await Log.find(filter).sort({ createdAt: -1 });
+
+    const logsByEntityId = new Map();
+    for (const log of logs) {
+        const key = log.entityId.toString();
+        if (!logsByEntityId.has(key)) logsByEntityId.set(key, []);
+        logsByEntityId.get(key).push({
+            message: log.message,
+            date: log.createdAt,
+        });
+    }
+
+    return logsByEntityId;
+};
