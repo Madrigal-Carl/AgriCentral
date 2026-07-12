@@ -21,15 +21,7 @@ import { useFarmers, useDeleteFarmer } from "@/hooks/useFarmers";
 const STATUS_OPTIONS = [
   { value: "active", label: "Active" },
   { value: "inactive", label: "Inactive" },
-  { value: "pending", label: "Pending" },
 ];
-
-const positionLabel = {
-  president: "President",
-  vice_president: "Vice President",
-  secretary: "Secretary",
-  member: "Member",
-};
 
 const blankForm = {
   id: "",
@@ -220,8 +212,8 @@ export function FarmersPage() {
             header: "Position",
             sortable: true,
             cell: (r) => (
-              <span className="text-sm font-medium text-foreground">
-                {positionLabel[r.position] || "—"}
+              <span className="text-sm font-medium text-foreground capitalize">
+                {r.position || "—"}
               </span>
             ),
           },

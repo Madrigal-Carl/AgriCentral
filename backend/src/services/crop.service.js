@@ -41,6 +41,17 @@ export const deleteCrop = async (id) => {
     return crop;
 };
 
+export const getCropsByUserId = async (userId) => {
+    const crops = await Crop.aggregate([
+        { $match: { user: new mongoose.Types.ObjectId(userId) } },
+        { $group: { _id: "$name" } },
+        { $sort: { _id: 1 } },
+        { $project: { _id: 0, name: "$_id" } },
+    ]);
+
+    return crops.map((c) => c.name);
+};
+
 export const getCrops = async ({ status, search, all, page, limit }) => {
     const filter = {};
     if (status) filter.status = status;

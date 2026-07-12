@@ -1,10 +1,9 @@
 import {
-    createCropSchema,
-    updateCropSchema,
-    cropIdParamSchema,
-    cropUserIdParamSchema,
-    getCropsQuerySchema,
-} from "../schemas/crop.schema.js";
+    createFarmSchema,
+    updateFarmSchema,
+    farmIdParamSchema,
+    getFarmsQuerySchema,
+} from "../schemas/farm.schema.js";
 
 const validate = (schema) => (req, res, next) => {
     const result = schema.safeParse(req.body);
@@ -56,8 +55,7 @@ const validateQuery = (schema) => (req, res, next) => {
     next();
 };
 
-export const validateCreateCrop = validate(createCropSchema);
-export const validateUpdateCrop = validate(updateCropSchema);
-export const validateCropIdParam = validateParams(cropIdParamSchema);
-export const validateCropUserIdParam = validateParams(cropUserIdParamSchema);
-export const validateGetCropsQuery = validateQuery(getCropsQuerySchema);
+export const validateCreateFarm = validate(createFarmSchema);
+export const validateUpdateFarm = validate(updateFarmSchema);
+export const validateFarmIdParam = validateParams(farmIdParamSchema);
+export const validateGetFarmsQuery = validateQuery(getFarmsQuerySchema);

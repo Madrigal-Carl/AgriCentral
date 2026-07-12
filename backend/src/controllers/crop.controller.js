@@ -3,6 +3,7 @@ import {
     updateCrop,
     deleteCrop,
     getCrops,
+    getCropsByUserId,
 } from "../services/crop.service.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
@@ -30,6 +31,15 @@ export const deleteCropHandler = asyncHandler(async (req, res) => {
     return res.status(200).json({
         message: "Crop deleted successfully",
         crop,
+    });
+});
+
+export const getCropsByUserIdHandler = asyncHandler(async (req, res) => {
+    const crops = await getCropsByUserId(req.params.userId);
+
+    return res.status(200).json({
+        message: "Crops fetched successfully",
+        crops,
     });
 });
 

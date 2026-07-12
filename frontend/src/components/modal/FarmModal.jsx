@@ -84,12 +84,6 @@ export function FarmModal({ mode, initial, onClose, onSave }) {
               searchPlaceholder="Search farmer…"
             />
           </Field>
-          <Field label="Geotag Location" full>
-            <LocationPicker
-              value={form.location}
-              onChange={(v) => set("location", v)}
-            />
-          </Field>
           <Field label="Crops" full>
             <MultiSelect
               values={cropNames}
@@ -129,6 +123,12 @@ export function FarmModal({ mode, initial, onClose, onSave }) {
               ))}
             </div>
           )}
+          <Field label="Geotag Location" full>
+            <LocationPicker
+              value={form.location}
+              onChange={(v) => set("location", v)}
+            />
+          </Field>
         </div>
       </form>
     </ModalShell>
