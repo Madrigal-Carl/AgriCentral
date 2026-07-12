@@ -53,7 +53,7 @@ export const farmIdParamSchema = z.object({
 export const getFarmsQuerySchema = z.object({
     search: z.string().trim().min(1).max(100).optional(),
     crop: z.string().trim().min(1).max(100).optional(),
-    cropStatus: z.enum(CROP_STATUSES).optional(),
+    userId: objectId("user id").optional(),
     all: z
         .enum(["true", "false"])
         .optional()

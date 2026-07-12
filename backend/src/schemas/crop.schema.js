@@ -37,6 +37,10 @@ export const cropIdParamSchema = z.object({
 export const getCropsQuerySchema = z.object({
     status: z.enum(STATUSES).optional(),
     search: z.string().trim().min(1).max(100).optional(),
+    userId: z
+        .string()
+        .regex(/^[0-9a-fA-F]{24}$/, "Invalid user id")
+        .optional(),
     all: z
         .enum(["true", "false"])
         .optional()
