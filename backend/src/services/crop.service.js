@@ -1,14 +1,30 @@
 import Crop from "../models/crop.model.js";
 import Farm from "../models/farm.model.js";
+import User from "../models/user.model.js";
+
+// If the caller explicitly picked an association, use it. Otherwise fall
+// back to the authenticated user's own association (the FAR-user path —
+// they don't pick an association when logging a crop, so it should land
+// under whichever association they belong to).
+const resolveAssociationId = async (associationId, authenticatedUserId) => {
+    if (associationId) return associationId;
+    if (!authenticatedUserId) return undefined;
+
+    const user = await User.findById(authenticatedUserId).select("association");
+    return user?.association ?? undefined;
+};
 
 export const createCrop = async (data, authenticatedUserId) => {
-    const { userId, ...cropData } = data;
+    const { associationId, ...cropData } = data;
 
-    const resolvedUserId = userId || authenticatedUserId;
+    const resolvedAssociationId = await resolveAssociationId(
+        associationId,
+        authenticatedUserId,
+    );
 
     const crop = await Crop.create({
         ...cropData,
-        user: resolvedUserId || undefined,
+        association: resolvedAssociationId || undefined,
     });
 
     return crop;
@@ -68,10 +84,10 @@ export const getCropsByFarmId = async (farmId) => {
     return crops;
 };
 
-export const getCrops = async ({ status, search, userId, all, page, limit }) => {
+export const getCrops = async ({ status, search, associationId, all, page, limit }) => {
     const filter = {};
     if (status) filter.status = status;
-    if (userId) filter.user = userId;
+    if (associationId) filter.association = associationId;
 
     if (search) {
         filter.name = new RegExp(escapeRegex(search), "i");
@@ -103,9 +119,6 @@ export const getCrops = async ({ status, search, userId, all, page, limit }) => 
     };
 };
 
-// Escapes regex special characters in user input so a search like "a.b+c"
-// is treated literally instead of as a regex pattern (which could throw
-// or match unintended results).
 function escapeRegex(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

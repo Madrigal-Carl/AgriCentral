@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
     getFarmers,
-    getFarmerByUserId,
+    getFarmersByAssociationId,
     createFarmer,
     updateFarmer,
     deleteFarmer,
@@ -15,7 +15,7 @@ export const farmerKeys = {
     list: (filters) => [...farmerKeys.lists(), filters],
     details: () => [...farmerKeys.all, "detail"],
     detail: (id) => [...farmerKeys.details(), id],
-    byUser: (userId) => [...farmerKeys.all, "byUser", userId],
+    byAssociation: (associationId) => [...farmerKeys.all, "byAssociation", associationId],
 };
 
 /* ---------------- Shared: files -> attachments ---------------- */
@@ -51,12 +51,11 @@ export function useFarmers(filters = {}, options = {}) {
     });
 }
 
-// Fetches the farmer(s) assigned to a specific user via GET /farmers/:userId
-export function useFarmerByUserId(userId, options = {}) {
+export function useFarmersByAssociationId(associationId, options = {}) {
     return useQuery({
-        queryKey: farmerKeys.byUser(userId),
-        queryFn: () => getFarmerByUserId(userId),
-        enabled: !!userId,
+        queryKey: farmerKeys.byAssociation(associationId),
+        queryFn: () => getFarmersByAssociationId(associationId),
+        enabled: !!associationId,
         ...options,
     });
 }

@@ -21,9 +21,9 @@ const attachmentSchema = z.object({
 });
 
 export const createFarmerSchema = z.object({
-    userId: z
+    associationId: z
         .string()
-        .regex(/^[0-9a-fA-F]{24}$/, "Invalid user id")
+        .regex(/^[0-9a-fA-F]{24}$/, "Invalid association id")
         .optional(),
     fullName: z
         .string({ required_error: "Full name is required" })
@@ -71,9 +71,9 @@ export const farmerIdParamSchema = z.object({
 export const getFarmersQuerySchema = z.object({
     status: z.enum(STATUSES).optional(),
     search: z.string().trim().min(1).max(100).optional(),
-    userId: z
+    associationId: z
         .string()
-        .regex(/^[0-9a-fA-F]{24}$/, "Invalid user id")
+        .regex(/^[0-9a-fA-F]{24}$/, "Invalid association id")
         .optional(),
     all: z
         .enum(["true", "false"])
@@ -83,6 +83,6 @@ export const getFarmersQuerySchema = z.object({
     limit: z.coerce.number().int().positive().optional().default(10),
 });
 
-export const farmerUserIdParamSchema = z.object({
-    userId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid user id"),
+export const farmerAssociationIdParamSchema = z.object({
+    associationId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid association id"),
 });

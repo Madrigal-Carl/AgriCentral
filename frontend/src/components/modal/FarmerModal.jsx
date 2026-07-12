@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import useAuth from "@/hooks/useAuth";
@@ -36,7 +36,7 @@ function toFormShape(farmer, extra = {}) {
     position: farmer.position,
     status: farmer.status,
     files: farmer.attachments || [],
-    user: farmer.user,
+    association: farmer.association?._id ?? farmer.association,
     ...extra,
   };
 }
@@ -47,9 +47,9 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
   const [submitError, setSubmitError] = useState(null);
   const isEdit = mode === "edit";
 
-  // FAR users edit position directly; everyone else assigns the farmer to
-  // an association instead, which resolves to a userId on submit (the
-  // association's assignedUser) — same pattern as FarmModal.
+  // FAR users edit position directly and don't pick an association — the
+  // backend resolves their own association from the authenticated user.
+  // Everyone else assigns the farmer to an association explicitly.
   const { data: associationsData } = useAssociations(
     { all: true },
     { enabled: !isFar },
@@ -59,40 +59,34 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
     (a) => ({ value: a._id, label: a.name }),
   );
 
-  const findAssociationById = (associationId) =>
-    (associationsData?.associations ?? []).find((a) => a._id === associationId);
-
-  const findAssociationByAssignedUser = (userId) =>
-    (associationsData?.associations ?? []).find(
-      (a) => (a.assignedUser?._id ?? a.assignedUser) === userId,
-    );
+  // Association may arrive populated ({_id, name, ...}) or as a plain id
+  // string depending on the endpoint — normalize so SingleSelect/useForm
+  // always work with a string.
+  const normalizedInitial = initial
+    ? {
+        ...initial,
+        association:
+          initial.association == null
+            ? initial.association
+            : typeof initial.association === "string"
+              ? initial.association
+              : initial.association._id,
+      }
+    : initial;
 
   const {
     register,
     handleSubmit,
     control,
-    setValue,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(isEdit ? farmerUpdateSchema : farmerFormSchema),
     defaultValues: {
       gender: "male",
-      ...initial,
+      ...normalizedInitial,
       position: initial?.position || "member",
     },
   });
-
-  // associationsData arrives after mount, so defaultValues can't include
-  // the resolved association — set it once the list (and the farmer's
-  // current owning user) are both available.
-  useEffect(() => {
-    if (isFar || !isEdit || !initial?.user || !associationsData) return;
-    const match = findAssociationByAssignedUser(initial.user);
-    if (match) {
-      setValue("association", match._id);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isFar, isEdit, initial?.user, associationsData]);
 
   const { mutateAsync: createMutateAsync, isPending: isCreating } =
     useCreateFarmer({
@@ -124,22 +118,10 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
         address: values.address,
         position: values.position,
         files: values.files, // hook resolves this into `attachments`
+        // FAR users never pick an association — omit the key entirely so
+        // the backend falls back to resolving it from req.user.
+        ...(!isFar ? { associationId: values.association } : {}),
       };
-
-      // Non-FAR users don't set position directly (that field isn't even
-      // rendered for them) — instead they assign the farmer to an
-      // association, and the farmer's owning user becomes that
-      // association's assignedUser, not the association id itself.
-      if (!isFar) {
-        const selectedAssociation = findAssociationById(values.association);
-        const assignedUserId =
-          selectedAssociation?.assignedUser?._id ??
-          selectedAssociation?.assignedUser;
-
-        if (assignedUserId) {
-          payload.userId = assignedUserId;
-        }
-      }
 
       if (mode === "add") {
         const { farmer } = await createMutateAsync(payload);

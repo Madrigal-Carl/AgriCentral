@@ -1,9 +1,22 @@
 import Farmer from "../models/farmer.model.js";
 import Farm from "../models/farm.model.js";
+import User from "../models/user.model.js";
 import cloudinary from "../config/cloudinary.js";
 
+// If the caller explicitly picked an association, use it. Otherwise fall
+// back to the authenticated user's own association (this is the FAR-user
+// path — they don't pick an association in the form, so the farmer they
+// register should land under whichever association *they* belong to).
+const resolveAssociationId = async (associationId, authenticatedUserId) => {
+    if (associationId) return associationId;
+    if (!authenticatedUserId) return undefined;
+
+    const user = await User.findById(authenticatedUserId).select("association");
+    return user?.association ?? undefined;
+};
+
 export const createFarmer = async (data, authenticatedUserId) => {
-    const { userId, ...farmerData } = data;
+    const { associationId, ...farmerData } = data;
 
     const existing = await Farmer.findOne({ emailAddress: farmerData.emailAddress });
 
@@ -11,20 +24,23 @@ export const createFarmer = async (data, authenticatedUserId) => {
         throw new Error("A farmer with this email already exists");
     }
 
-    const resolvedUserId = userId || authenticatedUserId;
+    const resolvedAssociationId = await resolveAssociationId(
+        associationId,
+        authenticatedUserId,
+    );
 
     const farmer = await Farmer.create({
         ...farmerData,
-        user: resolvedUserId || undefined,
+        association: resolvedAssociationId || undefined,
     });
 
     return farmer;
 };
 
 export const updateFarmer = async (id, data) => {
-    const { userId, ...farmerData } = data;
-    if (userId !== undefined) {
-        farmerData.user = userId;
+    const { associationId, ...farmerData } = data;
+    if (associationId !== undefined) {
+        farmerData.association = associationId;
     }
 
     if (farmerData.emailAddress) {
@@ -84,40 +100,51 @@ export const deleteFarmer = async (id) => {
     return farmer;
 };
 
-const attachFarmCounts = async (farmers) => {
+const attachRelatedRecords = async (farmers) => {
     const farmerIds = farmers.map((f) => f._id);
 
     if (!farmerIds.length) return [];
 
-    const counts = await Farm.aggregate([
-        { $match: { assignedFarmers: { $in: farmerIds } } },
-        { $unwind: "$assignedFarmers" },
-        { $match: { assignedFarmers: { $in: farmerIds } } },
-        { $group: { _id: "$assignedFarmers", count: { $sum: 1 } } },
-    ]);
-
-    const countByFarmerId = new Map(
-        counts.map((c) => [c._id.toString(), c.count]),
+    const farms = await Farm.find({ assignedFarmers: { $in: farmerIds } }).select(
+        "tag assignedFarmers",
     );
+
+    const farmsByFarmerId = new Map();
+    for (const farm of farms) {
+        for (const farmerId of farm.assignedFarmers) {
+            const key = farmerId.toString();
+            if (!farmsByFarmerId.has(key)) farmsByFarmerId.set(key, []);
+            farmsByFarmerId.get(key).push({ id: farm._id, tag: farm.tag });
+        }
+    }
+
+    // TODO: livestock, equipment — same fetch-group-attach pattern once
+    // those models exist. Stubbed as empty arrays for now so the shape
+    // farmers are returned in doesn't need to change again later.
 
     return farmers.map((f) => {
         const obj = typeof f.toObject === "function" ? f.toObject() : f;
+        const key = obj._id.toString();
         return {
             ...obj,
-            farmCount: countByFarmerId.get(obj._id.toString()) ?? 0,
+            farms: farmsByFarmerId.get(key) ?? [],
+            livestock: obj.livestock ?? [],
+            equipment: obj.equipment ?? [],
         };
     });
 };
 
-export const getFarmersByUserId = async (userId) => {
-    const farmers = await Farmer.find({ user: userId }).sort({ createdAt: -1 });
-    return attachFarmCounts(farmers);
+export const getFarmersByAssociationId = async (associationId) => {
+    const farmers = await Farmer.find({ association: associationId }).sort({
+        createdAt: -1,
+    });
+    return attachRelatedRecords(farmers);
 };
 
-export const getFarmers = async ({ status, search, userId, all, page, limit }) => {
+export const getFarmers = async ({ status, search, associationId, all, page, limit }) => {
     const filter = {};
     if (status) filter.status = status;
-    if (userId) filter.user = userId;
+    if (associationId) filter.association = associationId;
 
     if (search) {
         filter.fullName = new RegExp(escapeRegex(search), "i");
@@ -126,7 +153,7 @@ export const getFarmers = async ({ status, search, userId, all, page, limit }) =
     if (all) {
         const farmers = await Farmer.find(filter).sort({ createdAt: -1 });
         return {
-            farmers: await attachFarmCounts(farmers),
+            farmers: await attachRelatedRecords(farmers),
             pagination: null,
         };
     }
@@ -139,7 +166,7 @@ export const getFarmers = async ({ status, search, userId, all, page, limit }) =
     ]);
 
     return {
-        farmers: await attachFarmCounts(farmers),
+        farmers: await attachRelatedRecords(farmers),
         pagination: {
             page,
             limit,

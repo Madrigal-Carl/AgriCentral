@@ -3,9 +3,9 @@ import { z } from "zod";
 const STATUSES = ["planted", "not_planted"];
 
 export const createCropSchema = z.object({
-    userId: z
+    associationId: z
         .string()
-        .regex(/^[0-9a-fA-F]{24}$/, "Invalid user id")
+        .regex(/^[0-9a-fA-F]{24}$/, "Invalid association id")
         .optional(),
     name: z
         .string({ required_error: "Crop name is required" })
@@ -24,7 +24,7 @@ export const createCropSchema = z.object({
 });
 
 export const updateCropSchema = createCropSchema
-    .omit({ userId: true })
+    .omit({ associationId: true })
     .partial()
     .refine((data) => Object.keys(data).length > 0, {
         message: "At least one field must be provided",
@@ -37,9 +37,9 @@ export const cropIdParamSchema = z.object({
 export const getCropsQuerySchema = z.object({
     status: z.enum(STATUSES).optional(),
     search: z.string().trim().min(1).max(100).optional(),
-    userId: z
+    associationId: z
         .string()
-        .regex(/^[0-9a-fA-F]{24}$/, "Invalid user id")
+        .regex(/^[0-9a-fA-F]{24}$/, "Invalid association id")
         .optional(),
     all: z
         .enum(["true", "false"])

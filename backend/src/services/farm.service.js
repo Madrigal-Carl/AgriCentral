@@ -1,5 +1,6 @@
 import Farm from "../models/farm.model.js";
 import Crop from "../models/crop.model.js";
+import User from "../models/user.model.js";
 
 const CROP_POPULATE = { path: "crops.crop" };
 const FARMER_POPULATE = { path: "assignedFarmers", select: "fullName emailAddress" };
@@ -15,8 +16,19 @@ function filterActiveCrops(farm) {
     return farmObj;
 }
 
+// If the caller explicitly picked an association, use it. Otherwise fall
+// back to the authenticated user's own association — the FAR-user path,
+// where a farm they register should land under their own association.
+const resolveAssociationId = async (associationId, authenticatedUserId) => {
+    if (associationId) return associationId;
+    if (!authenticatedUserId) return undefined;
+
+    const user = await User.findById(authenticatedUserId).select("association");
+    return user?.association ?? undefined;
+};
+
 export const createFarm = async (data, authenticatedUserId) => {
-    const { userId, ...farmData } = data;
+    const { associationId, ...farmData } = data;
 
     const existing = await Farm.findOne({ tag: farmData.tag });
 
@@ -24,11 +36,14 @@ export const createFarm = async (data, authenticatedUserId) => {
         throw new Error("A farm with this tag already exists");
     }
 
-    const resolvedUserId = userId || authenticatedUserId;
+    const resolvedAssociationId = await resolveAssociationId(
+        associationId,
+        authenticatedUserId,
+    );
 
     const farm = await Farm.create({
         ...farmData,
-        user: resolvedUserId || undefined,
+        association: resolvedAssociationId || undefined,
     });
 
     // A brand-new farm has no "previous" crops, so anything in crops[] here is newly assigned.
@@ -45,9 +60,9 @@ export const createFarm = async (data, authenticatedUserId) => {
 };
 
 export const updateFarm = async (id, data) => {
-    const { userId, ...farmData } = data;
-    if (userId !== undefined) {
-        farmData.user = userId;
+    const { associationId, ...farmData } = data;
+    if (associationId !== undefined) {
+        farmData.association = associationId;
     }
 
     if (farmData.tag) {
@@ -128,10 +143,10 @@ export const deleteFarm = async (id) => {
     return farm;
 };
 
-export const getFarms = async ({ search, crop, userId, all, page, limit }) => {
+export const getFarms = async ({ search, crop, associationId, all, page, limit }) => {
     const filter = {};
 
-    if (userId) filter.user = userId;
+    if (associationId) filter.association = associationId;
 
     if (search) {
         const regex = new RegExp(escapeRegex(search), "i");

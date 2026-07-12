@@ -1,6 +1,6 @@
 import { DefList, ItemList, Section } from "@/components/drawer";
 import { StatusPill } from "@/components/public";
-import { statusTone } from "@/constants/data";
+import { statusTone, positionLabel } from "@/constants/data";
 import {
   X,
   Info,
@@ -11,18 +11,6 @@ import {
   FileText,
 } from "lucide-react";
 import { fmtDate } from "@/utils/format";
-
-const positionLabel = {
-  president: "President",
-  vice_president: "Vice President",
-  secretary: "Secretary",
-  treasurer: "Treasurer",
-  auditor: "Auditor",
-  pio: "PIO",
-  project_manager: "Project Manager",
-  director: "Director",
-  member: "Member",
-};
 
 // Attachments are { url, publicId, resourceType } objects — derive a
 // readable name from the url for display.
@@ -90,7 +78,10 @@ export function FarmerDrawer({ row, onClose }) {
           </Section>
 
           <Section icon={Wheat} title="Assigned Farms">
-            <ItemList items={row.farms || []} empty="No farms assigned." />
+            <ItemList
+              items={(row.farms || []).map((f) => f.tag)}
+              empty="No farms assigned."
+            />
           </Section>
 
           <Section icon={Beef} title="Assigned Livestock">

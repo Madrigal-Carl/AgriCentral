@@ -6,10 +6,6 @@ export const createAssociationSchema = z.object({
         .trim()
         .min(2, "Name must be at least 2 characters")
         .max(100, "Name must not exceed 100 characters"),
-    assignedUser: z
-        .string()
-        .regex(/^[0-9a-fA-F]{24}$/, "Invalid user id")
-        .optional(),
 });
 
 export const updateAssociationSchema = createAssociationSchema

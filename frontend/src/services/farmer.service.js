@@ -5,8 +5,8 @@ export async function getFarmers(params) {
     return response.data;
 }
 
-export async function getFarmerByUserId(userId) {
-    const response = await api.get(`/farmers/${userId}`);
+export async function getFarmersByAssociationId(associationId) {
+    const response = await api.get(`/farmers/${associationId}`);
     return response.data;
 }
 

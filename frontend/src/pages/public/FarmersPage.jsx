@@ -14,7 +14,7 @@ import {
 } from "@/components/modal";
 import { Button } from "@/components/ui";
 
-import { statusTone } from "@/constants/data";
+import { statusTone, positionLabel } from "@/constants/data";
 import { usePermissions } from "@/constants/permissions";
 import { useFarmers, useDeleteFarmer } from "@/hooks/useFarmers";
 
@@ -189,7 +189,7 @@ export function FarmersPage() {
           {
             key: "farms",
             header: "Farms",
-            cell: (r) => r.farmCount ?? 0,
+            cell: (r) => (r.farms || []).length,
           },
           {
             key: "livestock",
@@ -213,8 +213,8 @@ export function FarmersPage() {
             header: "Position",
             sortable: true,
             cell: (r) => (
-              <span className="text-sm font-medium text-foreground capitalize">
-                {r.position || "—"}
+              <span className="text-sm font-medium text-foreground">
+                {positionLabel[r.position] || "—"}
               </span>
             ),
           },

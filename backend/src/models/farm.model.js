@@ -31,9 +31,9 @@ const farmCropSchema = new mongoose.Schema(
 
 const farmSchema = new mongoose.Schema(
     {
-        user: {
+        association: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
+            ref: "Association",
         },
         tag: {
             type: String,

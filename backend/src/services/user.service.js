@@ -1,28 +1,30 @@
 import bcrypt from "bcrypt";
 import User from "../models/user.model.js";
-import Association from "../models/association.model.js"; // adjust path if your model file is named differently
+import Association from "../models/association.model.js";
 
 const SALT_ROUNDS = 10;
 
-const syncAssociationAssignment = async (user, associationId) => {
-    if (user.role !== "far") {
-        await Association.updateMany(
-            { assignedUser: user._id },
-            { $unset: { assignedUser: "" } },
-        );
-        return;
+// Only "far" users can hold an association, and an association can only
+// be held by one far user at a time. userId is excluded from the conflict
+// check so a user keeping their own current association doesn't trip it.
+const resolveAssociation = async (role, associationId, userId) => {
+    if (role !== "far" || !associationId) {
+        return null;
     }
 
-    await Association.updateMany(
-        { assignedUser: user._id, _id: { $ne: associationId ?? null } },
-        { $unset: { assignedUser: "" } },
-    );
+    const conflict = await User.findOne({
+        _id: { $ne: userId ?? null },
+        role: "far",
+        association: associationId,
+    }).select("_id");
 
-    if (associationId) {
-        await Association.findByIdAndUpdate(associationId, {
-            $set: { assignedUser: user._id },
-        });
+    if (conflict) {
+        const err = new Error("This association is already assigned to another user");
+        err.statusCode = 409;
+        throw err;
     }
+
+    return associationId;
 };
 
 export const createUser = async (data) => {
@@ -35,13 +37,14 @@ export const createUser = async (data) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+    const role = rest.role ?? "far";
+    const resolvedAssociation = await resolveAssociation(role, association, null);
 
     const user = await User.create({
         ...rest,
         password: hashedPassword,
+        association: resolvedAssociation,
     });
-
-    await syncAssociationAssignment(user, association);
 
     return user;
 };
@@ -62,9 +65,18 @@ export const updateUser = async (id, data) => {
 
     const updateData = { ...rest };
 
-    // Only touch the password field if the caller actually sent one.
     if (password) {
         updateData.password = await bcrypt.hash(password, SALT_ROUNDS);
+    }
+
+    // Only touch association when the caller actually sent it, or the
+    // role changed (e.g. switching away from "far" should clear it).
+    const touchesAssociation =
+        Object.prototype.hasOwnProperty.call(data, "association") || rest.role;
+
+    if (touchesAssociation) {
+        const role = rest.role ?? (await User.findById(id).select("role"))?.role;
+        updateData.association = await resolveAssociation(role, association, id);
     }
 
     const user = await User.findByIdAndUpdate(
@@ -79,13 +91,6 @@ export const updateUser = async (id, data) => {
         throw notFoundError;
     }
 
-    // Only touch association links when the caller actually sent the
-    // field — an edit that doesn't mention association at all (e.g. just
-    // renaming the user) shouldn't unassign anything.
-    if (Object.prototype.hasOwnProperty.call(data, "association") || rest.role) {
-        await syncAssociationAssignment(user, association);
-    }
-
     return user;
 };
 
@@ -98,46 +103,7 @@ export const deleteUser = async (id) => {
         throw notFoundError;
     }
 
-    // Don't leave an association pointing at a user that no longer exists.
-    await Association.updateMany(
-        { assignedUser: user._id },
-        { $unset: { assignedUser: "" } },
-    );
-
     return user;
-};
-
-const attachAssociationInfo = async (users) => {
-    const farUserIds = users
-        .filter((u) => u.role === "far")
-        .map((u) => u._id);
-
-    if (!farUserIds.length) {
-        return users.map((u) => (typeof u.toObject === "function" ? u.toObject() : u));
-    }
-
-    const associations = await Association.find({
-        assignedUser: { $in: farUserIds },
-    }).select("_id name assignedUser");
-
-    const byUserId = new Map();
-    for (const assoc of associations) {
-        byUserId.set(assoc.assignedUser.toString(), {
-            id: assoc._id,
-            name: assoc.name,
-        });
-    }
-
-    return users.map((u) => {
-        const obj = typeof u.toObject === "function" ? u.toObject() : u;
-        const match = byUserId.get(obj._id.toString());
-        return {
-            ...obj,
-            ...(match
-                ? { association: match.id, associationName: match.name }
-                : {}),
-        };
-    });
 };
 
 export const getUsers = async ({ role, search, all, page, limit }) => {
@@ -153,9 +119,11 @@ export const getUsers = async ({ role, search, all, page, limit }) => {
     }
 
     if (all) {
-        const users = await User.find(filter).sort({ createdAt: -1 });
+        const users = await User.find(filter)
+            .sort({ createdAt: -1 })
+            .populate("association", "name");
         return {
-            users: await attachAssociationInfo(users),
+            users: users.map(formatUser),
             pagination: null,
         };
     }
@@ -163,12 +131,16 @@ export const getUsers = async ({ role, search, all, page, limit }) => {
     const skip = (page - 1) * limit;
 
     const [users, total] = await Promise.all([
-        User.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+        User.find(filter)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .populate("association", "name"),
         User.countDocuments(filter),
     ]);
 
     return {
-        users: await attachAssociationInfo(users),
+        users: users.map(formatUser),
         pagination: {
             page,
             limit,
@@ -178,9 +150,18 @@ export const getUsers = async ({ role, search, all, page, limit }) => {
     };
 };
 
-// Escapes regex special characters in user input so a search like "a.b+c"
-// is treated literally instead of as a regex pattern (which could throw
-// or match unintended results).
+// Flattens the populated association into association/associationName,
+// matching the shape the frontend already expects.
+function formatUser(u) {
+    const obj = u.toObject();
+    const { association, ...rest } = obj;
+    return {
+        ...rest,
+        association: association?._id ?? null,
+        associationName: association?.name ?? null,
+    };
+}
+
 function escapeRegex(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

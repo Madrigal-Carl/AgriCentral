@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import Association from "../models/association.model.js";
 import Farmer from "../models/farmer.model.js";
+import User from "../models/user.model.js";
 
 export const createAssociation = async (data) => {
     const association = await Association.create(data);
@@ -32,37 +33,48 @@ export const deleteAssociation = async (id) => {
         throw notFoundError;
     }
 
+    // Detach any far user still pointing at the deleted association.
+    await User.updateMany(
+        { association: association._id },
+        { $set: { association: null } },
+    );
+
+    // Same for farmers — leaving them pointed at a deleted association
+    // would break attachMembers' lookups and any association-scoped views.
+    await Farmer.updateMany(
+        { association: association._id },
+        { $set: { association: null } },
+    );
+
     return association;
 };
 
 const attachMembers = async (associations) => {
-    const assignedUserIds = associations
-        .map((a) => a.assignedUser?._id)
-        .filter(Boolean);
+    const associationIds = associations.map((a) => a._id);
 
-    if (!assignedUserIds.length) {
-        return associations.map((a) => {
-            const obj = typeof a.toObject === "function" ? a.toObject() : a;
-            const { assignedUser, ...rest } = obj;
-            return {
-                ...rest,
-                assignedUser: assignedUser?._id ?? null,
-                far: assignedUser?.fullname ?? null,
-                members: [],
-            };
-        });
+    // FAR user per association, for the "far" display field.
+    const farUsers = await User.find({
+        role: "far",
+        association: { $in: associationIds },
+    }).select("_id fullname association");
+
+    const farUserByAssociationId = new Map();
+    for (const u of farUsers) {
+        farUserByAssociationId.set(u.association.toString(), u);
     }
 
+    // Members are now farmers directly linked to the association —
+    // no more hopping through User.
     const farmers = await Farmer.find({
-        user: { $in: assignedUserIds },
-    }).select("fullName position user");
+        association: { $in: associationIds },
+    }).select("fullName position association");
 
-    const membersByUserId = new Map();
+    const membersByAssociationId = new Map();
     for (const farmer of farmers) {
-        const key = farmer.user?.toString();
+        const key = farmer.association?.toString();
         if (!key) continue;
-        if (!membersByUserId.has(key)) membersByUserId.set(key, []);
-        membersByUserId.get(key).push({
+        if (!membersByAssociationId.has(key)) membersByAssociationId.set(key, []);
+        membersByAssociationId.get(key).push({
             name: farmer.fullName,
             position: farmer.position,
         });
@@ -70,13 +82,13 @@ const attachMembers = async (associations) => {
 
     return associations.map((a) => {
         const obj = typeof a.toObject === "function" ? a.toObject() : a;
-        const { assignedUser, ...rest } = obj;
-        const key = assignedUser?._id?.toString();
+        const key = obj._id.toString();
+        const farUser = farUserByAssociationId.get(key);
         return {
-            ...rest,
-            assignedUser: assignedUser?._id ?? null,
-            far: assignedUser?.fullname ?? null,
-            members: key ? membersByUserId.get(key) ?? [] : [],
+            ...obj,
+            assignedUser: farUser?._id ?? null,
+            far: farUser?.fullname ?? null,
+            members: membersByAssociationId.get(key) ?? [],
         };
     });
 };
@@ -89,9 +101,7 @@ export const getAssociations = async ({ search, all, page, limit }) => {
     }
 
     if (all) {
-        const associations = await Association.find(filter)
-            .sort({ createdAt: -1 })
-            .populate("assignedUser", "fullname");
+        const associations = await Association.find(filter).sort({ createdAt: -1 });
         return {
             associations: await attachMembers(associations),
             pagination: null,
@@ -101,11 +111,7 @@ export const getAssociations = async ({ search, all, page, limit }) => {
     const skip = (page - 1) * limit;
 
     const [associations, total] = await Promise.all([
-        Association.find(filter)
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit)
-            .populate("assignedUser", "fullname"),
+        Association.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
         Association.countDocuments(filter),
     ]);
 
@@ -120,24 +126,20 @@ export const getAssociations = async ({ search, all, page, limit }) => {
     };
 };
 
-// Associations with no assignedUser — i.e. free to be linked to a FAR user.
-// Used by the user-form's association picker so admins can't accidentally
-// pick an association that's already claimed by someone else. This just
-// feeds a dropdown, so it's a plain, unpaginated fetch-all.
+// Associations with no far user currently pointing at them — i.e. free to
+// be linked. includeId keeps the current selection visible in edit mode
+// even though it's technically claimed (by the user being edited).
 export const getAvailableAssociations = async ({ includeId } = {}) => {
-    // Validated here rather than via a Zod schema — this is a plain
-    // fetch-all with no side effects, so a full validator-middleware layer
-    // is overkill. The check itself matters though: includeId flows into
-    // a Mongo filter, and an invalid ObjectId string there throws a
-    // CastError (500), not a clean response — so silently ignore anything
-    // that isn't a real ObjectId instead of passing it through.
     const validIncludeId = mongoose.isValidObjectId(includeId) ? includeId : null;
+
+    const claimedIds = await User.find({
+        role: "far",
+        association: { $ne: null },
+    }).distinct("association");
 
     const filter = {
         $or: [
-            { assignedUser: { $exists: false } },
-            // Edit mode: keep the user's current association selectable
-            // even though it already has assignedUser set to them.
+            { _id: { $nin: claimedIds } },
             ...(validIncludeId ? [{ _id: validIncludeId }] : []),
         ],
     };
@@ -145,9 +147,6 @@ export const getAvailableAssociations = async ({ includeId } = {}) => {
     return Association.find(filter).sort({ name: 1 });
 };
 
-// Escapes regex special characters in user input so a search like "a.b+c"
-// is treated literally instead of as a regex pattern (which could throw
-// or match unintended results).
 function escapeRegex(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

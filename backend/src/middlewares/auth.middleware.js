@@ -140,19 +140,17 @@ export const excludeRoles = (...blockedRoles) => {
   };
 };
 
-export const scopeByUserId = (req, res, next) => {
+export const scopeByAssociationId = (req, res, next) => {
   const query = { ...req.query };
 
   if (req.user?.role === "far") {
-    query.userId = String(req.user._id);
+    query.associationId = req.user.association
+      ? String(req.user.association)
+      : "000000000000000000000000";
   } else {
-    delete query.userId;
+    delete query.associationId;
   }
 
-  // Same reason as validateQuery: req.query is a getter that re-parses
-  // the URL on every access, so a plain req.query.userId = ... mutation
-  // gets silently discarded. Redefining the property is the only way
-  // to make it stick for the rest of the middleware chain.
   Object.defineProperty(req, "query", {
     value: query,
     writable: true,

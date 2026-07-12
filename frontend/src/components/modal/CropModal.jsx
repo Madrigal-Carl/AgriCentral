@@ -3,8 +3,8 @@ import { X } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, Field, TextInput, SingleSelect } from "@/components/ui";
-import useAuth from "@/hooks/useAuth"; // adjust to your actual auth hook/context
-import { useFarmerByUserId } from "@/hooks/useFarmers";
+import useAuth from "@/hooks/useAuth";
+import { useFarmersByAssociationId } from "@/hooks/useFarmers";
 import { useCreateCrop, useUpdateCrop } from "@/hooks/useCrops";
 import { cropFormSchema, cropUpdateSchema } from "@/schemas/crop.schema";
 
@@ -22,12 +22,11 @@ export function CropModal({ mode, initial, onClose, onSave }) {
     defaultValues: initial,
   });
 
-  // Only the farmer(s) assigned to the current user — via GET /farmers/:userId —
-  // rather than every farmer in the system.
+  // Only the farmer(s) that belong to the current user's own association —
+  // via GET /farmers/:associationId — rather than every farmer in the system.
   const { user } = useAuth();
-  const { data: farmersData, isLoading: farmersLoading } = useFarmerByUserId(
-    user?._id,
-  );
+  const { data: farmersData, isLoading: farmersLoading } =
+    useFarmersByAssociationId(user?.association);
   const farmerOptions = (farmersData?.farmers ?? []).map((f) => ({
     value: f._id,
     label: f.fullName,

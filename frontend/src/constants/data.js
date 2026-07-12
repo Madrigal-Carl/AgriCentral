@@ -711,3 +711,15 @@ export const ROLE_OPTIONS = [
     { value: "governor", label: "Governor" },
     { value: "head", label: "Head" },
 ];
+
+export const positionLabel = {
+    president: "President",
+    vice_president: "Vice President",
+    secretary: "Secretary",
+    treasurer: "Treasurer",
+    auditor: "Auditor",
+    pio: "PIO",
+    project_manager: "Project Manager",
+    director: "Director",
+    member: "Member",
+};

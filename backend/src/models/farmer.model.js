@@ -23,9 +23,9 @@ const attachmentSchema = new mongoose.Schema(
 
 const farmerSchema = new mongoose.Schema(
     {
-        user: {
+        association: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
+            ref: "Association",
         },
         fullName: {
             type: String,

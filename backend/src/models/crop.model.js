@@ -2,9 +2,9 @@ import mongoose from "mongoose";
 
 const cropSchema = new mongoose.Schema(
     {
-        user: {
+        association: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
+            ref: "Association",
         },
         name: {
             type: String,

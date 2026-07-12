@@ -18,14 +18,14 @@ import {
 } from "@/constants/data";
 
 import { useUsers, useDeleteUser, useUpdateUser } from "@/hooks/useUsers";
-import { useAssociations, useUpdateAssociation } from "@/hooks/useAssociations";
+import { useAssociations } from "@/hooks/useAssociations";
 
 const blankForm = {
   fullname: "",
   email: "",
   role: "far",
   password: DEFAULT_PASSWORD,
-  isVerified: true, // accounts created by an admin are verified immediately
+  isVerified: true,
 };
 
 /* ---------------- Page ---------------- */
@@ -57,8 +57,12 @@ export function UsersPage() {
   const rows = data?.users ?? [];
   const pagination = data?.pagination;
 
-  // Used by the Approve modal's association picker — fetch everything,
-  // no pagination needed for a select dropdown.
+  // Association picker for the Approve modal. NOTE: this now needs to
+  // exclude associations already claimed by another far user, same as the
+  // add/edit form does — otherwise an admin could approve two users into
+  // the same association. Swap this for useAvailableAssociations if you
+  // want that guarantee here too; left as `useAssociations({ all: true })`
+  // for now to match prior behavior, but flagging it.
   const { data: associationsData, isLoading: associationsLoading } =
     useAssociations({ all: true });
   const associationOptions = (associationsData?.associations ?? []).map(
@@ -68,14 +72,6 @@ export function UsersPage() {
     }),
   );
 
-  // NOTE: UserModal owns its own create/update (+ association-link)
-  // mutations internally and only calls onSave(user) as a "done, close me"
-  // signal. UsersPage must NOT re-submit here — doing so previously fired
-  // a second, mismatched PATCH request (built from the server's response
-  // instead of the form values) using modal.data._id, which was undefined
-  // in edit mode. That undefined id hit the backend's id-param regex and
-  // came back as a 400 "Validation error" — which is what looked like a
-  // validation bug but was really a duplicate-submission bug.
   const deleteMutation = useDeleteUser({
     onSuccess: () => {
       setConfirmDelete(null);
@@ -90,20 +86,19 @@ export function UsersPage() {
   const denyMutation = useDeleteUser({
     onSuccess: () => setConfirmDeny(null),
   });
-  const updateUserForApproval = useUpdateUser();
-  const updateAssociationForApproval = useUpdateAssociation();
+  const approveMutation = useUpdateUser();
 
   const openAdd = () => setModal({ mode: "add", data: { ...blankForm } });
   const openEdit = (row) =>
     setModal({
       mode: "edit",
       data: {
-        _id: row._id, // required — UserModal's update mutation needs this
+        _id: row._id,
         fullname: row.fullname,
         email: row.email,
         role: row.role,
         isVerified: row.isVerified,
-        association: row.association, // only present for FAR users
+        association: row.association,
       },
     });
   const openView = (row) => setDrawer(row);
@@ -130,13 +125,10 @@ export function UsersPage() {
     if (!confirmApprove || !associationId) return;
     setApproveError(null);
     try {
-      await updateUserForApproval.mutateAsync({
+      await approveMutation.mutateAsync({
         id: confirmApprove._id,
         isVerified: true,
-      });
-      await updateAssociationForApproval.mutateAsync({
-        id: associationId,
-        assignedUser: confirmApprove._id,
+        association: associationId,
       });
       setConfirmApprove(null);
     } catch (err) {
@@ -285,10 +277,7 @@ export function UsersPage() {
           associationOptions={associationOptions}
           associationsLoading={associationsLoading}
           error={approveError}
-          busy={
-            updateUserForApproval.isPending ||
-            updateAssociationForApproval.isPending
-          }
+          busy={approveMutation.isPending}
           onCancel={() => setConfirmApprove(null)}
           onConfirm={confirmApproveAction}
         />

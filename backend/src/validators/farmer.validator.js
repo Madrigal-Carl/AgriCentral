@@ -2,7 +2,7 @@ import {
     createFarmerSchema,
     updateFarmerSchema,
     farmerIdParamSchema,
-    farmerUserIdParamSchema,
+    farmerAssociationIdParamSchema,
     getFarmersQuerySchema,
 } from "../schemas/farmer.schema.js";
 
@@ -44,8 +44,6 @@ const validateQuery = (schema) => (req, res, next) => {
         });
     }
 
-    // req.query is a getter-only property in newer Express/Node — can't
-    // reassign it directly, so redefine it instead.
     Object.defineProperty(req, "query", {
         value: result.data,
         writable: true,
@@ -59,5 +57,5 @@ const validateQuery = (schema) => (req, res, next) => {
 export const validateCreateFarmer = validate(createFarmerSchema);
 export const validateUpdateFarmer = validate(updateFarmerSchema);
 export const validateFarmerIdParam = validateParams(farmerIdParamSchema);
-export const validateFarmerUserIdParam = validateParams(farmerUserIdParamSchema);
+export const validateFarmerAssociationIdParam = validateParams(farmerAssociationIdParamSchema);
 export const validateGetFarmersQuery = validateQuery(getFarmersQuerySchema);
