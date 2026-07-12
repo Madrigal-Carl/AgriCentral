@@ -4,14 +4,21 @@ import Crop from "../models/crop.model.js";
 const CROP_POPULATE = { path: "crops.crop" };
 const FARMER_POPULATE = { path: "assignedFarmers", select: "fullName emailAddress" };
 
-export const createFarm = async (data) => {
-    const existing = await Farm.findOne({ tag: data.tag });
+export const createFarm = async (data, authenticatedUserId) => {
+    const { userId, ...farmData } = data;
+
+    const existing = await Farm.findOne({ tag: farmData.tag });
 
     if (existing) {
         throw new Error("A farm with this tag already exists");
     }
 
-    const farm = await Farm.create(data);
+    const resolvedUserId = userId || authenticatedUserId;
+
+    const farm = await Farm.create({
+        ...farmData,
+        user: resolvedUserId || undefined,
+    });
 
     return farm.populate([FARMER_POPULATE, CROP_POPULATE]);
 };

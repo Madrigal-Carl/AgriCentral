@@ -8,7 +8,7 @@ import {
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 export const createFarmHandler = asyncHandler(async (req, res) => {
-    const farm = await createFarm(req.body);
+    const farm = await createFarm(req.body, req.user?._id);
 
     return res.status(201).json({
         message: "Farm created successfully",

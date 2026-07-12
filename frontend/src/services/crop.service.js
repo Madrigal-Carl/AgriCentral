@@ -5,6 +5,11 @@ export async function getCrops(params) {
     return response.data;
 }
 
+export async function getCropsByUserId(userId) {
+    const response = await api.get(`/crops/${userId}`);
+    return response.data;
+}
+
 export async function createCrop(data) {
     const response = await api.post("/crops", data);
     return response.data;

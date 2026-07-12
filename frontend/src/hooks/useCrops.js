@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
     getCrops,
+    getCropsByUserId,
     createCrop,
     updateCrop,
     deleteCrop,
@@ -13,15 +14,25 @@ export const cropKeys = {
     list: (filters) => [...cropKeys.lists(), filters],
     details: () => [...cropKeys.all, "detail"],
     detail: (id) => [...cropKeys.details(), id],
+    byUser: (userId) => [...cropKeys.all, "byUser", userId],
 };
 
 /* ---------------- Queries ---------------- */
-// filters: { status?, search?, all?, page?, limit? } — passed straight through as query params.
 export function useCrops(filters = {}, options = {}) {
     return useQuery({
         queryKey: cropKeys.list(filters),
         queryFn: () => getCrops(filters),
-        keepPreviousData: true, // avoids a flash of empty state when paginating/filtering
+        keepPreviousData: true,
+        ...options,
+    });
+}
+
+// Fetches the crop(s) belonging to a specific user via GET /crops/:userId
+export function useCropsByUserId(userId, options = {}) {
+    return useQuery({
+        queryKey: cropKeys.byUser(userId),
+        queryFn: () => getCropsByUserId(userId),
+        enabled: !!userId,
         ...options,
     });
 }

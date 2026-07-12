@@ -17,7 +17,26 @@ const farmCropSchema = z.object({
     yield: z.coerce.number().min(0).optional().default(0),
 });
 
+const emptyToUndefined = (val) => (val === "" || val === null ? undefined : val);
+
+const latitudeSchema = z.preprocess(
+    emptyToUndefined,
+    z.coerce.number({
+        required_error: "Latitude is required",
+        invalid_type_error: "Latitude must be a number",
+    }).min(-90).max(90),
+);
+
+const longitudeSchema = z.preprocess(
+    emptyToUndefined,
+    z.coerce.number({
+        required_error: "Longitude is required",
+        invalid_type_error: "Longitude must be a number",
+    }).min(-180).max(180),
+);
+
 export const createFarmSchema = z.object({
+    userId: objectId("user id").optional(),
     tag: z
         .string({ required_error: "Tag is required" })
         .trim()
@@ -30,14 +49,8 @@ export const createFarmSchema = z.object({
         .min(2, "Address must be at least 2 characters"),
     assignedFarmers: z.array(objectId("farmer id")).optional().default([]),
     crops: z.array(farmCropSchema).optional().default([]),
-    latitude: z.coerce.number({
-        required_error: "Latitude is required",
-        invalid_type_error: "Latitude must be a number",
-    }).min(-90).max(90),
-    longitude: z.coerce.number({
-        required_error: "Longitude is required",
-        invalid_type_error: "Longitude must be a number",
-    }).min(-180).max(180),
+    latitude: latitudeSchema,
+    longitude: longitudeSchema,
 });
 
 export const updateFarmSchema = createFarmSchema

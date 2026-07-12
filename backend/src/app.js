@@ -10,6 +10,7 @@ import authRoutes from "./routes/auth.routes.js";
 import uploadRoutes from "./routes/upload.routes.js";
 import farmerRoutes from "./routes/farmer.routes.js";
 import cropRoutes from "./routes/crop.routes.js";
+import farmRoutes from "./routes/farm.routes.js";
 
 const app = express();
 
@@ -44,6 +45,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/uploads", uploadRoutes);
 app.use("/api/farmers", farmerRoutes);
 app.use("/api/crops", cropRoutes);
+app.use("/api/farms", farmRoutes);
 
 app.use(errorHandler);
 

@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { ChevronDown, Search, X, Plus } from "lucide-react";
 
 export function MultiSelect({
@@ -14,27 +14,47 @@ export function MultiSelect({
   const [q, setQ] = useState("");
   const ref = useRef(null);
 
+  useEffect(() => {
+    const h = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    window.addEventListener("mousedown", h);
+    return () => window.removeEventListener("mousedown", h);
+  }, []);
+
+  const selectedOptions = useMemo(
+    () => values.map((v) => options.find((o) => o.value === v)).filter(Boolean),
+    [values, options],
+  );
+
   const filtered = useMemo(
-    () => options.filter((o) => o.toLowerCase().includes(q.toLowerCase())),
+    () =>
+      options.filter((o) => o.label.toLowerCase().includes(q.toLowerCase())),
     [q, options],
   );
+
   const trimmed = q.trim();
   const exactMatch = useMemo(
-    () => options.some((o) => o.toLowerCase() === trimmed.toLowerCase()),
+    () => options.some((o) => o.label.toLowerCase() === trimmed.toLowerCase()),
     [options, trimmed],
   );
-  const canCreate = allowCreate && trimmed.length > 0 && !exactMatch;
+  // Only offer "create" once search has genuinely turned up nothing.
+  const canCreate =
+    allowCreate && trimmed.length > 0 && filtered.length === 0 && !exactMatch;
+
   const toggle = (o) => {
-    if (values.includes(o)) onChange(values.filter((v) => v !== o));
-    else onChange([...values, o]);
+    if (values.includes(o.value)) onChange(values.filter((v) => v !== o.value));
+    else onChange([...values, o.value]);
   };
+
   const handleCreate = () => {
     if (!canCreate) return;
     onCreate?.(trimmed);
     if (!values.includes(trimmed)) onChange([...values, trimmed]);
     setQ("");
   };
-  const remove = (o) => onChange(values.filter((v) => v !== o));
+
+  const remove = (value) => onChange(values.filter((v) => v !== value));
 
   return (
     <div ref={ref} className="relative w-full">
@@ -44,21 +64,21 @@ export function MultiSelect({
         className="flex w-full items-center justify-between gap-2 border border-border bg-surface px-3 py-2.5 text-left text-sm hover:border-foreground-40"
       >
         <div className="flex flex-1 flex-wrap items-center gap-1.5">
-          {values.length === 0 ? (
+          {selectedOptions.length === 0 ? (
             <span className="text-secondary">{placeholder}</span>
           ) : (
-            values.map((v) => (
+            selectedOptions.map((o) => (
               <span
-                key={v}
+                key={o.value}
                 className="inline-flex items-center gap-1 border border-border bg-accent-soft px-2 py-0.5 text-xs font-semibold text-foreground"
               >
-                {v}
+                {o.label}
                 <span
                   role="button"
                   tabIndex={0}
                   onClick={(e) => {
                     e.stopPropagation();
-                    remove(v);
+                    remove(o.value);
                   }}
                   className="cursor-pointer text-secondary hover:text-foreground"
                 >
@@ -95,9 +115,9 @@ export function MultiSelect({
               <li className="px-3 py-3 text-sm text-secondary">No results.</li>
             ) : (
               filtered.map((o) => {
-                const selected = values.includes(o);
+                const selected = values.includes(o.value);
                 return (
-                  <li key={o}>
+                  <li key={o.value}>
                     <button
                       type="button"
                       onClick={() => toggle(o)}
@@ -105,7 +125,7 @@ export function MultiSelect({
                         selected ? "bg-accent-soft font-semibold" : ""
                       }`}
                     >
-                      {o}
+                      {o.label}
                       {selected && <span className="h-1.5 w-1.5 bg-accent" />}
                     </button>
                   </li>

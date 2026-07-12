@@ -1,170 +1,157 @@
+import { useState } from "react";
+import { Plus } from "lucide-react";
 import "leaflet/dist/leaflet.css";
-import L from "leaflet";
-import { useState, useMemo, useRef, useEffect } from "react";
-import {
-  Plus,
-  X,
-  Search,
-  ChevronDown,
-  Calendar,
-  Activity,
-  Info,
-  AlertTriangle,
-  Wheat,
-  Users,
-  MapPin,
-  Scale,
-  Crosshair,
-  ExternalLink,
-} from "lucide-react";
-import {
-  PageHeader,
-  DataTable,
-  RowActions,
-  StatusPill,
-} from "@/components/public";
-import { Button, Select } from "@/components/ui";
 
-import {
-  FARMS,
-  BOAC_CENTER,
-  CROP_OPTIONS,
-  CROP_STATUS_TONE,
-  CROP_STATUS_LABEL,
-} from "@/constants/data";
-import { usePermissions } from "@/constants/permissions";
+import { PageHeader, DataTable, RowActions } from "@/components/public";
 import { DeleteConfirmModal, FarmModal, FarmDrawer } from "@/components/modal";
-import { fmtDate, fmtCoord } from "@/utils/format";
+import { Button } from "@/components/ui";
+
+import { usePermissions } from "@/constants/permissions";
+import {
+  useFarms,
+  useCreateFarm,
+  useUpdateFarm,
+  useDeleteFarm,
+} from "@/hooks/useFarms";
+import { useCrops } from "@/hooks/useCrops";
 
 const blankForm = {
   id: "",
+  tag: "",
   address: "",
-  size: "",
-  location: null,
-  farmers: [],
+  latitude: "",
+  longitude: "",
+  assignedFarmers: [],
   crops: [],
-  yieldKg: "",
 };
 
 /* ---------------- Page ---------------- */
 export function FarmsPage() {
   const can = usePermissions("farms");
 
-  const [rows, setRows] = useState(FARMS);
+  const [search, setSearch] = useState("");
+  const [crop, setCrop] = useState("");
+  const [page, setPage] = useState(1);
+  const limit = 10;
+
+  const filters = {
+    page,
+    limit,
+    ...(search ? { search } : {}),
+    ...(crop ? { crop } : {}),
+  };
+
+  const { data, isLoading, isError, error } = useFarms(filters);
+  const rows = data?.farms ?? [];
+  const pagination = data?.pagination;
+
+  // Used to build the crop filter's dropdown options. `all: true` skips
+  // pagination on the crops endpoint since we just need distinct names,
+  // not a paged list — dedupe client-side in case multiple crop docs
+  // share the same name.
+  const { data: cropsData } = useCrops({ all: true });
+  const cropOptions = Array.from(
+    new Set((cropsData?.crops ?? []).map((c) => c.name)),
+  ).map((name) => ({ value: name, label: name }));
+
   const [modal, setModal] = useState(null);
   const [drawer, setDrawer] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
+  const [submitError, setSubmitError] = useState(null);
+
+  const { mutateAsync: createMutateAsync, isPending: isCreating } =
+    useCreateFarm({
+      onError: (err) => {
+        setSubmitError(
+          err?.response?.data?.message || err.message || "Something went wrong",
+        );
+      },
+    });
+
+  const { mutateAsync: updateMutateAsync, isPending: isUpdating } =
+    useUpdateFarm({
+      onError: (err) => {
+        setSubmitError(
+          err?.response?.data?.message || err.message || "Something went wrong",
+        );
+      },
+    });
+
+  const { mutate: deleteFarmMutate, isPending: isDeleting } = useDeleteFarm({
+    onSuccess: () => {
+      setConfirmDelete(null);
+      setDeleteError(null);
+    },
+    onError: (err) => {
+      setDeleteError(
+        err?.response?.data?.message || err.message || "Failed to delete farm",
+      );
+    },
+  });
 
   const openAdd = () => {
     if (!can.add) return;
-    setModal({
-      mode: "add",
-      data: {
-        ...blankForm,
-        id: `FM-${String(rows.length + 1).padStart(3, "0")}`,
-      },
-    });
+    setSubmitError(null);
+    setModal({ mode: "add", data: { ...blankForm } });
   };
   const openEdit = (row) => {
     if (!can.edit) return;
-    setModal({ mode: "edit", data: { ...row } });
+    setSubmitError(null);
+    setModal({
+      mode: "edit",
+      data: {
+        id: row._id,
+        tag: row.tag,
+        address: row.address,
+        latitude: row.latitude,
+        longitude: row.longitude,
+        assignedFarmers: (row.assignedFarmers || []).map((f) =>
+          typeof f === "string" ? f : f._id,
+        ),
+        crops: (row.crops || []).map((c) => ({
+          crop: typeof c.crop === "string" ? c.crop : c.crop?._id,
+          status: c.status,
+          yield: c.yield,
+        })),
+      },
+    });
   };
   const openView = (row) => setDrawer(row);
   const askDelete = (row) => {
     if (!can.delete) return;
+    setDeleteError(null);
     setConfirmDelete(row);
   };
   const confirmRemove = () => {
     if (!confirmDelete || !can.delete) return;
-    setRows((r) => r.filter((x) => x.id !== confirmDelete.id));
-    setConfirmDelete(null);
+    deleteFarmMutate(confirmDelete._id);
   };
 
-  const diffNames = (next, prev) => {
-    const added = next.filter((x) => !prev.includes(x));
-    const removed = prev.filter((x) => !next.includes(x));
-    return { added, removed };
-  };
-
-  const setCropStatus = (crop, status) => {
-    set(
-      "crops",
-      form.crops.map((c) =>
-        c.crop === crop
-          ? {
-              ...c,
-              status,
-              yieldKg: status === "harvested" ? (c.yieldKg ?? "") : undefined,
-            }
-          : c,
-      ),
-    );
-  };
-
-  const setCropYield = (crop, yieldKg) => {
-    set(
-      "crops",
-      form.crops.map((c) => (c.crop === crop ? { ...c, yieldKg } : c)),
-    );
-  };
-
-  const handleSave = (data) => {
-    if (!can.add && !can.edit) return;
-    setRows((r) => {
-      const exists = r.find((x) => x.id === data.id);
-      const today = new Date().toISOString().slice(0, 10);
-      const cleaned = {
-        ...data,
-        size: Number(data.size) || 0,
-        yieldKg: Number(data.yieldKg) || 0,
-        location: data.location || null,
-        crops: (data.crops || []).filter((c) => c.crop),
+  const handleSave = async (values) => {
+    setSubmitError(null);
+    try {
+      const payload = {
+        tag: values.tag,
+        address: values.address,
+        latitude: Number(values.latitude),
+        longitude: Number(values.longitude),
+        assignedFarmers: values.assignedFarmers,
+        crops: values.crops,
       };
 
-      if (exists) {
-        const prevCrops = exists.crops.map((c) => c.crop);
-        const nextCrops = cleaned.crops.map((c) => c.crop);
-        const cd = diffNames(nextCrops, prevCrops);
-        const harvestedNew = cleaned.crops.filter((c) => {
-          const before = exists.crops.find((p) => p.crop === c.crop);
-          return (
-            c.status === "harvested" &&
-            (!before || before.status !== "harvested")
-          );
-        });
-        const newEvents = [
-          ...cd.added.map((c) => ({
-            action: "Received",
-            item: `${c} seeds`,
-            date: today,
-          })),
-          ...harvestedNew.map((c) => ({
-            action: "Harvested",
-            item: c.crop,
-            date: today,
-          })),
-        ];
-        return r.map((x) =>
-          x.id === data.id
-            ? {
-                ...x,
-                ...cleaned,
-                history: [...(x.history || []), ...newEvents],
-              }
-            : x,
-        );
+      if (modal.mode === "add") {
+        await createMutateAsync(payload);
+      } else {
+        await updateMutateAsync({ id: values.id, ...payload });
       }
-      const initialHistory = [
-        ...cleaned.crops.map((c) => ({
-          action: c.status === "harvested" ? "Harvested" : "Received",
-          item: c.status === "harvested" ? c.crop : `${c.crop} seeds`,
-          date: today,
-        })),
-      ];
-      return [...r, { ...cleaned, history: initialHistory }];
-    });
-    setModal(null);
+      setModal(null);
+    } catch (err) {
+      setSubmitError(err.message || "Failed to save farm");
+    }
   };
+
+  const busy = isCreating || isUpdating;
 
   return (
     <div>
@@ -179,42 +166,67 @@ export function FarmsPage() {
           ) : null
         }
       />
+
+      {isError && (
+        <div className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+          {error?.response?.data?.message ||
+            error?.message ||
+            "Failed to load farms"}
+        </div>
+      )}
+
       <DataTable
-        searchPlaceholder="Search by address…"
+        searchPlaceholder="Search by tag or address…"
+        search={search}
+        onSearchChange={(v) => {
+          setPage(1);
+          setSearch(v);
+        }}
+        loading={isLoading}
         data={rows}
         filters={[
           {
             key: "crop",
             label: "Crop",
-            options: CROP_OPTIONS.map((c) => ({ value: c, label: c })),
-            predicate: (r, v) => r.crops.some((c) => c.crop === v),
+            options: cropOptions,
+            value: crop,
+            onChange: (v) => {
+              setPage(1);
+              setCrop(v);
+            },
           },
         ]}
+        pagination={
+          pagination
+            ? {
+                page: pagination.page,
+                limit: pagination.limit,
+                total: pagination.total,
+                onPageChange: setPage,
+              }
+            : undefined
+        }
         columns={[
           {
-            key: "address",
-            header: "Address",
+            key: "tag",
+            header: "Farm Tag ID",
             sortable: true,
             cell: (r) => (
               <div>
-                <div className="font-semibold text-foreground">{r.address}</div>
-                <div className="text-xs text-secondary">{r.id}</div>
+                <div className="font-semibold text-foreground">{r.tag}</div>
+                <div className="text-xs text-secondary">{r.address}</div>
               </div>
             ),
           },
           {
             key: "crops",
             header: "Crops",
-            sortable: true,
-            accessor: (r) => r.crops.length,
-            cell: (r) => r.crops.length,
+            cell: (r) => (r.crops || []).length,
           },
           {
             key: "farmers",
             header: "Farmers",
-            sortable: true,
-            accessor: (r) => r.farmers.length,
-            cell: (r) => r.farmers.length,
+            cell: (r) => (r.assignedFarmers || []).length,
           },
           {
             key: "actions",
@@ -235,6 +247,8 @@ export function FarmsPage() {
         <FarmModal
           mode={modal.mode}
           initial={modal.data}
+          submitError={submitError}
+          busy={busy}
           onClose={() => setModal(null)}
           onSave={handleSave}
         />
@@ -242,8 +256,10 @@ export function FarmsPage() {
       {drawer && <FarmDrawer row={drawer} onClose={() => setDrawer(null)} />}
       {confirmDelete && can.delete && (
         <DeleteConfirmModal
-          id={confirmDelete.id}
-          name={confirmDelete.address}
+          id={confirmDelete._id}
+          name={confirmDelete.tag}
+          error={deleteError}
+          busy={isDeleting}
           onCancel={() => setConfirmDelete(null)}
           onConfirm={confirmRemove}
         />

@@ -42,14 +42,8 @@ export const deleteCrop = async (id) => {
 };
 
 export const getCropsByUserId = async (userId) => {
-    const crops = await Crop.aggregate([
-        { $match: { user: new mongoose.Types.ObjectId(userId) } },
-        { $group: { _id: "$name" } },
-        { $sort: { _id: 1 } },
-        { $project: { _id: 0, name: "$_id" } },
-    ]);
-
-    return crops.map((c) => c.name);
+    const crops = await Crop.find({ user: userId }).sort({ createdAt: -1 });
+    return crops;
 };
 
 export const getCrops = async ({ status, search, userId, all, page, limit }) => {

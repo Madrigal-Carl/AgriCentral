@@ -6,6 +6,24 @@ import { StatusPill } from "@/components/public";
 import { DefList, ItemList, Section } from "@/components/drawer";
 
 export function FarmDrawer({ row, onClose }) {
+  const crops = row.crops || [];
+  const farmers = row.assignedFarmers || [];
+
+  // crops.crop and assignedFarmers come back populated ({_id, name} /
+  // {_id, fullName}) from the API, but fall back to the raw id/string just
+  // in case a caller ever passes an unpopulated row.
+  const cropLabel = (c) =>
+    typeof c.crop === "string" ? c.crop : (c.crop?.name ?? "Unknown crop");
+  const farmerLabel = (f) =>
+    typeof f === "string" ? f : (f.fullName ?? "Unknown farmer");
+
+  const totalYield = crops.reduce((sum, c) => sum + (c.yield || 0), 0);
+
+  const location =
+    row.latitude != null && row.longitude != null
+      ? { lat: Number(row.latitude), lng: Number(row.longitude) }
+      : null;
+
   return (
     <div className="fixed inset-0 z-50" onClick={onClose}>
       <div className="absolute inset-0 bg-foreground-40" />
@@ -20,15 +38,13 @@ export function FarmDrawer({ row, onClose }) {
                 <Wheat className="h-5 w-5" />
               </div>
               <div className="min-w-0">
-                <div className="label-eyebrow mb-1">Farm · {row.id}</div>
+                <div className="label-eyebrow mb-1">Farm · {row.tag}</div>
                 <h2 className="font-display text-xl tracking-tight text-foreground truncate">
                   {row.address}
                 </h2>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <StatusPill tone="info">{row.size} ha</StatusPill>
-                  <StatusPill tone="neutral">
-                    {row.crops.length} crops
-                  </StatusPill>
+                  <StatusPill tone="neutral">{crops.length} crops</StatusPill>
+                  <StatusPill tone="info">{farmers.length} farmers</StatusPill>
                 </div>
               </div>
             </div>
@@ -46,10 +62,10 @@ export function FarmDrawer({ row, onClose }) {
           <Section icon={Info} title="Basic Information">
             <DefList
               items={[
-                ["Farm Tag ID", row.id],
+                ["Farm Tag ID", row.tag],
                 ["Address", row.address],
-                ["Crops Count", row.crops.length],
-                ["Farmer Count", row.farmers.length],
+                ["Crops", crops.length],
+                ["Farmer", farmers.length],
               ]}
             />
           </Section>
@@ -62,32 +78,42 @@ export function FarmDrawer({ row, onClose }) {
               <div>
                 <div className="text-xs text-secondary">Total yield</div>
                 <div className="font-display text-xl tracking-tight text-foreground">
-                  {(row.yieldKg || 0).toLocaleString()} kg
+                  {totalYield.toLocaleString()} kg
                 </div>
               </div>
             </div>
           </Section>
 
           <Section icon={Users} title="Assigned Farmers">
-            <ItemList items={row.farmers} empty="No farmers assigned." />
+            <ItemList
+              items={farmers.map(farmerLabel)}
+              empty="No farmers assigned."
+            />
           </Section>
 
           <Section icon={Wheat} title="Crop Information">
-            {row.crops.length === 0 ? (
+            {crops.length === 0 ? (
               <div className="text-sm text-secondary">No crops planted.</div>
             ) : (
               <ul className="space-y-2">
-                {row.crops.map((c) => (
+                {crops.map((c, i) => (
                   <li
-                    key={c.crop}
+                    key={c.crop?._id || c.crop || i}
                     className="flex items-center justify-between border border-border bg-muted-30 px-3 py-2 text-sm"
                   >
                     <span className="font-medium text-foreground">
-                      {c.crop}
+                      {cropLabel(c)}
                     </span>
-                    <StatusPill tone={CROP_STATUS_TONE[c.status]}>
-                      {CROP_STATUS_LABEL[c.status]}
-                    </StatusPill>
+                    <div className="flex items-center gap-2">
+                      {c.status === "harvested" && (
+                        <span className="text-xs text-secondary">
+                          {(c.yield || 0).toLocaleString()} kg
+                        </span>
+                      )}
+                      <StatusPill tone={CROP_STATUS_TONE[c.status]}>
+                        {CROP_STATUS_LABEL[c.status]}
+                      </StatusPill>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -95,8 +121,8 @@ export function FarmDrawer({ row, onClose }) {
           </Section>
 
           <Section icon={MapPin} title="Geotag Location">
-            {row.location ? (
-              <LocationMap location={row.location} />
+            {location ? (
+              <LocationMap location={location} />
             ) : (
               <div className="text-sm text-secondary">No location pinned.</div>
             )}
