@@ -15,12 +15,12 @@ export function UserDrawer({ row, onClose }) {
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex items-start gap-3">
               <div className="grid h-12 w-12 shrink-0 place-items-center bg-accent-soft rounded-full font-display text-base text-accent">
-                {row.fullName[0]}
+                {row.fullname?.[0] ?? "?"}
               </div>
               <div className="min-w-0">
-                <div className="label-eyebrow mb-1">User · {row.id}</div>
+                <div className="label-eyebrow mb-1">User · {row._id}</div>
                 <h2 className="font-display text-xl tracking-tight text-foreground truncate">
-                  {row.fullName}
+                  {row.fullname}
                 </h2>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <StatusPill tone={roleTone[row.role]}>
@@ -46,8 +46,8 @@ export function UserDrawer({ row, onClose }) {
           <Section icon={Info} title="Basic Information">
             <DefList
               items={[
-                ["User ID", row.id],
-                ["Full Name", row.fullName],
+                ["User ID", row._id],
+                ["Full Name", row.fullname],
                 ["Role", roleLabel[row.role]],
                 ...(row.role === "far"
                   ? [["Association", row.association || "—"]]

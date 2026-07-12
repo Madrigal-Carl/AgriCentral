@@ -1,16 +1,5 @@
-import { useState, useEffect, useMemo, useRef } from "react";
-import {
-  Plus,
-  X,
-  Info,
-  AlertTriangle,
-  KeyRound,
-  Mail,
-  ShieldCheck,
-  Search,
-  ChevronDown,
-  Check,
-} from "lucide-react";
+import { useState } from "react";
+import { Plus, AlertTriangle } from "lucide-react";
 
 import {
   PageHeader,
@@ -18,97 +7,147 @@ import {
   RowActions,
   StatusPill,
 } from "@/components/public";
-import { Button, Select, SingleSelect } from "@/components/ui";
+import { Button, SingleSelect } from "@/components/ui";
 import { UserDrawer, DeleteConfirmModal, UserModal } from "@/components/modal";
 
 import {
-  USERS,
   roleLabel,
   roleTone,
   DEFAULT_PASSWORD,
   ROLE_OPTIONS,
 } from "@/constants/data";
 
-// DEFAULT_PASSWORD a FAR account can be assigned to.
-const ASSOCIATIONS = [
-  "Boac, Marinduque",
-  "Mogpog, Marinduque",
-  "Santa Cruz, Marinduque",
-  "Torrijos, Marinduque",
-  "Buenavista, Marinduque",
-  "Gasan, Marinduque",
-];
+import { useUsers, useDeleteUser, useUpdateUser } from "@/hooks/useUsers";
+import { useAssociations, useUpdateAssociation } from "@/hooks/useAssociations";
 
 const blankForm = {
-  id: "",
-  fullName: "",
+  fullname: "",
   email: "",
   role: "far",
-  password: "",
-  association: "",
+  password: DEFAULT_PASSWORD,
   isVerified: true, // accounts created by an admin are verified immediately
 };
 
 /* ---------------- Page ---------------- */
 export function UsersPage() {
-  const [rows, setRows] = useState(USERS);
+  const [search, setSearch] = useState("");
+  const [role, setRole] = useState("");
+  const [page, setPage] = useState(1);
+  const limit = 10;
+
   const [modal, setModal] = useState(null);
   const [drawer, setDrawer] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [confirmDeny, setConfirmDeny] = useState(null);
   const [confirmApprove, setConfirmApprove] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
+  const [approveError, setApproveError] = useState(null);
 
-  const openAdd = () =>
+  const filters = {
+    page,
+    limit,
+    ...(role ? { role } : {}),
+    ...(search ? { search } : {}),
+  };
+
+  const { data, isLoading, isError, error } = useUsers(filters, {
+    keepPreviousData: true,
+  });
+
+  const rows = data?.users ?? [];
+  const pagination = data?.pagination;
+
+  // Used by the Approve modal's association picker — fetch everything,
+  // no pagination needed for a select dropdown.
+  const { data: associationsData, isLoading: associationsLoading } =
+    useAssociations({ all: true });
+  const associationOptions = (associationsData?.associations ?? []).map(
+    (a) => ({
+      value: a._id,
+      label: a.name,
+    }),
+  );
+
+  // NOTE: UserModal owns its own create/update (+ association-link)
+  // mutations internally and only calls onSave(user) as a "done, close me"
+  // signal. UsersPage must NOT re-submit here — doing so previously fired
+  // a second, mismatched PATCH request (built from the server's response
+  // instead of the form values) using modal.data._id, which was undefined
+  // in edit mode. That undefined id hit the backend's id-param regex and
+  // came back as a 400 "Validation error" — which is what looked like a
+  // validation bug but was really a duplicate-submission bug.
+  const deleteMutation = useDeleteUser({
+    onSuccess: () => {
+      setConfirmDelete(null);
+      setDeleteError(null);
+    },
+    onError: (err) => {
+      setDeleteError(
+        err?.response?.data?.message || err.message || "Failed to delete user",
+      );
+    },
+  });
+  const denyMutation = useDeleteUser({
+    onSuccess: () => setConfirmDeny(null),
+  });
+  const updateUserForApproval = useUpdateUser();
+  const updateAssociationForApproval = useUpdateAssociation();
+
+  const openAdd = () => setModal({ mode: "add", data: { ...blankForm } });
+  const openEdit = (row) =>
     setModal({
-      mode: "add",
+      mode: "edit",
       data: {
-        ...blankForm,
-        id: `US-${String(rows.length + 1).padStart(3, "0")}`,
-        // New users get a fixed default password until the first reset.
-        password: DEFAULT_PASSWORD,
+        _id: row._id, // required — UserModal's update mutation needs this
+        fullname: row.fullname,
+        email: row.email,
+        role: row.role,
+        isVerified: row.isVerified,
       },
     });
-  const openEdit = (row) => setModal({ mode: "edit", data: { ...row } });
   const openView = (row) => setDrawer(row);
-  const askDelete = (row) => setConfirmDelete(row);
+  const askDelete = (row) => {
+    setDeleteError(null);
+    setConfirmDelete(row);
+  };
   const confirmRemove = () => {
     if (!confirmDelete) return;
-    setRows((r) => r.filter((x) => x.id !== confirmDelete.id));
-    setConfirmDelete(null);
+    deleteMutation.mutate(confirmDelete._id);
   };
 
   const askDeny = (row) => setConfirmDeny(row);
   const confirmDenyAction = () => {
     if (!confirmDeny) return;
-    setRows((r) => r.filter((x) => x.id !== confirmDeny.id));
-    setConfirmDeny(null);
+    denyMutation.mutate(confirmDeny._id);
   };
 
-  // Self-registered FAR accounts don't have an association attached to
-  // them yet, so approval doubles as the moment that gets set. The
-  // confirmation modal collects the association name and it's saved
-  // together with isVerified in one step.
-  const askApprove = (row) => setConfirmApprove(row);
-  const confirmApproveAction = (associationName) => {
-    if (!confirmApprove) return;
-    setRows((r) =>
-      r.map((x) =>
-        x.id === confirmApprove.id
-          ? { ...x, isVerified: true, association: associationName }
-          : x,
-      ),
-    );
-    setConfirmApprove(null);
+  const askApprove = (row) => {
+    setApproveError(null);
+    setConfirmApprove(row);
+  };
+  const confirmApproveAction = async (associationId) => {
+    if (!confirmApprove || !associationId) return;
+    setApproveError(null);
+    try {
+      await updateUserForApproval.mutateAsync({
+        id: confirmApprove._id,
+        isVerified: true,
+      });
+      await updateAssociationForApproval.mutateAsync({
+        id: associationId,
+        assignedUser: confirmApprove._id,
+      });
+      setConfirmApprove(null);
+    } catch (err) {
+      setApproveError(
+        err?.response?.data?.message || err.message || "Failed to approve user",
+      );
+    }
   };
 
-  const handleSave = (data) => {
-    setRows((r) => {
-      const exists = r.some((x) => x.id === data.id);
-      if (exists)
-        return r.map((x) => (x.id === data.id ? { ...x, ...data } : x));
-      return [...r, { ...data }];
-    });
-    setModal(null);
+  const handleSearchChange = (value) => {
+    setPage(1);
+    setSearch(value);
   };
 
   return (
@@ -122,32 +161,55 @@ export function UsersPage() {
           </Button>
         }
       />
+
+      {isError && (
+        <div className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+          {error?.response?.data?.message ||
+            error?.message ||
+            "Failed to load users"}
+        </div>
+      )}
+
       <DataTable
         searchPlaceholder="Search user by name…"
+        search={search}
+        onSearchChange={handleSearchChange}
+        loading={isLoading}
         data={rows}
         filters={[
           {
             key: "role",
             label: "Role",
             options: ROLE_OPTIONS,
-            predicate: (r, v) => r.role === v,
+            value: role,
+            onChange: (v) => {
+              setPage(1);
+              setRole(v);
+            },
           },
         ]}
+        pagination={
+          pagination
+            ? {
+                page: pagination.page,
+                limit: pagination.limit,
+                total: pagination.total,
+                onPageChange: setPage,
+              }
+            : undefined
+        }
         columns={[
           {
-            key: "fullName",
+            key: "fullname",
             header: "Name",
             sortable: true,
             cell: (r) => (
               <div className="flex items-center gap-3">
                 <div className="grid h-9 w-9 shrink-0 place-items-center bg-accent-soft font-display text-xs text-accent rounded-full">
-                  {r.fullName[0]}
+                  {r.fullname?.[0] ?? "?"}
                 </div>
-                <div>
-                  <div className="font-semibold text-foreground">
-                    {r.fullName}
-                  </div>
-                  <div className="text-xs text-secondary">{r.id}</div>
+                <div className="font-semibold text-foreground">
+                  {r.fullname || "—"}
                 </div>
               </div>
             ),
@@ -177,9 +239,6 @@ export function UsersPage() {
             header: "",
             align: "right",
             cell: (r) => {
-              // Self-registered FAR accounts need admin approval before
-              // they get normal row actions. Until then, show
-              // Approve/Deny instead of View/Edit/Delete.
               const needsReview = r.role === "far" && !r.isVerified;
               return needsReview ? (
                 <RowActions
@@ -204,31 +263,40 @@ export function UsersPage() {
           mode={modal.mode}
           initial={modal.data}
           onClose={() => setModal(null)}
-          onSave={handleSave}
+          onSave={() => setModal(null)}
         />
       )}
       {drawer && <UserDrawer row={drawer} onClose={() => setDrawer(null)} />}
       {confirmDelete && (
         <DeleteConfirmModal
-          id={confirmDelete.id}
-          name={confirmDelete.fullName}
+          id={confirmDelete._id}
+          name={confirmDelete.fullname}
+          error={deleteError}
+          busy={deleteMutation.isPending}
           onCancel={() => setConfirmDelete(null)}
           onConfirm={confirmRemove}
         />
       )}
       {confirmApprove && (
         <ApproveConfirmModal
-          id={confirmApprove.id}
-          name={confirmApprove.fullName}
-          initialAssociation={confirmApprove.association}
+          id={confirmApprove._id}
+          name={confirmApprove.fullname}
+          associationOptions={associationOptions}
+          associationsLoading={associationsLoading}
+          error={approveError}
+          busy={
+            updateUserForApproval.isPending ||
+            updateAssociationForApproval.isPending
+          }
           onCancel={() => setConfirmApprove(null)}
           onConfirm={confirmApproveAction}
         />
       )}
       {confirmDeny && (
         <DenyConfirmModal
-          id={confirmDeny.id}
-          name={confirmDeny.fullName}
+          id={confirmDeny._id}
+          name={confirmDeny.fullname}
+          busy={denyMutation.isPending}
           onCancel={() => setConfirmDeny(null)}
           onConfirm={confirmDenyAction}
         />
@@ -241,20 +309,18 @@ export function UsersPage() {
 function ApproveConfirmModal({
   id,
   name,
-  initialAssociation,
+  associationOptions,
+  associationsLoading,
+  error,
+  busy,
   onCancel,
   onConfirm,
 }) {
-  const [association, setAssociation] = useState(initialAssociation || "");
-
-  useEffect(() => {
-    const onKey = (e) => e.key === "Escape" && onCancel();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onCancel]);
+  const [associationId, setAssociationId] = useState("");
 
   const handleConfirm = () => {
-    onConfirm(association.trim());
+    if (!associationId) return;
+    onConfirm(associationId);
   };
 
   return (
@@ -274,30 +340,42 @@ function ApproveConfirmModal({
         </h3>
         <p className="text-sm text-secondary mb-4">
           This will verify the pending account for{" "}
-          <strong className="text-foreground">
-            {id} ({name})
-          </strong>
-          . Since this account self-registered, assign the association it
-          belongs to before approving.
+          <strong className="text-foreground">{name}</strong>. Since this
+          account self-registered, assign the association it belongs to before
+          approving.
         </p>
+
+        {error && (
+          <div className="mb-4 rounded-md bg-red-50 px-3 py-2 text-left text-sm text-red-600">
+            {error}
+          </div>
+        )}
 
         <div className="mb-6 text-left">
           <label className="label-eyebrow mb-1.5 block">Association</label>
           <SingleSelect
-            value={association}
-            onChange={setAssociation}
-            options={ASSOCIATIONS}
-            placeholder="Select association"
-            searchPlaceholder="Search associations..."
+            value={associationId}
+            onChange={setAssociationId}
+            options={associationOptions}
+            placeholder={
+              associationsLoading
+                ? "Loading associations…"
+                : "Select association"
+            }
+            searchPlaceholder="Search associations…"
           />
         </div>
 
         <div className="flex items-center justify-center gap-2">
-          <Button variant="outline" onClick={onCancel}>
+          <Button variant="outline" onClick={onCancel} disabled={busy}>
             Cancel
           </Button>
-          <Button variant="accent" onClick={handleConfirm}>
-            Approve
+          <Button
+            variant="accent"
+            onClick={handleConfirm}
+            disabled={busy || !associationId}
+          >
+            {busy ? "Approving…" : "Approve"}
           </Button>
         </div>
       </div>
@@ -306,7 +384,7 @@ function ApproveConfirmModal({
 }
 
 /* ---------------- Deny Confirmation Modal ---------------- */
-function DenyConfirmModal({ id, name, onCancel, onConfirm }) {
+function DenyConfirmModal({ id, name, busy, onCancel, onConfirm }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-foreground-40 p-4"
@@ -324,17 +402,15 @@ function DenyConfirmModal({ id, name, onCancel, onConfirm }) {
         </h3>
         <p className="text-sm text-secondary mb-6">
           This will permanently remove the pending account for{" "}
-          <strong className="text-foreground">
-            {id} ({name})
-          </strong>
-          . They will need to register again to request access.
+          <strong className="text-foreground">{name}</strong>. They will need to
+          register again to request access.
         </p>
         <div className="flex items-center justify-center gap-2">
-          <Button variant="outline" onClick={onCancel}>
+          <Button variant="outline" onClick={onCancel} disabled={busy}>
             Cancel
           </Button>
-          <Button variant="danger" onClick={onConfirm}>
-            Deny
+          <Button variant="danger" onClick={onConfirm} disabled={busy}>
+            {busy ? "Denying…" : "Deny"}
           </Button>
         </div>
       </div>

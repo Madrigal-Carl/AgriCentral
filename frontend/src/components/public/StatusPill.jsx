@@ -5,6 +5,7 @@ export function StatusPill({ tone = "neutral", children }) {
     danger: "bg-[#ffecec] text-foreground border-danger",
     neutral: "bg-muted text-foreground border-border",
     info: "bg-[#e8f1ff] text-foreground border-[#3b82f6]",
+    purple: "bg-[#f3e8ff] text-foreground border-[#8b5cf6]",
   };
   return (
     <span
@@ -20,7 +21,9 @@ export function StatusPill({ tone = "neutral", children }) {
                 ? "bg-danger"
                 : tone === "info"
                   ? "bg-[#3b82f6]"
-                  : "bg-secondary"
+                  : tone === "purple"
+                    ? "bg-[#8b5cf6]"
+                    : "bg-secondary"
         }`}
       />
       {children}

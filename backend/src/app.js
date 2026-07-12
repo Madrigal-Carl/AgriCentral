@@ -12,6 +12,7 @@ import farmerRoutes from "./routes/farmer.routes.js";
 import cropRoutes from "./routes/crop.routes.js";
 import farmRoutes from "./routes/farm.routes.js";
 import associationRoutes from "./routes/association.routes.js";
+import userRoutes from "./routes/user.routes.js";
 
 const app = express();
 
@@ -48,6 +49,7 @@ app.use("/api/farmers", farmerRoutes);
 app.use("/api/crops", cropRoutes);
 app.use("/api/farms", farmRoutes);
 app.use("/api/associations", associationRoutes);
+app.use("/api/users", userRoutes);
 
 app.use(errorHandler);
 

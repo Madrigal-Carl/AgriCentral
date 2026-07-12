@@ -698,7 +698,7 @@ export const roleTone = {
     far: "info",
     aew: "warning",
     coordinator: "success",
-    governor: "neutral",
+    governor: "purple",
     head: "danger",
 };
 
