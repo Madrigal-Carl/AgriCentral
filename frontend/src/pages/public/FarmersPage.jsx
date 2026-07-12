@@ -96,6 +96,7 @@ export function FarmersPage() {
         gender: row.gender,
         dob: row.birthDate?.slice ? row.birthDate.slice(0, 10) : row.birthDate,
         address: row.address,
+        association: row.association,
         position: row.position,
         status: row.status,
         files: row.attachments || [],

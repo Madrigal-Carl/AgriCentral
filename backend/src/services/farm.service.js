@@ -1,6 +1,8 @@
 import Farm from "../models/farm.model.js";
 import Crop from "../models/crop.model.js";
+import Farmer from "../models/farmer.model.js";
 import User from "../models/user.model.js";
+import { createLog, humanize } from "./log.service.js";
 
 const CROP_POPULATE = { path: "crops.crop" };
 const FARMER_POPULATE = { path: "assignedFarmers", select: "fullName emailAddress" };
@@ -25,6 +27,42 @@ const resolveAssociationId = async (associationId, authenticatedUserId) => {
 
     const user = await User.findById(authenticatedUserId).select("association");
     return user?.association ?? undefined;
+};
+
+// Logs one entry per crop whose status changed (including brand-new crop
+// entries, which start at "planted"). cropIdToName resolves display names.
+const logCropStatusChanges = async ({ farm, changes, cropIdToName }) => {
+    for (const { cropId, fromStatus, toStatus } of changes) {
+        const cropName = cropIdToName.get(cropId) ?? "A crop";
+        const message = fromStatus
+            ? `${cropName} on ${farm.tag} changed status from ${humanize(fromStatus)} to ${humanize(toStatus)}.`
+            : `${cropName} was ${humanize(toStatus).toLowerCase()} on ${farm.tag}.`;
+
+        await createLog({
+            entityType: "farm",
+            entityId: farm._id,
+            association: farm.association,
+            message,
+        });
+    }
+};
+
+// Logs one entry per farmer newly added to a farm's assignedFarmers list.
+const logNewFarmerAssignments = async ({ farm, newlyAssignedFarmerIds }) => {
+    if (!newlyAssignedFarmerIds.length) return;
+
+    const farmers = await Farmer.find({ _id: { $in: newlyAssignedFarmerIds } }).select(
+        "fullName",
+    );
+
+    for (const farmer of farmers) {
+        await createLog({
+            entityType: "farmer",
+            entityId: farmer._id,
+            association: farm.association,
+            message: `${farmer.fullName} was assigned to farm ${farm.tag}.`,
+        });
+    }
 };
 
 export const createFarm = async (data, authenticatedUserId) => {
@@ -53,6 +91,26 @@ export const createFarm = async (data, authenticatedUserId) => {
             { _id: { $in: cropIds } },
             { $set: { status: "planted" } }
         );
+
+        const crops = await Crop.find({ _id: { $in: cropIds } }).select("name");
+        const cropIdToName = new Map(crops.map((c) => [c._id.toString(), c.name]));
+
+        await logCropStatusChanges({
+            farm,
+            changes: farmData.crops.map((c) => ({
+                cropId: c.crop.toString(),
+                fromStatus: null,
+                toStatus: c.status ?? "planted",
+            })),
+            cropIdToName,
+        });
+    }
+
+    if (farmData.assignedFarmers?.length) {
+        await logNewFarmerAssignments({
+            farm,
+            newlyAssignedFarmerIds: farmData.assignedFarmers,
+        });
     }
 
     const populated = await farm.populate([FARMER_POPULATE, CROP_POPULATE]);
@@ -73,9 +131,11 @@ export const updateFarm = async (id, data) => {
         }
     }
 
-    // Grab the pre-update crop list so we can diff added vs. removed crops below.
-    const previousFarm = farmData.crops
-        ? await Farm.findById(id).select("crops.crop")
+    // Grab the pre-update state so we can diff both crops and
+    // assignedFarmers against it below.
+    const needsPrevious = farmData.crops || farmData.assignedFarmers;
+    const previousFarm = needsPrevious
+        ? await Farm.findById(id).select("crops.crop crops.status assignedFarmers tag")
         : null;
 
     const farm = await Farm.findByIdAndUpdate(
@@ -91,16 +151,19 @@ export const updateFarm = async (id, data) => {
     }
 
     if (farmData.crops) {
-        const newCropIds = farmData.crops.map((c) => c.crop.toString());
-        const previousCropIds = (previousFarm?.crops ?? []).map((c) =>
-            c.crop.toString()
+        const newCrops = farmData.crops.map((c) => ({
+            cropId: c.crop.toString(),
+            status: c.status ?? "planted",
+        }));
+        const previousCropsById = new Map(
+            (previousFarm?.crops ?? []).map((c) => [c.crop.toString(), c.status]),
         );
 
-        const addedCropIds = newCropIds.filter(
-            (cid) => !previousCropIds.includes(cid)
-        );
-        const removedCropIds = previousCropIds.filter(
-            (cid) => !newCropIds.includes(cid)
+        const addedCropIds = newCrops
+            .filter((c) => !previousCropsById.has(c.cropId))
+            .map((c) => c.cropId);
+        const removedCropIds = [...previousCropsById.keys()].filter(
+            (cid) => !newCrops.some((c) => c.cropId === cid),
         );
 
         if (addedCropIds.length) {
@@ -116,6 +179,39 @@ export const updateFarm = async (id, data) => {
                 { _id: { $in: removedCropIds } },
                 { $set: { status: "not_planted" } }
             );
+        }
+
+        // Build the changes list: additions (no previous status) and
+        // status transitions on crops that stayed on this farm.
+        const changes = [];
+        for (const c of newCrops) {
+            const prevStatus = previousCropsById.get(c.cropId);
+            if (prevStatus === undefined) {
+                changes.push({ cropId: c.cropId, fromStatus: null, toStatus: c.status });
+            } else if (prevStatus !== c.status) {
+                changes.push({ cropId: c.cropId, fromStatus: prevStatus, toStatus: c.status });
+            }
+        }
+
+        if (changes.length) {
+            const allRelevantCropIds = changes.map((c) => c.cropId);
+            const crops = await Crop.find({ _id: { $in: allRelevantCropIds } }).select("name");
+            const cropIdToName = new Map(crops.map((c) => [c._id.toString(), c.name]));
+
+            await logCropStatusChanges({ farm, changes, cropIdToName });
+        }
+    }
+
+    if (farmData.assignedFarmers) {
+        const previousFarmerIds = (previousFarm?.assignedFarmers ?? []).map((f) =>
+            f.toString(),
+        );
+        const newlyAssignedFarmerIds = farmData.assignedFarmers.filter(
+            (fid) => !previousFarmerIds.includes(fid.toString()),
+        );
+
+        if (newlyAssignedFarmerIds.length) {
+            await logNewFarmerAssignments({ farm, newlyAssignedFarmerIds });
         }
     }
 

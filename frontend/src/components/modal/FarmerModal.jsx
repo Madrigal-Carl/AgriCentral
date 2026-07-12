@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import useAuth from "@/hooks/useAuth";
@@ -12,7 +12,10 @@ import {
 import { GENDER_OPTIONS, POSITION_OPTIONS } from "@/constants/data";
 import { FileUploader } from "@/components/public";
 import { ModalShell } from "./ModalShell";
-import { farmerFormSchema, farmerUpdateSchema } from "@/schemas/farmer.schema";
+import {
+  createFarmerFormSchema,
+  createFarmerUpdateSchema,
+} from "@/schemas/farmer.schema";
 import { useCreateFarmer, useUpdateFarmer } from "@/hooks/useFarmers";
 import { useAssociations } from "@/hooks/useAssociations";
 
@@ -49,7 +52,8 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
 
   // FAR users edit position directly and don't pick an association — the
   // backend resolves their own association from the authenticated user.
-  // Everyone else assigns the farmer to an association explicitly.
+  // Everyone else assigns the farmer to an association explicitly, and
+  // must do so — see createFarmerFormSchema/createFarmerUpdateSchema.
   const { data: associationsData } = useAssociations(
     { all: true },
     { enabled: !isFar },
@@ -62,31 +66,57 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
   // Association may arrive populated ({_id, name, ...}) or as a plain id
   // string depending on the endpoint — normalize so SingleSelect/useForm
   // always work with a string.
-  const normalizedInitial = initial
-    ? {
-        ...initial,
-        association:
-          initial.association == null
+  const normalizedInitial = useMemo(() => {
+    if (!initial) return initial;
+
+    return {
+      ...initial,
+      association:
+        initial.association == null
+          ? initial.association
+          : typeof initial.association === "string"
             ? initial.association
-            : typeof initial.association === "string"
-              ? initial.association
-              : initial.association._id,
-      }
-    : initial;
+            : initial.association._id,
+    };
+  }, [initial]);
+
+  // Schema depends on isFar (association required or not) — build it once
+  // per isFar value rather than on every render.
+  const resolver = useMemo(
+    () =>
+      zodResolver(
+        isEdit ? createFarmerUpdateSchema() : createFarmerFormSchema(isFar),
+      ),
+    [isEdit, isFar],
+  );
 
   const {
     register,
     handleSubmit,
     control,
+    reset,
     formState: { errors },
   } = useForm({
-    resolver: zodResolver(isEdit ? farmerUpdateSchema : farmerFormSchema),
+    resolver,
     defaultValues: {
       gender: "male",
+      position: normalizedInitial?.position || "member",
+      association: normalizedInitial?.association ?? "",
       ...normalizedInitial,
-      position: initial?.position || "member",
     },
   });
+
+  useEffect(() => {
+    reset(
+      {
+        gender: "male",
+        position: normalizedInitial?.position || "member",
+        association: normalizedInitial?.association ?? "",
+        ...normalizedInitial,
+      },
+      { keepDirty: false, keepDirtyValues: false },
+    );
+  }, [normalizedInitial, reset]);
 
   const { mutateAsync: createMutateAsync, isPending: isCreating } =
     useCreateFarmer({
@@ -119,8 +149,11 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
         position: values.position,
         files: values.files, // hook resolves this into `attachments`
         // FAR users never pick an association — omit the key entirely so
-        // the backend falls back to resolving it from req.user.
-        ...(!isFar ? { associationId: values.association } : {}),
+        // the backend falls back to resolving it from req.user. For edits,
+        // only include an association if the field is actually populated.
+        ...(!isFar && values.association
+          ? { associationId: values.association }
+          : {}),
       };
 
       if (mode === "add") {

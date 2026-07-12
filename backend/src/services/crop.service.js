@@ -1,11 +1,9 @@
 import Crop from "../models/crop.model.js";
 import Farm from "../models/farm.model.js";
 import User from "../models/user.model.js";
+import Farmer from "../models/farmer.model.js";
+import { createLog } from "./log.service.js";
 
-// If the caller explicitly picked an association, use it. Otherwise fall
-// back to the authenticated user's own association (the FAR-user path —
-// they don't pick an association when logging a crop, so it should land
-// under whichever association they belong to).
 const resolveAssociationId = async (associationId, authenticatedUserId) => {
     if (associationId) return associationId;
     if (!authenticatedUserId) return undefined;
@@ -27,10 +25,26 @@ export const createCrop = async (data, authenticatedUserId) => {
         association: resolvedAssociationId || undefined,
     });
 
+    // assignedFarmer is required at creation, so this always fires.
+    const farmer = await Farmer.findById(crop.assignedFarmer).select("fullName");
+    if (farmer) {
+        await createLog({
+            entityType: "farmer",
+            entityId: farmer._id,
+            association: crop.association,
+            message: `${farmer.fullName} received a new crop batch: ${crop.name}.`,
+        });
+    }
+
     return crop;
 };
 
 export const updateCrop = async (id, data) => {
+    const needsPrevious = data.assignedFarmer !== undefined;
+    const previousCrop = needsPrevious
+        ? await Crop.findById(id).select("assignedFarmer name")
+        : null;
+
     const crop = await Crop.findByIdAndUpdate(
         id,
         { $set: data },
@@ -43,8 +57,25 @@ export const updateCrop = async (id, data) => {
         throw notFoundError;
     }
 
+    // Crop reassigned to a different farmer.
+    if (
+        data.assignedFarmer !== undefined &&
+        String(previousCrop?.assignedFarmer ?? "") !== String(crop.assignedFarmer)
+    ) {
+        const farmer = await Farmer.findById(crop.assignedFarmer).select("fullName");
+        if (farmer) {
+            await createLog({
+                entityType: "farmer",
+                entityId: farmer._id,
+                association: crop.association,
+                message: `${farmer.fullName} received a new crop batch: ${crop.name}.`,
+            });
+        }
+    }
+
     return crop;
 };
+
 
 export const deleteCrop = async (id) => {
     const crop = await Crop.findByIdAndDelete(id);

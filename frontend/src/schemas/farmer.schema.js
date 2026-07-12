@@ -14,7 +14,7 @@ export const POSITIONS = [
 
 export const STATUSES = ["active", "inactive"];
 
-export const farmerFormSchema = z.object({
+const baseFarmerFormSchema = z.object({
     name: z
         .string({ required_error: "Full name is required" })
         .trim()
@@ -41,16 +41,41 @@ export const farmerFormSchema = z.object({
         .trim()
         .min(2, "Address must be at least 2 characters"),
     position: z.enum(POSITIONS).optional().default("member"),
-    association: z.string().optional(),
+    // Backend may send null for an unset association (see toFormShape),
+    // and the form can also start with "" — accept all three "empty"
+    // shapes here; whether it's actually required is decided below,
+    // since that depends on the creator's role, not the field itself.
+    association: z.string().nullable().optional(),
     farms: z.array(z.string()).optional().default([]),
     livestock: z.array(z.string()).optional().default([]),
     equipment: z.array(z.string()).optional().default([]),
     files: z.array(z.any()).optional().default([]),
 });
 
+// isFar is passed in from the caller (it comes from useAuth, not from the
+// form itself) since a FAR user never sets association — it's resolved
+// server-side from their own account — while anyone else must pick one.
+export const createFarmerFormSchema = (isFar) =>
+    baseFarmerFormSchema.superRefine((data, ctx) => {
+        if (!isFar && !data.association) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Association is required",
+                path: ["association"],
+            });
+        }
+    });
+
 // All fields optional — mirrors backend's PATCH semantics (partial update).
-export const farmerUpdateSchema = farmerFormSchema
-    .extend({
+// For edits, the existing farmer record already has an association, so we
+// should not block the form just because the field was not re-selected.
+export const createFarmerUpdateSchema = () =>
+    baseFarmerFormSchema.extend({
         status: z.enum(STATUSES).optional(),
-    })
-    .partial();
+    }).partial();
+
+// Kept for any other call sites that import the static schema directly
+// (e.g. relying on default non-far behavior). Prefer the factory
+// functions above wherever the creator's role is known.
+export const farmerFormSchema = createFarmerFormSchema(false);
+export const farmerUpdateSchema = createFarmerUpdateSchema();

@@ -2,6 +2,7 @@ import Farmer from "../models/farmer.model.js";
 import Farm from "../models/farm.model.js";
 import User from "../models/user.model.js";
 import cloudinary from "../config/cloudinary.js";
+import { createLog, humanize } from "./log.service.js";
 
 // If the caller explicitly picked an association, use it. Otherwise fall
 // back to the authenticated user's own association (this is the FAR-user
@@ -34,6 +35,22 @@ export const createFarmer = async (data, authenticatedUserId) => {
         association: resolvedAssociationId || undefined,
     });
 
+    await createLog({
+        entityType: "farmer",
+        entityId: farmer._id,
+        association: farmer.association,
+        message: `${farmer.fullName} was registered as a new farmer.`,
+    });
+
+    if (farmer.association) {
+        await createLog({
+            entityType: "farmer",
+            entityId: farmer._id,
+            association: farmer.association,
+            message: `${farmer.fullName} was assigned to an association.`,
+        });
+    }
+
     return farmer;
 };
 
@@ -53,6 +70,15 @@ export const updateFarmer = async (id, data) => {
             throw new Error("A farmer with this email already exists");
         }
     }
+
+    // Snapshot the fields we diff against after the update, so we only log
+    // changes that actually happened (not just fields that were resent
+    // with the same value).
+    const needsPrevious =
+        farmerData.association !== undefined || farmerData.position !== undefined;
+    const previousFarmer = needsPrevious
+        ? await Farmer.findById(id).select("association position fullName")
+        : null;
 
     let removedAttachments = [];
     if (farmerData.attachments) {
@@ -83,6 +109,41 @@ export const updateFarmer = async (id, data) => {
         await deleteCloudinaryAttachments(removedAttachments);
     }
 
+    // Association changed (assigned, reassigned, or cleared).
+    if (
+        farmerData.association !== undefined &&
+        String(previousFarmer?.association ?? "") !== String(farmer.association ?? "")
+    ) {
+        if (farmer.association) {
+            await createLog({
+                entityType: "farmer",
+                entityId: farmer._id,
+                association: farmer.association,
+                message: `${farmer.fullName} was assigned to an association.`,
+            });
+        } else {
+            await createLog({
+                entityType: "farmer",
+                entityId: farmer._id,
+                association: previousFarmer?.association,
+                message: `${farmer.fullName} was removed from their association.`,
+            });
+        }
+    }
+
+    // Position changed.
+    if (
+        farmerData.position !== undefined &&
+        previousFarmer?.position !== farmer.position
+    ) {
+        await createLog({
+            entityType: "farmer",
+            entityId: farmer._id,
+            association: farmer.association,
+            message: `${farmer.fullName}'s position changed from ${humanize(previousFarmer?.position)} to ${humanize(farmer.position)}.`,
+        });
+    }
+
     return farmer;
 };
 
@@ -100,6 +161,9 @@ export const deleteFarmer = async (id) => {
     return farmer;
 };
 
+// Attaches each farmer's related records — farms, and (once those models
+// exist) livestock/equipment — as full lightweight objects rather than
+// just a count, so the frontend can list them, not just tally them.
 const attachRelatedRecords = async (farmers) => {
     const farmerIds = farmers.map((f) => f._id);
 
@@ -119,8 +183,7 @@ const attachRelatedRecords = async (farmers) => {
     }
 
     // TODO: livestock, equipment — same fetch-group-attach pattern once
-    // those models exist. Stubbed as empty arrays for now so the shape
-    // farmers are returned in doesn't need to change again later.
+    // those models exist.
 
     return farmers.map((f) => {
         const obj = typeof f.toObject === "function" ? f.toObject() : f;
