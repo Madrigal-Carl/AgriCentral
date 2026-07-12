@@ -50,7 +50,7 @@ export function UserDrawer({ row, onClose }) {
                 ["Full Name", row.fullname],
                 ["Role", roleLabel[row.role]],
                 ...(row.role === "far"
-                  ? [["Association", row.association || "—"]]
+                  ? [["Association", row.associationName || "—"]]
                   : []),
               ]}
             />

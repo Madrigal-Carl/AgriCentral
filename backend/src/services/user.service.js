@@ -1,10 +1,32 @@
 import bcrypt from "bcrypt";
 import User from "../models/user.model.js";
+import Association from "../models/association.model.js"; // adjust path if your model file is named differently
 
 const SALT_ROUNDS = 10;
 
+const syncAssociationAssignment = async (user, associationId) => {
+    if (user.role !== "far") {
+        await Association.updateMany(
+            { assignedUser: user._id },
+            { $unset: { assignedUser: "" } },
+        );
+        return;
+    }
+
+    await Association.updateMany(
+        { assignedUser: user._id, _id: { $ne: associationId ?? null } },
+        { $unset: { assignedUser: "" } },
+    );
+
+    if (associationId) {
+        await Association.findByIdAndUpdate(associationId, {
+            $set: { assignedUser: user._id },
+        });
+    }
+};
+
 export const createUser = async (data) => {
-    const { password, ...rest } = data;
+    const { password, association, ...rest } = data;
 
     const existing = await User.findOne({ email: rest.email });
 
@@ -19,11 +41,13 @@ export const createUser = async (data) => {
         password: hashedPassword,
     });
 
+    await syncAssociationAssignment(user, association);
+
     return user;
 };
 
 export const updateUser = async (id, data) => {
-    const { password, ...rest } = data;
+    const { password, association, ...rest } = data;
 
     if (rest.email) {
         const existing = await User.findOne({
@@ -46,13 +70,20 @@ export const updateUser = async (id, data) => {
     const user = await User.findByIdAndUpdate(
         id,
         { $set: updateData },
-        { new: true, runValidators: true }
+        { returnDocument: "after", runValidators: true }
     );
 
     if (!user) {
         const notFoundError = new Error("User not found");
         notFoundError.statusCode = 404;
         throw notFoundError;
+    }
+
+    // Only touch association links when the caller actually sent the
+    // field — an edit that doesn't mention association at all (e.g. just
+    // renaming the user) shouldn't unassign anything.
+    if (Object.prototype.hasOwnProperty.call(data, "association") || rest.role) {
+        await syncAssociationAssignment(user, association);
     }
 
     return user;
@@ -67,13 +98,49 @@ export const deleteUser = async (id) => {
         throw notFoundError;
     }
 
+    // Don't leave an association pointing at a user that no longer exists.
+    await Association.updateMany(
+        { assignedUser: user._id },
+        { $unset: { assignedUser: "" } },
+    );
+
     return user;
 };
 
+const attachAssociationInfo = async (users) => {
+    const farUserIds = users
+        .filter((u) => u.role === "far")
+        .map((u) => u._id);
+
+    if (!farUserIds.length) {
+        return users.map((u) => (typeof u.toObject === "function" ? u.toObject() : u));
+    }
+
+    const associations = await Association.find({
+        assignedUser: { $in: farUserIds },
+    }).select("_id name assignedUser");
+
+    const byUserId = new Map();
+    for (const assoc of associations) {
+        byUserId.set(assoc.assignedUser.toString(), {
+            id: assoc._id,
+            name: assoc.name,
+        });
+    }
+
+    return users.map((u) => {
+        const obj = typeof u.toObject === "function" ? u.toObject() : u;
+        const match = byUserId.get(obj._id.toString());
+        return {
+            ...obj,
+            ...(match
+                ? { association: match.id, associationName: match.name }
+                : {}),
+        };
+    });
+};
+
 export const getUsers = async ({ role, search, all, page, limit }) => {
-    // Admin accounts are excluded from every listing regardless of other
-    // filters — this isn't a user-facing filter option, it's a baseline
-    // exclusion, so it's applied unconditionally rather than via `role`.
     const filter = { role: { $ne: "admin" } };
 
     if (role) filter.role = role;
@@ -88,7 +155,7 @@ export const getUsers = async ({ role, search, all, page, limit }) => {
     if (all) {
         const users = await User.find(filter).sort({ createdAt: -1 });
         return {
-            users,
+            users: await attachAssociationInfo(users),
             pagination: null,
         };
     }
@@ -101,7 +168,7 @@ export const getUsers = async ({ role, search, all, page, limit }) => {
     ]);
 
     return {
-        users,
+        users: await attachAssociationInfo(users),
         pagination: {
             page,
             limit,

@@ -19,6 +19,10 @@ export const createUserSchema = z.object({
         .min(6, "Password must be at least 6 characters"),
     role: z.enum(ROLES).optional().default("far"),
     isVerified: z.boolean().optional(),
+    association: z
+        .string()
+        .regex(/^[0-9a-fA-F]{24}$/, "Invalid association id")
+        .optional(),
 });
 
 // password is optional on update — only hashed/changed if provided.

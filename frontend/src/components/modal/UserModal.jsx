@@ -13,7 +13,7 @@ import {
 import { ModalShell } from "./ModalShell";
 import { userFormSchema, userUpdateSchema } from "@/schemas/user.schema";
 import { useCreateUser, useUpdateUser } from "@/hooks/useUsers";
-import { useAssociations, useUpdateAssociation } from "@/hooks/useAssociations";
+import { useAvailableAssociations } from "@/hooks/useAssociations";
 
 export function UserModal({ mode, initial, onClose, onSave }) {
   const [submitError, setSubmitError] = useState(null);
@@ -39,8 +39,11 @@ export function UserModal({ mode, initial, onClose, onSave }) {
     },
   });
 
+  // Only associations with no assignedUser show up here, plus (in edit
+  // mode) the association this user already holds — includeId keeps that
+  // one visible/selectable even though it technically has an assignedUser.
   const { data: associationsData, isLoading: associationsLoading } =
-    useAssociations({ all: true });
+    useAvailableAssociations({ includeId: initial?.association });
   const associationOptions = (associationsData?.associations ?? []).map(
     (a) => ({
       value: a._id,
@@ -64,57 +67,27 @@ export function UserModal({ mode, initial, onClose, onSave }) {
     },
   });
 
-  const {
-    mutateAsync: updateAssociationMutateAsync,
-    isPending: isLinkingAssociation,
-  } = useUpdateAssociation();
-
-  const linkAssociation = async (userId, associationId) => {
-    if (!associationId) return;
-    await updateAssociationMutateAsync({
-      id: associationId,
-      assignedUser: userId,
-    });
-  };
-
-  const onSubmit = async (values) => {
+  const onSubmit = (values) => {
     setSubmitError(null);
 
     const payload = {
       fullname: values.fullname,
       email: values.email,
       role: values.role,
+      ...(values.role === "far" ? { association: values.association } : {}),
       ...(!isEdit || passwordWasReset ? { password: values.password } : {}),
     };
 
-    try {
-      if (mode === "add") {
-        createMutate(payload, {
-          onSuccess: async (data) => {
-            if (values.role === "far" && values.association) {
-              await linkAssociation(data.user._id, values.association);
-            }
-            onSave?.(data.user);
-          },
-        });
-      } else {
-        updateMutate(
-          { id: initial._id, ...payload },
-          {
-            onSuccess: async (data) => {
-              if (values.role === "far" && values.association) {
-                await linkAssociation(data.user._id, values.association);
-              }
-              onSave?.(data.user);
-            },
-          },
-        );
-      }
-    } catch (err) {
-      setSubmitError(
-        err?.response?.data?.message ||
-          err.message ||
-          "Failed to link association",
+    if (mode === "add") {
+      createMutate(payload, {
+        onSuccess: (data) => onSave?.(data.user),
+      });
+    } else {
+      updateMutate(
+        { id: initial._id, ...payload },
+        {
+          onSuccess: (data) => onSave?.(data.user),
+        },
       );
     }
   };
@@ -124,7 +97,7 @@ export function UserModal({ mode, initial, onClose, onSave }) {
     setPasswordWasReset(true);
   };
 
-  const busy = isCreating || isUpdating || isLinkingAssociation;
+  const busy = isCreating || isUpdating;
 
   return (
     <ModalShell
@@ -185,9 +158,10 @@ export function UserModal({ mode, initial, onClose, onSave }) {
           {/* Association only applies to FAR accounts, since FAR is tied
               to a specific association. Shown whenever the selected role
               is FAR, in both add and edit mode. Note: this isn't a field
-              on the User model itself — selecting one here triggers a
-              separate mutation on submit that sets Association.assignedUser
-              to this user's id. */}
+              on the User model itself — it's sent as part of the user
+              payload, and the backend syncs Association.assignedUser to
+              match (and clears whichever association the user previously
+              held, if any). */}
           <Controller
             name="role"
             control={control}

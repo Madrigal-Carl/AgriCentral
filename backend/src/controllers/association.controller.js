@@ -3,6 +3,7 @@ import {
     updateAssociation,
     deleteAssociation,
     getAssociations,
+    getAvailableAssociations,
 } from "../services/association.service.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
@@ -40,5 +41,14 @@ export const getAssociationsHandler = asyncHandler(async (req, res) => {
         message: "Associations fetched successfully",
         associations,
         pagination,
+    });
+});
+
+export const getAvailableAssociationsHandler = asyncHandler(async (req, res) => {
+    const associations = await getAvailableAssociations(req.query);
+
+    return res.status(200).json({
+        message: "Available associations fetched successfully",
+        associations,
     });
 });

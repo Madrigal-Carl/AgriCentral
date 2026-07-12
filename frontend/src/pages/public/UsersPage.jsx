@@ -103,6 +103,7 @@ export function UsersPage() {
         email: row.email,
         role: row.role,
         isVerified: row.isVerified,
+        association: row.association, // only present for FAR users
       },
     });
   const openView = (row) => setDrawer(row);

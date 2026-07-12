@@ -3,6 +3,7 @@ import {
     updateAssociationSchema,
     associationIdParamSchema,
     getAssociationsQuerySchema,
+    getAvailableAssociationsQuerySchema,
 } from "../schemas/association.schema.js";
 
 const validate = (schema) => (req, res, next) => {
@@ -59,3 +60,6 @@ export const validateCreateAssociation = validate(createAssociationSchema);
 export const validateUpdateAssociation = validate(updateAssociationSchema);
 export const validateAssociationIdParam = validateParams(associationIdParamSchema);
 export const validateGetAssociationsQuery = validateQuery(getAssociationsQuerySchema);
+export const validateGetAvailableAssociationsQuery = validateQuery(
+    getAvailableAssociationsQuerySchema,
+);

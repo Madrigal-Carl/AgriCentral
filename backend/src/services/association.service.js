@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Association from "../models/association.model.js";
 import Farmer from "../models/farmer.model.js";
 
@@ -10,7 +11,7 @@ export const updateAssociation = async (id, data) => {
     const association = await Association.findByIdAndUpdate(
         id,
         { $set: data },
-        { new: true, runValidators: true }
+        { returnDocument: "after", runValidators: true }
     );
 
     if (!association) {
@@ -102,6 +103,31 @@ export const getAssociations = async ({ search, all, page, limit }) => {
             totalPages: Math.ceil(total / limit) || 1,
         },
     };
+};
+
+// Associations with no assignedUser — i.e. free to be linked to a FAR user.
+// Used by the user-form's association picker so admins can't accidentally
+// pick an association that's already claimed by someone else. This just
+// feeds a dropdown, so it's a plain, unpaginated fetch-all.
+export const getAvailableAssociations = async ({ includeId } = {}) => {
+    // Validated here rather than via a Zod schema — this is a plain
+    // fetch-all with no side effects, so a full validator-middleware layer
+    // is overkill. The check itself matters though: includeId flows into
+    // a Mongo filter, and an invalid ObjectId string there throws a
+    // CastError (500), not a clean response — so silently ignore anything
+    // that isn't a real ObjectId instead of passing it through.
+    const validIncludeId = mongoose.isValidObjectId(includeId) ? includeId : null;
+
+    const filter = {
+        $or: [
+            { assignedUser: { $exists: false } },
+            // Edit mode: keep the user's current association selectable
+            // even though it already has assignedUser set to them.
+            ...(validIncludeId ? [{ _id: validIncludeId }] : []),
+        ],
+    };
+
+    return Association.find(filter).sort({ name: 1 });
 };
 
 // Escapes regex special characters in user input so a search like "a.b+c"

@@ -31,3 +31,10 @@ export const getAssociationsQuerySchema = z.object({
     page: z.coerce.number().int().positive().optional().default(1),
     limit: z.coerce.number().int().positive().optional().default(10),
 });
+
+export const getAvailableAssociationsQuerySchema = z.object({
+    includeId: z
+        .string()
+        .regex(/^[0-9a-fA-F]{24}$/, "Invalid association id")
+        .optional(),
+});

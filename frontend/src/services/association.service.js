@@ -5,6 +5,11 @@ export async function getAssociations(params) {
     return response.data;
 }
 
+export async function getAvailableAssociations(params) {
+    const response = await api.get("/associations/available", { params });
+    return response.data;
+}
+
 export async function createAssociation(data) {
     const response = await api.post("/associations", data);
     return response.data;
