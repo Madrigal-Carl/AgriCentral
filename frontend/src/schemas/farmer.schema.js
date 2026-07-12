@@ -46,9 +46,9 @@ const baseFarmerFormSchema = z.object({
     // shapes here; whether it's actually required is decided below,
     // since that depends on the creator's role, not the field itself.
     association: z.string().nullable().optional(),
-    farms: z.array(z.string()).optional().default([]),
-    livestock: z.array(z.string()).optional().default([]),
-    equipment: z.array(z.string()).optional().default([]),
+    farms: z.array(z.any()).optional().default([]),
+    livestock: z.array(z.any()).optional().default([]),
+    equipment: z.array(z.any()).optional().default([]),
     files: z.array(z.any()).optional().default([]),
 });
 

@@ -47,20 +47,47 @@ const logCropStatusChanges = async ({ farm, changes, cropIdToName }) => {
     }
 };
 
-// Logs one entry per farmer newly added to a farm's assignedFarmers list.
-const logNewFarmerAssignments = async ({ farm, newlyAssignedFarmerIds }) => {
-    if (!newlyAssignedFarmerIds.length) return;
+// Logs both additions and removals from a farm's assignedFarmers list,
+// writing a log entry on each side (the farmer entity and the farm
+// entity) so both timelines show the change.
+const logFarmerAssignmentChanges = async ({ farm, addedFarmerIds, removedFarmerIds }) => {
+    const allIds = [...addedFarmerIds, ...removedFarmerIds];
+    if (!allIds.length) return;
 
-    const farmers = await Farmer.find({ _id: { $in: newlyAssignedFarmerIds } }).select(
-        "fullName",
-    );
+    const farmers = await Farmer.find({ _id: { $in: allIds } }).select("fullName");
+    const farmerIdToName = new Map(farmers.map((f) => [f._id.toString(), f.fullName]));
 
-    for (const farmer of farmers) {
+    for (const farmerId of addedFarmerIds) {
+        const farmerName = farmerIdToName.get(farmerId.toString()) ?? "A farmer";
+
         await createLog({
             entityType: "farmer",
-            entityId: farmer._id,
+            entityId: farmerId,
             association: farm.association,
-            message: `${farmer.fullName} was assigned to farm ${farm.tag}.`,
+            message: `${farmerName} was assigned to farm ${farm.tag}.`,
+        });
+        await createLog({
+            entityType: "farm",
+            entityId: farm._id,
+            association: farm.association,
+            message: `${farmerName} was assigned to this farm.`,
+        });
+    }
+
+    for (const farmerId of removedFarmerIds) {
+        const farmerName = farmerIdToName.get(farmerId.toString()) ?? "A farmer";
+
+        await createLog({
+            entityType: "farmer",
+            entityId: farmerId,
+            association: farm.association,
+            message: `${farmerName} was removed from farm ${farm.tag}.`,
+        });
+        await createLog({
+            entityType: "farm",
+            entityId: farm._id,
+            association: farm.association,
+            message: `${farmerName} was removed from this farm.`,
         });
     }
 };
@@ -95,15 +122,13 @@ export const createFarm = async (data, authenticatedUserId) => {
         const crops = await Crop.find({ _id: { $in: cropIds } }).select("name");
         const cropIdToName = new Map(crops.map((c) => [c._id.toString(), c.name]));
 
-        await logCropStatusChanges({
-            farm,
-            changes: farmData.crops.map((c) => ({
-                cropId: c.crop.toString(),
-                fromStatus: null,
-                toStatus: c.status ?? "planted",
-            })),
-            cropIdToName,
-        });
+        if (farmData.assignedFarmers?.length) {
+            await logFarmerAssignmentChanges({
+                farm,
+                addedFarmerIds: farmData.assignedFarmers,
+                removedFarmerIds: [],
+            });
+        }
     }
 
     if (farmData.assignedFarmers?.length) {
@@ -206,12 +231,17 @@ export const updateFarm = async (id, data) => {
         const previousFarmerIds = (previousFarm?.assignedFarmers ?? []).map((f) =>
             f.toString(),
         );
-        const newlyAssignedFarmerIds = farmData.assignedFarmers.filter(
-            (fid) => !previousFarmerIds.includes(fid.toString()),
+        const newFarmerIds = farmData.assignedFarmers.map((f) => f.toString());
+
+        const addedFarmerIds = newFarmerIds.filter(
+            (fid) => !previousFarmerIds.includes(fid),
+        );
+        const removedFarmerIds = previousFarmerIds.filter(
+            (fid) => !newFarmerIds.includes(fid),
         );
 
-        if (newlyAssignedFarmerIds.length) {
-            await logNewFarmerAssignments({ farm, newlyAssignedFarmerIds });
+        if (addedFarmerIds.length || removedFarmerIds.length) {
+            await logFarmerAssignmentChanges({ farm, addedFarmerIds, removedFarmerIds });
         }
     }
 

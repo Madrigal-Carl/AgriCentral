@@ -1,6 +1,7 @@
 import Farmer from "../models/farmer.model.js";
 import Farm from "../models/farm.model.js";
 import User from "../models/user.model.js";
+import Association from "../models/association.model.js";
 import cloudinary from "../config/cloudinary.js";
 import { createLog, getLogsForEntities, humanize } from "./log.service.js";
 
@@ -43,11 +44,13 @@ export const createFarmer = async (data, authenticatedUserId) => {
     });
 
     if (farmer.association) {
+        const association = await Association.findById(farmer.association).select("name");
+
         await createLog({
             entityType: "farmer",
             entityId: farmer._id,
             association: farmer.association,
-            message: `${farmer.fullName} was assigned to an association.`,
+            message: `${farmer.fullName} was assigned to ${association?.name ?? "an association"}.`,
         });
     }
 
@@ -115,18 +118,24 @@ export const updateFarmer = async (id, data) => {
         String(previousFarmer?.association ?? "") !== String(farmer.association ?? "")
     ) {
         if (farmer.association) {
+            const association = await Association.findById(farmer.association).select("name");
+
             await createLog({
                 entityType: "farmer",
                 entityId: farmer._id,
                 association: farmer.association,
-                message: `${farmer.fullName} was assigned to an association.`,
+                message: `${farmer.fullName} was assigned to ${association?.name ?? "an association"}.`,
             });
         } else {
+            const previousAssociation = previousFarmer?.association
+                ? await Association.findById(previousFarmer.association).select("name")
+                : null;
+
             await createLog({
                 entityType: "farmer",
                 entityId: farmer._id,
                 association: previousFarmer?.association,
-                message: `${farmer.fullName} was removed from their association.`,
+                message: `${farmer.fullName} was removed from ${previousAssociation?.name ?? "their association"}.`,
             });
         }
     }
