@@ -1,12 +1,7 @@
-import { useState, useEffect } from "react";
-import { Plus, X, AlertTriangle, Building2, Users2 } from "lucide-react";
+import { useState } from "react";
+import { Plus } from "lucide-react";
 
-import {
-  PageHeader,
-  DataTable,
-  RowActions,
-  StatusPill,
-} from "@/components/public";
+import { PageHeader, DataTable, RowActions } from "@/components/public";
 import { Button } from "@/components/ui";
 import {
   AssociationDrawer,
@@ -14,48 +9,89 @@ import {
   AssociationModal,
 } from "@/components/modal";
 
-import { ASSOCIATIONS } from "@/constants/data";
+import {
+  useAssociations,
+  useCreateAssociation,
+  useUpdateAssociation,
+  useDeleteAssociation,
+} from "@/hooks/useAssociations";
 
 const blankForm = {
-  id: "",
   name: "",
-  members: [], // [{ name, position }] — e.g. { name: "Juan Dela Cruz", position: "President" }
+  members: [], // not yet supported by backend — kept for UI compatibility
 };
 
 /* ---------------- Page ---------------- */
 export function AssociationsPage() {
-  const [rows, setRows] = useState(ASSOCIATIONS);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const limit = 10;
   const [modal, setModal] = useState(null);
   const [drawer, setDrawer] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
 
-  const openAdd = () =>
-    setModal({
-      mode: "add",
-      data: {
-        ...blankForm,
-        id: `AS-${String(rows.length + 1).padStart(3, "0")}`,
-      },
-    });
-  const openEdit = (row) => setModal({ mode: "edit", data: { ...row } });
-  const openView = (row) => setDrawer(row);
-  const askDelete = (row) => setConfirmDelete(row);
-  const confirmRemove = () => {
-    if (!confirmDelete) return;
-    setRows((r) => r.filter((x) => x.id !== confirmDelete.id));
-    setConfirmDelete(null);
+  const filters = {
+    page,
+    limit,
+    ...(search ? { search } : {}),
   };
 
-  // Add/Edit only ever touches the association's name — members and their
-  // positions are managed elsewhere, so they're preserved as-is when saving.
-  const handleSave = (data) => {
-    setRows((r) => {
-      const exists = r.some((x) => x.id === data.id);
-      if (exists)
-        return r.map((x) => (x.id === data.id ? { ...x, name: data.name } : x));
-      return [...r, { ...blankForm, ...data }];
-    });
-    setModal(null);
+  const { data, isLoading, isError, error } = useAssociations(filters, {
+    keepPreviousData: true,
+  });
+
+  const rows = data?.associations ?? [];
+  const pagination = data?.pagination;
+
+  const createMutation = useCreateAssociation({
+    onSuccess: () => setModal(null),
+  });
+  const updateMutation = useUpdateAssociation({
+    onSuccess: () => setModal(null),
+  });
+  const deleteMutation = useDeleteAssociation({
+    onSuccess: () => {
+      setConfirmDelete(null);
+      setDeleteError(null);
+    },
+    onError: (err) => {
+      setDeleteError(
+        err?.response?.data?.message ||
+          err.message ||
+          "Failed to delete association",
+      );
+    },
+  });
+
+  const busy = createMutation.isPending || updateMutation.isPending;
+
+  const openAdd = () => setModal({ mode: "add", data: { ...blankForm } });
+  const openEdit = (row) => setModal({ mode: "edit", data: { ...row } });
+  const openView = (row) => setDrawer(row);
+  const askDelete = (row) => {
+    setDeleteError(null);
+    setConfirmDelete(row);
+  };
+
+  const confirmRemove = () => {
+    if (!confirmDelete) return;
+    deleteMutation.mutate(confirmDelete._id);
+  };
+
+  const handleSave = (values) => {
+    const payload = { name: values.name };
+
+    if (modal.mode === "edit") {
+      updateMutation.mutate({ id: modal.data._id, ...payload });
+    } else {
+      createMutation.mutate(payload);
+    }
+  };
+
+  const handleSearchChange = (value) => {
+    setPage(1);
+    setSearch(value);
   };
 
   return (
@@ -69,19 +105,38 @@ export function AssociationsPage() {
           </Button>
         }
       />
+
+      {isError && (
+        <div className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+          {error?.response?.data?.message ||
+            error?.message ||
+            "Failed to load associations"}
+        </div>
+      )}
+
       <DataTable
         searchPlaceholder="Search association…"
+        search={search}
+        onSearchChange={handleSearchChange}
+        loading={isLoading}
         data={rows}
+        pagination={
+          pagination
+            ? {
+                page: pagination.page,
+                limit: pagination.limit,
+                total: pagination.total,
+                onPageChange: setPage,
+              }
+            : undefined
+        }
         columns={[
           {
             key: "name",
             header: "Association Name",
             sortable: true,
             cell: (r) => (
-              <div>
-                <div className="font-semibold text-foreground">{r.name}</div>
-                <div className="text-xs text-secondary">{r.id}</div>
-              </div>
+              <div className="font-semibold text-foreground">{r.name}</div>
             ),
           },
           {
@@ -115,6 +170,13 @@ export function AssociationsPage() {
         <AssociationModal
           mode={modal.mode}
           initial={modal.data}
+          busy={busy}
+          submitError={
+            createMutation.error?.response?.data?.message ||
+            createMutation.error?.message ||
+            updateMutation.error?.response?.data?.message ||
+            updateMutation.error?.message
+          }
           onClose={() => setModal(null)}
           onSave={handleSave}
         />
@@ -124,8 +186,10 @@ export function AssociationsPage() {
       )}
       {confirmDelete && (
         <DeleteConfirmModal
-          id={confirmDelete.id}
+          id={confirmDelete._id}
           name={confirmDelete.name}
+          error={deleteError}
+          busy={deleteMutation.isPending}
           onCancel={() => setConfirmDelete(null)}
           onConfirm={confirmRemove}
         />

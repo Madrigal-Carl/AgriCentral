@@ -1,27 +1,44 @@
-import { useState } from "react";
-import { Button } from "@/components/ui";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Button, Field, TextInput } from "@/components/ui";
 import { ModalShell } from "./ModalShell";
+import {
+  associationFormSchema,
+  associationUpdateSchema,
+} from "@/schemas/association.schema";
 
-export function AssociationModal({ mode, initial, onClose, onSave }) {
-  const [form, setForm] = useState(initial);
-  const [touched, setTouched] = useState(false);
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+export function AssociationModal({
+  mode,
+  initial,
+  submitError,
+  busy,
+  onClose,
+  onSave,
+}) {
+  const isEdit = mode === "edit";
 
-  const isValid = form.name.trim().length > 0;
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(
+      isEdit ? associationUpdateSchema : associationFormSchema,
+    ),
+    defaultValues: {
+      name: "",
+      ...initial,
+    },
+  });
 
-  const submit = (e) => {
-    e.preventDefault();
-    if (!isValid) {
-      setTouched(true);
-      return;
-    }
-    onSave(form);
+  const onSubmit = (values) => {
+    onSave(values);
   };
 
   return (
     <ModalShell
       eyebrow="Association"
-      title={mode === "add" ? "Add New Association" : `Edit ${initial.id}`}
+      title={mode === "add" ? "Add New Association" : `Edit ${initial.name}`}
       onClose={onClose}
       maxWidth="max-w-md"
       footer={
@@ -29,31 +46,35 @@ export function AssociationModal({ mode, initial, onClose, onSave }) {
           <Button variant="outline" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button variant="accent" type="submit" form="association-form">
-            {mode === "add" ? "Add Association" : "Save Changes"}
+          <Button
+            variant="accent"
+            type="submit"
+            form="association-form"
+            disabled={busy}
+          >
+            {busy
+              ? "Saving…"
+              : mode === "add"
+                ? "Add Association"
+                : "Save Changes"}
           </Button>
         </>
       }
     >
-      <form id="association-form" onSubmit={submit}>
-        <label className="label-eyebrow mb-1.5 block">Association Name</label>
-        <input
-          autoFocus
-          value={form.name}
-          onChange={(e) => {
-            set("name", e.target.value);
-            if (touched) setTouched(false);
-          }}
-          placeholder="e.g. Boac, Marinduque"
-          className={`w-full border bg-surface px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-secondary focus:border-foreground ${
-            touched && !isValid ? "border-danger" : "border-border"
-          }`}
-        />
-        {touched && !isValid && (
-          <p className="mt-1 text-xs text-danger">
-            Association name is required.
-          </p>
+      <form id="association-form" onSubmit={handleSubmit(onSubmit)}>
+        {submitError && (
+          <div className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+            {submitError}
+          </div>
         )}
+
+        <Field label="Association Name" error={errors.name?.message}>
+          <TextInput
+            autoFocus
+            {...register("name")}
+            placeholder="e.g. Boac, Marinduque"
+          />
+        </Field>
       </form>
     </ModalShell>
   );
