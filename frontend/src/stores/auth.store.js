@@ -6,6 +6,7 @@ import {
   logoutUser,
   getMe,
 } from "@/services/auth.service";
+import { queryClient } from "@/utils/queryClient";
 
 const useAuthStore = create((set, get) => ({
   user: null,
@@ -36,6 +37,7 @@ const useAuthStore = create((set, get) => ({
   logout: async () => {
     await logoutUser();
     set({ user: null });
+    queryClient.clear();
   },
 
   getInitial: () => {
