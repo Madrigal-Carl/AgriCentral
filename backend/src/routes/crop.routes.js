@@ -13,12 +13,12 @@ import {
     validateCropUserIdParam,
     validateGetCropsQuery,
 } from "../validators/crop.validator.js";
-import { authenticated } from "../middlewares/auth.middleware.js";
+import { authenticated, scopeByUserId } from "../middlewares/auth.middleware.js";
 
 
 const router = express.Router();
 
-router.get("/", authenticated, validateGetCropsQuery, getCropsHandler);
+router.get("/", authenticated, scopeByUserId, validateGetCropsQuery, getCropsHandler);
 router.get("/:userId", authenticated, validateCropUserIdParam, getCropsByUserIdHandler);
 router.post("/", authenticated, validateCreateCrop, createCropHandler);
 router.patch("/:id", authenticated, validateCropIdParam, validateUpdateCrop, updateCropHandler);

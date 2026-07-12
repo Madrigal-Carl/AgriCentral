@@ -13,11 +13,11 @@ import {
     validateFarmerUserIdParam,
     validateGetFarmersQuery,
 } from "../validators/farmer.validator.js";
-import { authenticated } from "../middlewares/auth.middleware.js";
+import { authenticated, scopeByUserId } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
-router.get("/", authenticated, validateGetFarmersQuery, getFarmersHandler);
+router.get("/", authenticated, scopeByUserId, validateGetFarmersQuery, getFarmersHandler);
 router.get("/:userId", authenticated, validateFarmerUserIdParam, getFarmersByUserIdHandler);
 router.post("/", authenticated, validateCreateFarmer, createFarmerHandler);
 router.patch("/:id", authenticated, validateFarmerIdParam, validateUpdateFarmer, updateFarmerHandler);

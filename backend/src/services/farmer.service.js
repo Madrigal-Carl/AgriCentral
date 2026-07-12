@@ -83,9 +83,10 @@ export const getFarmersByUserId = async (userId) => {
     return farmers;
 };
 
-export const getFarmers = async ({ status, search, all, page, limit }) => {
+export const getFarmers = async ({ status, search, userId, all, page, limit }) => {
     const filter = {};
     if (status) filter.status = status;
+    if (userId) filter.user = userId;
 
     if (search) {
         filter.fullName = new RegExp(escapeRegex(search), "i");

@@ -51,8 +51,10 @@ export const deleteFarm = async (id) => {
     return farm;
 };
 
-export const getFarms = async ({ search, crop, cropStatus, all, page, limit }) => {
+export const getFarms = async ({ search, crop, userId, all, page, limit }) => {
     const filter = {};
+
+    if (userId) filter.user = userId;
 
     if (search) {
         const regex = new RegExp(escapeRegex(search), "i");
@@ -64,10 +66,6 @@ export const getFarms = async ({ search, crop, cropStatus, all, page, limit }) =
             name: new RegExp(escapeRegex(crop), "i"),
         }).distinct("_id");
 
-        // No crop matches that name at all — short-circuit to an
-        // impossible filter instead of running a query that would
-        // otherwise ignore `crop` entirely (an empty $elemMatch with
-        // no `crop` key would match ANY crop status, which is wrong).
         if (!matchingCropIds.length) {
             return all
                 ? { farms: [], pagination: null }
@@ -80,11 +78,8 @@ export const getFarms = async ({ search, crop, cropStatus, all, page, limit }) =
         filter.crops = {
             $elemMatch: {
                 crop: { $in: matchingCropIds },
-                ...(cropStatus ? { status: cropStatus } : {}),
             },
         };
-    } else if (cropStatus) {
-        filter.crops = { $elemMatch: { status: cropStatus } };
     }
 
     if (all) {

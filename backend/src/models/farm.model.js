@@ -31,6 +31,10 @@ const farmCropSchema = new mongoose.Schema(
 
 const farmSchema = new mongoose.Schema(
     {
+        user: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+        },
         tag: {
             type: String,
             required: true,

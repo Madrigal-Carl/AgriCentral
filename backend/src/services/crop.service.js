@@ -52,9 +52,10 @@ export const getCropsByUserId = async (userId) => {
     return crops.map((c) => c.name);
 };
 
-export const getCrops = async ({ status, search, all, page, limit }) => {
+export const getCrops = async ({ status, search, userId, all, page, limit }) => {
     const filter = {};
     if (status) filter.status = status;
+    if (userId) filter.user = userId;
 
     if (search) {
         filter.name = new RegExp(escapeRegex(search), "i");

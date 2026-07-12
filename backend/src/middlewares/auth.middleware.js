@@ -139,3 +139,13 @@ export const excludeRoles = (...blockedRoles) => {
     next();
   };
 };
+
+export const scopeByUserId = (req, res, next) => {
+  if (req.user?.role === "far") {
+    req.query.userId = String(req.user._id);
+  } else {
+    delete req.query.userId;
+  }
+
+  next();
+};
