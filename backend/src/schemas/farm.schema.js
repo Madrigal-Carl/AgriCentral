@@ -74,7 +74,3 @@ export const getFarmsQuerySchema = z.object({
     page: z.coerce.number().int().positive().optional().default(1),
     limit: z.coerce.number().int().positive().optional().default(10),
 });
-
-export const farmUserIdParamSchema = z.object({
-    userId: objectId("user id"),
-});

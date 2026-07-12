@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
     getFarms,
-    getFarmsByUserId,
     createFarm,
     updateFarm,
     deleteFarm,
@@ -13,7 +12,6 @@ export const farmKeys = {
     all: ["farms"],
     lists: () => [...farmKeys.all, "list"],
     list: (filters) => [...farmKeys.lists(), filters],
-    byUser: (userId) => [...farmKeys.all, "byUser", userId],
 };
 
 /* ---------------- Queries ---------------- */
@@ -23,16 +21,6 @@ export function useFarms(filters = {}, options = {}) {
         queryKey: farmKeys.list(filters),
         queryFn: () => getFarms(filters),
         keepPreviousData: true, // avoids a flash of empty state when paginating/filtering
-        ...options,
-    });
-}
-
-// Fetches the farm(s) belonging to a specific user via GET /farms/:userId
-export function useFarmsByUserId(userId, options = {}) {
-    return useQuery({
-        queryKey: farmKeys.byUser(userId),
-        queryFn: () => getFarmsByUserId(userId),
-        enabled: !!userId,
         ...options,
     });
 }

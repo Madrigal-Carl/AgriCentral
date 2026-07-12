@@ -5,11 +5,6 @@ export async function getFarms(params) {
     return response.data;
 }
 
-export async function getFarmsByUserId(userId) {
-    const response = await api.get(`/farms/${userId}`);
-    return response.data;
-}
-
 export async function createFarm(data) {
     const response = await api.post("/farms", data);
     return response.data;

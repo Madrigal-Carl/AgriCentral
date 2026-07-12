@@ -3,7 +3,6 @@ import {
     updateFarm,
     deleteFarm,
     getFarms,
-    getFarmsByUserId,
 } from "../services/farm.service.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
@@ -31,15 +30,6 @@ export const deleteFarmHandler = asyncHandler(async (req, res) => {
     return res.status(200).json({
         message: "Farm deleted successfully",
         farm,
-    });
-});
-
-export const getFarmsByUserIdHandler = asyncHandler(async (req, res) => {
-    const farms = await getFarmsByUserId(req.params.userId);
-
-    return res.status(200).json({
-        message: "Farms fetched successfully",
-        farms,
     });
 });
 
