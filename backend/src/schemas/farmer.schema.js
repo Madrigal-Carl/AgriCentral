@@ -56,7 +56,6 @@ export const createFarmerSchema = z.object({
 });
 
 export const updateFarmerSchema = createFarmerSchema
-    .omit({ userId: true })
     .extend({
         status: z.enum(STATUSES).optional(),
     })

@@ -102,6 +102,7 @@ export function FarmersPage() {
         farms: row.farms || [],
         livestock: row.livestock || [],
         equipment: row.equipment || [],
+        user: row.user,
       },
     });
   };

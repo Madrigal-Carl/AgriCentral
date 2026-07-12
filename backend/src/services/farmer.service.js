@@ -21,9 +21,14 @@ export const createFarmer = async (data, authenticatedUserId) => {
 };
 
 export const updateFarmer = async (id, data) => {
-    if (data.emailAddress) {
+    const { userId, ...farmerData } = data;
+    if (userId !== undefined) {
+        farmerData.user = userId;
+    }
+
+    if (farmerData.emailAddress) {
         const existing = await Farmer.findOne({
-            emailAddress: data.emailAddress,
+            emailAddress: farmerData.emailAddress,
             _id: { $ne: id },
         });
 
@@ -33,11 +38,11 @@ export const updateFarmer = async (id, data) => {
     }
 
     let removedAttachments = [];
-    if (data.attachments) {
+    if (farmerData.attachments) {
         const existingFarmer = await Farmer.findById(id).select("attachments");
         if (existingFarmer) {
             const keptPublicIds = new Set(
-                data.attachments.map((a) => a.publicId),
+                farmerData.attachments.map((a) => a.publicId),
             );
             removedAttachments = existingFarmer.attachments.filter(
                 (a) => !keptPublicIds.has(a.publicId),
@@ -47,7 +52,7 @@ export const updateFarmer = async (id, data) => {
 
     const farmer = await Farmer.findByIdAndUpdate(
         id,
-        { $set: data },
+        { $set: farmerData },
         { new: true, runValidators: true }
     );
 
@@ -139,9 +144,6 @@ async function deleteCloudinaryAttachments(attachments = []) {
     });
 }
 
-// Escapes regex special characters in user input so a search like "a.b+c"
-// is treated literally instead of as a regex pattern (which could throw
-// or match unintended results).
 function escapeRegex(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

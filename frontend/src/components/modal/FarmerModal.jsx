@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import useAuth from "@/hooks/useAuth";
@@ -9,15 +9,12 @@ import {
   TextInput,
   FullSelect,
 } from "@/components/ui";
-import {
-  GENDER_OPTIONS,
-  ASSOCIATION_OPTIONS,
-  POSITION_OPTIONS,
-} from "@/constants/data";
+import { GENDER_OPTIONS, POSITION_OPTIONS } from "@/constants/data";
 import { FileUploader } from "@/components/public";
 import { ModalShell } from "./ModalShell";
 import { farmerFormSchema, farmerUpdateSchema } from "@/schemas/farmer.schema";
 import { useCreateFarmer, useUpdateFarmer } from "@/hooks/useFarmers";
+import { useAssociations } from "@/hooks/useAssociations";
 
 const STATUS_OPTIONS = [
   { value: "active", label: "Active" },
@@ -39,28 +36,63 @@ function toFormShape(farmer, extra = {}) {
     position: farmer.position,
     status: farmer.status,
     files: farmer.attachments || [],
+    user: farmer.user,
     ...extra,
   };
 }
 
 export function FarmerModal({ mode, initial, onClose, onSave }) {
   const { role } = useAuth();
+  const isFar = role === "far";
   const [submitError, setSubmitError] = useState(null);
   const isEdit = mode === "edit";
+
+  // FAR users edit position directly; everyone else assigns the farmer to
+  // an association instead, which resolves to a userId on submit (the
+  // association's assignedUser) — same pattern as FarmModal.
+  const { data: associationsData } = useAssociations(
+    { all: true },
+    { enabled: !isFar },
+  );
+
+  const associationOptions = (associationsData?.associations ?? []).map(
+    (a) => ({ value: a._id, label: a.name }),
+  );
+
+  const findAssociationById = (associationId) =>
+    (associationsData?.associations ?? []).find((a) => a._id === associationId);
+
+  const findAssociationByAssignedUser = (userId) =>
+    (associationsData?.associations ?? []).find(
+      (a) => (a.assignedUser?._id ?? a.assignedUser) === userId,
+    );
 
   const {
     register,
     handleSubmit,
     control,
+    setValue,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(isEdit ? farmerUpdateSchema : farmerFormSchema),
     defaultValues: {
-      position: "member",
       gender: "male",
       ...initial,
+      position: initial?.position || "member",
     },
   });
+
+  // associationsData arrives after mount, so defaultValues can't include
+  // the resolved association — set it once the list (and the farmer's
+  // current owning user) are both available.
+  useEffect(() => {
+    if (isFar || !isEdit || !initial?.user || !associationsData) return;
+    const match = findAssociationByAssignedUser(initial.user);
+    if (match) {
+      setValue("association", match._id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFar, isEdit, initial?.user, associationsData]);
 
   const { mutateAsync: createMutateAsync, isPending: isCreating } =
     useCreateFarmer({
@@ -93,6 +125,21 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
         position: values.position,
         files: values.files, // hook resolves this into `attachments`
       };
+
+      // Non-FAR users don't set position directly (that field isn't even
+      // rendered for them) — instead they assign the farmer to an
+      // association, and the farmer's owning user becomes that
+      // association's assignedUser, not the association id itself.
+      if (!isFar) {
+        const selectedAssociation = findAssociationById(values.association);
+        const assignedUserId =
+          selectedAssociation?.assignedUser?._id ??
+          selectedAssociation?.assignedUser;
+
+        if (assignedUserId) {
+          payload.userId = assignedUserId;
+        }
+      }
 
       if (mode === "add") {
         const { farmer } = await createMutateAsync(payload);
@@ -212,8 +259,8 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
             </Field>
           )}
 
-          {role !== "far" && (
-            <Field label="Association" full>
+          {!isFar && (
+            <Field label="Association" full error={errors.association?.message}>
               <Controller
                 name="association"
                 control={control}
@@ -221,7 +268,7 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
                   <SingleSelect
                     value={field.value}
                     onChange={field.onChange}
-                    options={ASSOCIATION_OPTIONS}
+                    options={associationOptions}
                     placeholder="Select association…"
                     searchPlaceholder="Search association…"
                   />
@@ -230,7 +277,7 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
             </Field>
           )}
 
-          {role === "far" && (
+          {isFar && (
             <Field label="Position" full>
               <Controller
                 name="position"
