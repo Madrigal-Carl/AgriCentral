@@ -37,13 +37,14 @@ export const deleteAssociation = async (id) => {
 
 const attachMembers = async (associations) => {
     const assignedUserIds = associations
-        .map((a) => a.assignedUser)
+        .map((a) => a.assignedUser?._id)
         .filter(Boolean);
 
     if (!assignedUserIds.length) {
         return associations.map((a) => {
             const obj = typeof a.toObject === "function" ? a.toObject() : a;
-            return { ...obj, members: [] };
+            const { assignedUser, ...rest } = obj;
+            return { ...rest, far: assignedUser?.fullname ?? null, members: [] };
         });
     }
 
@@ -64,9 +65,11 @@ const attachMembers = async (associations) => {
 
     return associations.map((a) => {
         const obj = typeof a.toObject === "function" ? a.toObject() : a;
-        const key = obj.assignedUser?.toString();
+        const { assignedUser, ...rest } = obj;
+        const key = assignedUser?._id?.toString();
         return {
-            ...obj,
+            ...rest,
+            far: assignedUser?.fullname ?? null,
             members: key ? membersByUserId.get(key) ?? [] : [],
         };
     });
@@ -80,7 +83,9 @@ export const getAssociations = async ({ search, all, page, limit }) => {
     }
 
     if (all) {
-        const associations = await Association.find(filter).sort({ createdAt: -1 });
+        const associations = await Association.find(filter)
+            .sort({ createdAt: -1 })
+            .populate("assignedUser", "fullname");
         return {
             associations: await attachMembers(associations),
             pagination: null,
@@ -90,7 +95,11 @@ export const getAssociations = async ({ search, all, page, limit }) => {
     const skip = (page - 1) * limit;
 
     const [associations, total] = await Promise.all([
-        Association.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+        Association.find(filter)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .populate("assignedUser", "fullname"),
         Association.countDocuments(filter),
     ]);
 
