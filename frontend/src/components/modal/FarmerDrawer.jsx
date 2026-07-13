@@ -26,6 +26,15 @@ function fileNameFromUrl(url) {
 export function FarmerDrawer({ row, onClose }) {
   const attachments = row.attachments || [];
 
+  const capitalize = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
+
+  const livestockItems = (row.livestock || []).map(
+    (l) => `${l.tag} · ${l.animal} (${l.breed}) — ${capitalize(l.condition)}`,
+  );
+  const equipmentItems = (row.equipment || []).map(
+    (e) => `${e.tag} · ${e.name} — ${capitalize(e.condition)}`,
+  );
+
   return (
     <div className="fixed inset-0 z-50" onClick={onClose}>
       <div className="absolute inset-0 bg-foreground-40" />
@@ -85,28 +94,22 @@ export function FarmerDrawer({ row, onClose }) {
           </Section>
 
           <Section icon={Beef} title="Assigned Livestock">
-            <ItemList
-              items={row.livestock || []}
-              empty="No livestock assigned."
-            />
+            <ItemList items={livestockItems} empty="No livestock assigned." />
           </Section>
 
           <Section icon={Tractor} title="Assigned Equipment">
-            <ItemList
-              items={row.equipment || []}
-              empty="No equipment assigned."
-            />
+            <ItemList items={equipmentItems} empty="No equipment assigned." />
           </Section>
 
           <Section icon={Calendar} title="Activity Timeline">
             {row.history && row.history.length > 0 ? (
               <ol className="relative ml-2 border-l border-border">
                 {row.history.map((h, i) => (
-                  <li key={i} className="relative pl-5 pb-4 last:pb-0">
+                  <li key={h._id ?? i} className="relative pl-5 pb-4 last:pb-0">
                     <span className="absolute -left-[5px] top-1.5 h-2.5 w-2.5 bg-accent" />
                     <div className="text-sm text-foreground">{h.message}</div>
                     <div className="text-xs text-secondary">
-                      {fmtDate(h.date)}
+                      {fmtDate(h.createdAt)}
                     </div>
                   </li>
                 ))}

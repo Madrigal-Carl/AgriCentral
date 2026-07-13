@@ -1,5 +1,7 @@
 import Farmer from "../models/farmer.model.js";
 import Farm from "../models/farm.model.js";
+import Livestock from "../models/livestock.model.js";
+import Equipment from "../models/equipment.model.js";
 import User from "../models/user.model.js";
 import Association from "../models/association.model.js";
 import cloudinary from "../config/cloudinary.js";
@@ -188,10 +190,46 @@ const attachRelatedRecords = async (farmers, associationId) => {
         }
     }
 
-    const logsByFarmerId = await getLogsForEntities("farmer", farmerIds, associationId);
+    // Livestock and equipment each carry a single `assignedFarmer` ref
+    // (unlike farms, which hold an array of farmers), so they both group
+    // the same simple way: fetch everything pointing at any of these
+    // farmer ids, then bucket by that id.
+    const livestocks = await Livestock.find({
+        assignedFarmer: { $in: farmerIds },
+    }).select("tag animal breed condition status assignedFarmer");
 
-    // TODO: livestock, equipment — same fetch-group-attach pattern once
-    // those models exist.
+    const livestockByFarmerId = new Map();
+    for (const livestock of livestocks) {
+        const key = livestock.assignedFarmer.toString();
+        if (!livestockByFarmerId.has(key)) livestockByFarmerId.set(key, []);
+        livestockByFarmerId.get(key).push({
+            id: livestock._id,
+            tag: livestock.tag,
+            animal: livestock.animal,
+            breed: livestock.breed,
+            condition: livestock.condition,
+            status: livestock.status,
+        });
+    }
+
+    const equipments = await Equipment.find({
+        assignedFarmer: { $in: farmerIds },
+    }).select("tag name condition status assignedFarmer");
+
+    const equipmentByFarmerId = new Map();
+    for (const equipment of equipments) {
+        const key = equipment.assignedFarmer.toString();
+        if (!equipmentByFarmerId.has(key)) equipmentByFarmerId.set(key, []);
+        equipmentByFarmerId.get(key).push({
+            id: equipment._id,
+            tag: equipment.tag,
+            name: equipment.name,
+            condition: equipment.condition,
+            status: equipment.status,
+        });
+    }
+
+    const logsByFarmerId = await getLogsForEntities("farmer", farmerIds, associationId);
 
     return farmers.map((f) => {
         const obj = typeof f.toObject === "function" ? f.toObject() : f;
@@ -199,8 +237,8 @@ const attachRelatedRecords = async (farmers, associationId) => {
         return {
             ...obj,
             farms: farmsByFarmerId.get(key) ?? [],
-            livestock: obj.livestock ?? [],
-            equipment: obj.equipment ?? [],
+            livestock: livestockByFarmerId.get(key) ?? [],
+            equipment: equipmentByFarmerId.get(key) ?? [],
             history: logsByFarmerId.get(key) ?? [],
         };
     });
