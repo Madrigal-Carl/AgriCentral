@@ -1,96 +1,222 @@
 import { useState } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, Field, FullSelect, TextInput } from "@/components/ui";
 import { ModalShell } from "./ModalShell";
+import { GENDER_OPTIONS, LIVESTOCK_HEALTH_OPTIONS } from "@/constants/data";
+import { useAssociations } from "@/hooks/useAssociations";
+import { useCreateLivestock, useUpdateLivestock } from "@/hooks/useLivestocks";
 import {
-  ANIMAL_OPTIONS,
-  LIVESTOCK_CATALOG,
-  GENDER_OPTIONS,
-} from "@/constants/data";
+  livestockFormSchema,
+  livestockUpdateSchema,
+} from "@/schemas/livestock.schema";
 
-export function LivestockModal({
-  mode,
-  initial,
-  animalCatalog,
-  breedCatalog,
-  onClose,
-  onSave,
-}) {
-  const [form, setForm] = useState(initial);
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+export function LivestockModal({ mode, initial, onClose, onSave }) {
+  const isEdit = mode === "edit";
+  const [submitError, setSubmitError] = useState(null);
 
-  const submit = (e) => {
-    e?.preventDefault();
-    if (!form.tag || !form.animal || !form.breed) return;
-    onSave(form);
+  const {
+    register,
+    handleSubmit,
+    control,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(isEdit ? livestockUpdateSchema : livestockFormSchema),
+    defaultValues: {
+      tag: initial.tag,
+      animal: initial.animal,
+      breed: initial.breed,
+      gender: initial.gender,
+      health: initial.health,
+      dob: initial.dob,
+      color: initial.color,
+      weight: initial.weight,
+      associationId: initial.associationId || "",
+    },
+  });
+
+  const { data: associationsData } = useAssociations({ all: true });
+  const associationOptions = (associationsData?.associations ?? []).map(
+    (a) => ({ value: a._id, label: a.name }),
+  );
+
+  const { mutateAsync: createMutateAsync, isPending: isCreating } =
+    useCreateLivestock({
+      onError: (err) =>
+        setSubmitError(
+          err?.response?.data?.message || err.message || "Something went wrong",
+        ),
+    });
+
+  const { mutateAsync: updateMutateAsync, isPending: isUpdating } =
+    useUpdateLivestock({
+      onError: (err) =>
+        setSubmitError(
+          err?.response?.data?.message || err.message || "Something went wrong",
+        ),
+    });
+
+  const busy = isCreating || isUpdating;
+
+  const onSubmit = async (values) => {
+    setSubmitError(null);
+
+    // This modal never touches assignment/status — it mirrors whatever
+    // the record already had so those refine rules on the backend
+    // (status <-> assignedFarmer) stay satisfied.
+    const derivedStatus = initial.farmer ? "assigned" : "available";
+
+    // Form field names (health/dob) follow the UI copy; the backend
+    // model/schema uses condition/birthDate — translate only here, at
+    // the payload boundary, so this is the single source of truth for
+    // the name mapping.
+    const payload = {
+      tag: values.tag,
+      animal: values.animal,
+      breed: values.breed,
+      gender: values.gender,
+      condition: values.health,
+      birthDate: values.dob,
+      color: values.color,
+      weight: values.weight,
+      status: derivedStatus,
+      ...(values.associationId ? { associationId: values.associationId } : {}),
+      ...(isEdit
+        ? { assignedFarmer: initial.farmer || null }
+        : initial.farmer
+          ? { assignedFarmer: initial.farmer }
+          : {}),
+    };
+
+    try {
+      if (mode === "add") {
+        const { livestock } = await createMutateAsync(payload);
+        onSave?.(livestock);
+      } else {
+        const { livestock } = await updateMutateAsync({
+          id: initial._id,
+          ...payload,
+        });
+        onSave?.(livestock);
+      }
+    } catch (err) {
+      setSubmitError(
+        err?.response?.data?.message ||
+          err.message ||
+          "Failed to save livestock",
+      );
+    }
   };
 
   return (
     <ModalShell
-      eyebrow={`Livestock · ${form.id || "New"}`}
+      eyebrow={`Livestock · ${initial.id || "New"}`}
       title={mode === "add" ? "Add New Livestock" : `Edit ${initial.id}`}
       onClose={onClose}
       maxWidth="max-w-lg"
       footer={
         <>
-          <Button variant="outline" onClick={onClose} type="button">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            type="button"
+            disabled={busy}
+          >
             Cancel
           </Button>
-          <Button variant="accent" onClick={submit} type="submit">
-            {mode === "add" ? "Add Livestock" : "Save Changes"}
+          <Button
+            variant="accent"
+            type="submit"
+            form="livestock-form"
+            disabled={busy}
+          >
+            {busy
+              ? "Saving…"
+              : mode === "add"
+                ? "Add Livestock"
+                : "Save Changes"}
           </Button>
         </>
       }
     >
-      <form onSubmit={submit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Livestock Tag ID" full>
-          <TextInput
-            value={form.tag}
-            onChange={(v) => set("tag", v)}
-            placeholder="e.g. Cow #A-204"
-          />
+      {submitError && (
+        <div className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+          {submitError}
+        </div>
+      )}
+      <form
+        id="livestock-form"
+        onSubmit={handleSubmit(onSubmit)}
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2"
+      >
+        <Field label="Livestock Tag ID" error={errors.tag?.message} full>
+          <TextInput {...register("tag")} placeholder="e.g. Cow #A-204" />
         </Field>
-        <Field label="Animal Type">
+        <Field label="Animal Type" error={errors.animal?.message} full>
           <TextInput
-            value={form.animal}
-            onChange={(v) => set("animal", v)}
+            {...register("animal")}
             placeholder="e.g. Cow, Goat, Sheep"
           />
         </Field>
-        <Field label="Breed Type">
+        <Field label="Breed Type" error={errors.breed?.message}>
           <TextInput
-            value={form.breed}
-            onChange={(v) => set("breed", v)}
+            {...register("breed")}
             placeholder="e.g. Hereford, Angus"
           />
         </Field>
-        <Field label="Gender">
-          <FullSelect
-            value={form.gender}
-            onChange={(v) => set("gender", v)}
-            options={GENDER_OPTIONS}
+        <Field label="Color" error={errors.color?.message}>
+          <TextInput {...register("color")} placeholder="e.g. Brown & White" />
+        </Field>
+        <Field label="Gender" error={errors.gender?.message}>
+          <Controller
+            name="gender"
+            control={control}
+            render={({ field }) => (
+              <FullSelect
+                value={field.value}
+                onChange={field.onChange}
+                options={GENDER_OPTIONS}
+              />
+            )}
           />
         </Field>
-        <Field label="Date of Birth">
-          <TextInput
-            type="date"
-            value={form.dob}
-            onChange={(v) => set("dob", v)}
+        <Field label="Condition" error={errors.health?.message}>
+          <Controller
+            name="health"
+            control={control}
+            render={({ field }) => (
+              <FullSelect
+                value={field.value}
+                onChange={field.onChange}
+                options={LIVESTOCK_HEALTH_OPTIONS}
+              />
+            )}
           />
         </Field>
-        <Field label="Color">
-          <TextInput
-            value={form.color}
-            onChange={(v) => set("color", v)}
-            placeholder="e.g. Brown & White"
-          />
+        <Field label="Date of Birth" error={errors.dob?.message}>
+          <TextInput type="date" {...register("dob")} />
         </Field>
-        <Field label="Weight (kg)">
+        <Field label="Weight (kg)" error={errors.weight?.message}>
           <TextInput
+            type="number"
             min="0"
             step="0.1"
-            value={form.weight}
-            onChange={(v) => set("weight", v)}
+            {...register("weight")}
             placeholder="0.0"
+          />
+        </Field>
+        <Field label="Association" error={errors.associationId?.message} full>
+          <Controller
+            name="associationId"
+            control={control}
+            render={({ field }) => (
+              <FullSelect
+                value={field.value}
+                onChange={field.onChange}
+                options={associationOptions}
+                defaultValue=""
+              />
+            )}
           />
         </Field>
       </form>

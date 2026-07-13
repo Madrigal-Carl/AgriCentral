@@ -2,7 +2,7 @@ import { X, Info, User, Activity, Calendar } from "lucide-react";
 import { StatusPill } from "@/components/public";
 import { fmtDate } from "@/utils/format";
 import { DefList, Section } from "@/components/drawer";
-import { healthTone } from "@/constants/data";
+import { healthTone, statusTone } from "@/constants/data";
 
 export function LivestockDrawer({ row, onClose }) {
   return (
@@ -16,7 +16,7 @@ export function LivestockDrawer({ row, onClose }) {
         <div className="border-b border-border px-6 py-5">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <div className="label-eyebrow mb-1">Livestock · {row.id}</div>
+              <div className="label-eyebrow mb-1">Livestock · {row.tag}</div>
               <h2 className="font-display text-xl tracking-tight text-foreground truncate">
                 {row.animal} · {row.breed}
               </h2>
@@ -24,10 +24,12 @@ export function LivestockDrawer({ row, onClose }) {
                 <span className="inline-flex items-center gap-1.5 border border-border bg-muted px-2.5 py-1 text-xs font-semibold text-foreground">
                   {row.animal}
                 </span>
-                <StatusPill tone={healthTone[row.health]}>
-                  {row.health}
+                <StatusPill tone={healthTone[row.condition]}>
+                  {row.condition}
                 </StatusPill>
-                <StatusPill tone={row.status}>{row.status}</StatusPill>
+                <StatusPill tone={statusTone[row.status]}>
+                  {row.status}
+                </StatusPill>
               </div>
             </div>
             <button
@@ -49,26 +51,22 @@ export function LivestockDrawer({ row, onClose }) {
                 ["Animal", row.animal],
                 ["Breed", row.breed || "—"],
                 ["Gender", row.gender === "male" ? "Male" : "Female"],
-                ["Date of Birth", fmtDate(row.dob)],
+                ["Date of Birth", row.birthDate ? fmtDate(row.birthDate) : "—"],
                 ["Color", row.color || "—"],
                 ["Weight", row.weight ? `${row.weight} kg` : "—"],
-                ["Acquisition Date", fmtDate(row.acquisitionDate)],
               ]}
             />
           </Section>
 
           <Section icon={User} title="Assigned Farmer">
-            {row.farmer ? (
+            {row.assignedFarmer ? (
               <div className="flex items-center gap-3 border border-border bg-muted-30 p-3">
                 <div className="grid h-10 w-10 shrink-0 place-items-center bg-accent-soft rounded-full font-display text-sm text-accent">
-                  {row.farmer[0]}
+                  {row.assignedFarmer.fullName?.[0]}
                 </div>
                 <div className="min-w-0">
                   <div className="font-semibold text-foreground">
-                    {row.farmer}
-                  </div>
-                  <div className="text-xs text-secondary">
-                    Since {fmtDate(row.acquisitionDate)}
+                    {row.assignedFarmer.fullName}
                   </div>
                 </div>
               </div>
@@ -77,30 +75,17 @@ export function LivestockDrawer({ row, onClose }) {
             )}
           </Section>
 
-          <Section icon={Activity} title="Health Records">
-            <DefList
-              items={[
-                ["Current Health", row.health],
-                ["Status", row.status],
-                [
-                  "Last Updated",
-                  fmtDate(new Date().toISOString().slice(0, 10)),
-                ],
-              ]}
-            />
-          </Section>
-
           <Section icon={Calendar} title="Activity Timeline">
             {row.history && row.history.length > 0 ? (
               <ol className="relative ml-2 border-l border-border">
                 {row.history.map((h, i) => (
-                  <li key={i} className="relative pl-5 pb-4 last:pb-0">
+                  <li key={h._id ?? i} className="relative pl-5 pb-4 last:pb-0">
                     <span className="absolute -left-[5px] top-1.5 h-2.5 w-2.5 bg-accent" />
                     <div className="font-semibold text-sm text-foreground">
-                      {h.farmer}
+                      {h.message}
                     </div>
                     <div className="text-xs text-secondary">
-                      Assigned · {fmtDate(h.date)}
+                      {fmtDate(h.date)}
                     </div>
                   </li>
                 ))}

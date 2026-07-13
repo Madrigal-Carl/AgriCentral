@@ -9,13 +9,10 @@ import {
 import { Button, IconButton } from "@/components/ui";
 
 import {
-  LIVESTOCKS,
   healthTone,
   STATUS_OPTIONS,
   LIVESTOCK_HEALTH_OPTIONS,
-  LIVESTOCK_CATALOG,
   statusTone,
-  ANIMAL_OPTIONS,
 } from "@/constants/data";
 import {
   LivestockDrawer,
@@ -26,20 +23,12 @@ import {
 } from "@/components/modal";
 import { usePermissions } from "@/constants/permissions";
 import useAuth from "@/hooks/useAuth";
-
-const ANIMAL_CATALOG_SEED = ANIMAL_OPTIONS.map((o) => o.value);
-const BREED_CATALOG_SEED = [...new Set(LIVESTOCK_CATALOG.map((c) => c.breed))];
-
-const blankCoordForm = {
-  id: "",
-  tag: "",
-  animal: "",
-  breed: "",
-  gender: "male",
-  dob: "",
-  color: "",
-  weight: "",
-};
+import {
+  useLivestocks,
+  useUpdateLivestock,
+  useDeleteLivestock,
+} from "@/hooks/useLivestocks";
+import { useFarmersByAssociationId } from "@/hooks/useFarmers";
 
 export function LivestocksPage() {
   const can = usePermissions("livestocks");
@@ -52,133 +41,129 @@ export function LivestocksPage() {
   // no add, no delete/return.
   const isManagerRole = role === "coordinator" || role === "admin";
 
-  const [rows, setRows] = useState(LIVESTOCKS);
-  const [animalCatalog, setAnimalCatalog] = useState(ANIMAL_CATALOG_SEED);
-  const [breedCatalog, setBreedCatalog] = useState(BREED_CATALOG_SEED);
-  const [modal, setModal] = useState(null); // { type: 'assign' | 'status', row }
-  const [coordModal, setCoordModal] = useState(null); // { mode: 'add' | 'edit', data }
-  const [drawer, setDrawer] = useState(null);
+  const [coordModal, setCoordModal] = useState(null); // { mode: 'add' | 'edit', data } — TODO: wire to create/update API
+  const [assignRow, setAssignRow] = useState(null);
+  const [statusRow, setStatusRow] = useState(null);
   const [deleteRow, setDeleteRow] = useState(null);
+  const [drawer, setDrawer] = useState(null);
 
-  const nextId = () => `LS-${String(rows.length + 1).padStart(3, "0")}`;
+  const [search, setSearch] = useState("");
+  const [health, setHealth] = useState("");
+  const [status, setStatus] = useState("");
+  const [page, setPage] = useState(1);
+  const limit = 10;
+
+  const queryFilters = {
+    page,
+    limit,
+    ...(search ? { search } : {}),
+    // Local state/UI copy uses "health"; the backend query schema
+    // (getLivestocksQuerySchema) only recognizes "condition" — translate
+    // here at the request boundary, same pattern as LivestockModal.
+    ...(health ? { condition: health } : {}),
+    ...(status ? { status } : {}),
+  };
+
+  const { data, isLoading, isError, error } = useLivestocks(queryFilters);
+  const rows = data?.livestocks ?? [];
+  const pagination = data?.pagination;
+
+  // Farmer options for the assign modal, scoped to the livestock's own
+  // association. Only fires while a row is actually being assigned.
+  const { data: farmersData, isLoading: farmersLoading } =
+    useFarmersByAssociationId(assignRow?.association);
+  const farmerOptions = (farmersData?.farmers ?? []).map((f) => ({
+    value: f._id,
+    label: f.fullName,
+  }));
+
+  const updateMutation = useUpdateLivestock({
+    onSuccess: () => {
+      setAssignRow(null);
+      setStatusRow(null);
+    },
+    onError: (err) => console.error("Failed to update livestock:", err),
+  });
+  const deleteMutation = useDeleteLivestock({
+    onSuccess: () => setDeleteRow(null),
+    onError: (err) => console.error("Failed to delete livestock:", err),
+  });
 
   const openAdd = () => {
     if (!can.add || !isManagerRole) return;
-    setCoordModal({ mode: "add", data: { ...blankCoordForm, id: nextId() } });
+    setCoordModal({
+      mode: "add",
+      data: {
+        id: "",
+        tag: "",
+        animal: "",
+        breed: "",
+        gender: "male",
+        health: "healthy",
+        dob: "",
+        color: "",
+        weight: "",
+        farmer: "",
+        associationId: "",
+      },
+    });
   };
+
   const openCoordEdit = (row) => {
     if (!can.edit || !isManagerRole) return;
     setCoordModal({
       mode: "edit",
       data: {
-        id: row.id,
-        tag: row.tag || "",
-        animal: row.animal || "",
-        breed: row.breed || "",
-        gender: row.gender || "male",
-        dob: row.dob || "",
-        color: row.color || "",
-        weight: row.weight ?? "",
+        _id: row._id,
+        id: row.tag,
+        tag: row.tag,
+        animal: row.animal,
+        breed: row.breed,
+        gender: row.gender,
+        health: row.condition,
+        dob: row.birthDate,
+        color: row.color,
+        weight: row.weight,
+        farmer: row.assignedFarmer?._id,
+        associationId: row.association,
       },
     });
   };
+
   const openAssign = (row) => {
     if (!can.edit) return;
-    setModal({ type: "assign", row });
+    setAssignRow(row);
   };
+
   const openStatus = (row) => {
     if (!can.edit) return;
-    setModal({ type: "status", row });
+    setStatusRow(row);
   };
-  const openView = (row) => setDrawer(row);
-  const askDelete = (row) => {
+
+  const openDelete = (row) => {
     if (!can.delete || !isManagerRole) return;
     setDeleteRow(row);
   };
 
-  const handleDelete = () => {
-    if (!deleteRow || !can.delete || !isManagerRole) return;
-    setRows((r) => r.filter((x) => x.id !== deleteRow.id));
-    setDeleteRow(null);
-  };
-
-  const handleCoordSave = (data) => {
-    if (coordModal?.mode === "add" && !can.add) return;
-    if (coordModal?.mode === "edit" && !can.edit) return;
-    if (data.animal && !animalCatalog.includes(data.animal)) {
-      setAnimalCatalog((c) => [...c, data.animal]);
-    }
-    if (data.breed && !breedCatalog.includes(data.breed)) {
-      setBreedCatalog((c) => [...c, data.breed]);
-    }
-    const weightNum = data.weight === "" ? 0 : parseFloat(data.weight);
-
-    setRows((r) => {
-      const exists = r.some((x) => x.id === data.id);
-      if (exists) {
-        return r.map((x) =>
-          x.id === data.id
-            ? {
-                ...x,
-                tag: data.tag,
-                animal: data.animal,
-                breed: data.breed,
-                gender: data.gender,
-                dob: data.dob,
-                color: data.color,
-                weight: weightNum,
-              }
-            : x,
-        );
-      }
-      const today = new Date().toISOString().slice(0, 10);
-      return [
-        ...r,
-        {
-          id: data.id,
-          tag: data.tag,
-          animal: data.animal,
-          breed: data.breed,
-          gender: data.gender,
-          dob: data.dob,
-          color: data.color,
-          weight: weightNum,
-          farmer: "",
-          health: "healthy",
-          status: "active",
-          acquisitionDate: today,
-          history: [],
-        },
-      ];
-    });
-    setCoordModal(null);
-  };
-
   // FAR: assign livestock to a farmer.
-  const handleAssign = (farmer) => {
-    if (!modal?.row || !can.edit) return;
-    const today = new Date().toISOString().slice(0, 10);
-    setRows((r) =>
-      r.map((x) =>
-        x.id === modal.row.id
-          ? {
-              ...x,
-              farmer,
-              history: [...(x.history || []), { farmer, date: today }],
-            }
-          : x,
-      ),
-    );
-    setModal(null);
+  const handleAssign = (farmerId) => {
+    if (!assignRow || !can.edit) return;
+    updateMutation.mutate({
+      id: assignRow._id,
+      assignedFarmer: farmerId,
+      status: "assigned",
+    });
   };
 
   // FAR: update livestock health.
-  const handleStatus = (health) => {
-    if (!modal?.row || !can.edit) return;
-    setRows((r) =>
-      r.map((x) => (x.id === modal.row.id ? { ...x, health } : x)),
-    );
-    setModal(null);
+  const handleStatusUpdate = (health) => {
+    if (!statusRow || !can.edit) return;
+    updateMutation.mutate({ id: statusRow._id, condition: health });
+  };
+
+  const handleDelete = () => {
+    if (!deleteRow || !can.delete || !isManagerRole) return;
+    deleteMutation.mutate(deleteRow._id);
   };
 
   return (
@@ -194,31 +179,64 @@ export function LivestocksPage() {
           ) : null
         }
       />
+
+      {isError && (
+        <div className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+          {error?.response?.data?.message ||
+            error?.message ||
+            "Failed to load livestock"}
+        </div>
+      )}
+
       <DataTable
         searchPlaceholder="Search animal…"
+        search={search}
+        onSearchChange={(v) => {
+          setPage(1);
+          setSearch(v);
+        }}
         data={rows}
+        loading={isLoading}
+        pagination={
+          pagination
+            ? {
+                page: pagination.page,
+                limit: pagination.limit,
+                total: pagination.total,
+                onPageChange: setPage,
+              }
+            : undefined
+        }
         filters={[
           {
             key: "health",
             label: "Health",
             options: LIVESTOCK_HEALTH_OPTIONS,
-            predicate: (r, v) => r.health === v,
+            value: health,
+            onChange: (v) => {
+              setPage(1);
+              setHealth(v);
+            },
           },
           {
             key: "status",
             label: "Status",
             options: STATUS_OPTIONS,
-            predicate: (r, v) => r.status === v,
+            value: status,
+            onChange: (v) => {
+              setPage(1);
+              setStatus(v);
+            },
           },
         ]}
         columns={[
           {
-            key: "id",
+            key: "tag",
             header: "Livestock Tag ID",
             sortable: true,
             cell: (r) => (
               <div>
-                <div className="font-semibold text-foreground">{r.id}</div>
+                <div className="font-semibold text-foreground">{r.tag}</div>
                 <div className="text-xs text-secondary">
                   {r.animal} · {r.breed}
                 </div>
@@ -229,13 +247,16 @@ export function LivestocksPage() {
             key: "farmer",
             header: "Assigned Farmer",
             sortable: true,
-            cell: (r) => r.farmer || "—",
+            accessor: (r) => r.assignedFarmer?.fullName || "",
+            cell: (r) => r.assignedFarmer?.fullName || "—",
           },
           {
             key: "health",
             header: "Health",
             cell: (r) => (
-              <StatusPill tone={healthTone[r.health]}>{r.health}</StatusPill>
+              <StatusPill tone={healthTone[r.condition]}>
+                {r.condition}
+              </StatusPill>
             ),
           },
           {
@@ -252,16 +273,16 @@ export function LivestocksPage() {
             cell: (r) =>
               isManagerRole ? (
                 <RowActions
-                  onView={() => openView(r)}
+                  onView={() => setDrawer(r)}
                   onEdit={can.edit ? () => openCoordEdit(r) : undefined}
-                  onDelete={can.delete ? () => askDelete(r) : undefined}
+                  onDelete={can.delete ? () => openDelete(r) : undefined}
                 />
               ) : (
                 <div className="flex items-center justify-end gap-1">
                   <IconButton
                     icon={Eye}
                     label="View"
-                    onClick={() => openView(r)}
+                    onClick={() => setDrawer(r)}
                   />
                   {can.edit && (
                     <IconButton
@@ -287,32 +308,29 @@ export function LivestocksPage() {
         <LivestockModal
           mode={coordModal.mode}
           initial={coordModal.data}
-          animalCatalog={animalCatalog}
-          breedCatalog={breedCatalog}
           onClose={() => setCoordModal(null)}
-          onSave={handleCoordSave}
+          onSave={() => setCoordModal(null)}
         />
       )}
-      {modal?.type === "assign" && can.edit && !isManagerRole && (
+      {assignRow && can.edit && !isManagerRole && (
         <AssignModal
-          row={modal.row}
-          onClose={() => setModal(null)}
+          row={assignRow}
+          options={farmerOptions}
+          loading={farmersLoading}
+          onClose={() => setAssignRow(null)}
           onSave={handleAssign}
         />
       )}
-      {modal?.type === "status" && can.edit && !isManagerRole && (
+      {statusRow && can.edit && !isManagerRole && (
         <StatusUpdateModal
-          row={modal.row}
-          onClose={() => setModal(null)}
-          onSave={handleStatus}
+          row={statusRow}
+          onClose={() => setStatusRow(null)}
+          onSave={handleStatusUpdate}
           entityLabel="Livestock"
           fieldLabel="Health Status"
-          statusField="health"
+          statusField="condition"
           options={LIVESTOCK_HEALTH_OPTIONS}
         />
-      )}
-      {drawer && (
-        <LivestockDrawer row={drawer} onClose={() => setDrawer(null)} />
       )}
       {deleteRow && can.delete && isManagerRole && (
         <DeleteConfirmModal
@@ -320,6 +338,9 @@ export function LivestocksPage() {
           onCancel={() => setDeleteRow(null)}
           onConfirm={handleDelete}
         />
+      )}
+      {drawer && (
+        <LivestockDrawer row={drawer} onClose={() => setDrawer(null)} />
       )}
     </div>
   );
