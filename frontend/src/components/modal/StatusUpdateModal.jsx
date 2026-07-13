@@ -20,8 +20,8 @@ export function StatusUpdateModal({
 
   return (
     <ModalShell
-      eyebrow={`${entityLabel} · ${row.id}`}
-      title={`Update Status — ${row.name}`}
+      eyebrow={`${entityLabel} · ${row.tag}`}
+      title={`Update Status`}
       onClose={onClose}
       footer={
         <>

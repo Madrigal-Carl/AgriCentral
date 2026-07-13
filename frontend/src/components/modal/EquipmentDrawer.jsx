@@ -2,7 +2,7 @@ import { fmtDate } from "@/utils/format";
 import { Activity, Calendar, Info, User, X } from "lucide-react";
 import { Section, DefList } from "@/components/drawer";
 import { StatusPill } from "@/components/public";
-import { EQUIPMENTS, condTone, condLabel, statusTone } from "@/constants/data";
+import { condTone, condLabel, statusTone } from "@/constants/data";
 
 export function EquipmentDrawer({ row, onClose }) {
   return (
@@ -15,7 +15,7 @@ export function EquipmentDrawer({ row, onClose }) {
         <div className="border-b border-border px-6 py-5">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <div className="label-eyebrow mb-1">Equipment · {row.id}</div>
+              <div className="label-eyebrow mb-1">Equipment · {row.tag}</div>
               <h2 className="font-display text-xl tracking-tight text-foreground truncate">
                 {row.name}
               </h2>
@@ -42,27 +42,23 @@ export function EquipmentDrawer({ row, onClose }) {
           <Section icon={Info} title="Basic Information">
             <DefList
               items={[
-                ["Equipment Tag ID", row.id],
+                ["Equipment Tag ID", row.tag],
                 ["Name", row.name],
                 ["Condition", condLabel[row.condition]],
                 ["Status", row.status],
-                ["Acquisition Date", fmtDate(row.acquisitionDate)],
               ]}
             />
           </Section>
 
           <Section icon={User} title="Assigned Farmer">
-            {row.farmer ? (
+            {row.assignedFarmer ? (
               <div className="flex items-center gap-3 border border-border bg-muted-30 p-3">
                 <div className="grid h-10 w-10 shrink-0 place-items-center bg-accent-soft rounded-full font-display text-sm text-accent">
-                  {row.farmer[0]}
+                  {row.assignedFarmer.fullName?.[0]}
                 </div>
                 <div className="min-w-0">
                   <div className="font-semibold text-foreground">
-                    {row.farmer}
-                  </div>
-                  <div className="text-xs text-secondary">
-                    Since {fmtDate(row.acquisitionDate)}
+                    {row.assignedFarmer.fullName}
                   </div>
                 </div>
               </div>
@@ -71,30 +67,17 @@ export function EquipmentDrawer({ row, onClose }) {
             )}
           </Section>
 
-          <Section icon={Activity} title="Condition Records">
-            <DefList
-              items={[
-                ["Current Condition", condLabel[row.condition]],
-                ["Status", row.status],
-                [
-                  "Last Updated",
-                  fmtDate(new Date().toISOString().slice(0, 10)),
-                ],
-              ]}
-            />
-          </Section>
-
           <Section icon={Calendar} title="Activity Timeline">
             {row.history && row.history.length > 0 ? (
               <ol className="relative ml-2 border-l border-border">
                 {row.history.map((h, i) => (
-                  <li key={i} className="relative pl-5 pb-4 last:pb-0">
+                  <li key={h._id || i} className="relative pl-5 pb-4 last:pb-0">
                     <span className="absolute -left-[5px] top-1.5 h-2.5 w-2.5 bg-accent" />
                     <div className="font-semibold text-sm text-foreground">
-                      {h.name}
+                      {h.message}
                     </div>
                     <div className="text-xs text-secondary">
-                      Acquired · {fmtDate(h.date)}
+                      {fmtDate(h.date)}
                     </div>
                   </li>
                 ))}

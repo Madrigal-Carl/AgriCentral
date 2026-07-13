@@ -15,7 +15,7 @@ export function DeleteConfirmModal({ name, error, busy, onCancel, onConfirm }) {
           <AlertTriangle className="h-6 w-6" />
         </div>
         <h3 className="font-display text-lg tracking-tight text-foreground mb-1">
-          Delete Farmer?
+          Delete Record?
         </h3>
         <p className="text-sm text-secondary mb-4">
           Are you sure you want to delete{" "}

@@ -39,7 +39,6 @@ const equipmentSchema = new mongoose.Schema(
         assignedFarmer: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Farmer",
-            required: true,
         },
     },
     {

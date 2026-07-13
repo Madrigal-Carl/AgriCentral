@@ -1,18 +1,19 @@
 import { useState } from "react";
 import { Button, Field, SingleSelect } from "@/components/ui";
 import { ModalShell } from "./ModalShell";
-import { FARMER_OPTIONS } from "@/constants/data";
 
-export function AssignModal({ row, onClose, onSave }) {
-  const [farmer, setFarmer] = useState(row.farmer || "");
+export function AssignModal({ row, options = [], loading, onClose, onSave }) {
+  const [farmer, setFarmer] = useState(row.assignedFarmer?._id || "");
+
   const submit = (e) => {
     e.preventDefault();
     if (!farmer) return;
     onSave(farmer);
   };
+
   return (
     <ModalShell
-      eyebrow={`Equipment · ${row.id}`}
+      eyebrow={`Equipment · ${row.tag}`}
       title={`Assign ${row.name}`}
       onClose={onClose}
       footer={
@@ -31,8 +32,9 @@ export function AssignModal({ row, onClose, onSave }) {
           <SingleSelect
             value={farmer}
             onChange={setFarmer}
-            options={FARMER_OPTIONS}
-            placeholder="Select farmer…"
+            options={options}
+            disabled={loading}
+            placeholder={loading ? "Loading farmers…" : "Select farmer…"}
             searchPlaceholder="Search farmer…"
           />
         </Field>
