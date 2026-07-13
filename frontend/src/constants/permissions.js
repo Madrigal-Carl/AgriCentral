@@ -15,13 +15,13 @@ const PERMISSIONS = {
         admin: { view: true, add: true, edit: true, delete: true },
     },
     equipments: {
-        far: { view: true, add: true, edit: true, delete: true },
+        far: { view: true, add: false, edit: true, delete: false },
         aew: { view: true, add: false, edit: false, delete: false },
         coordinator: { view: true, add: true, edit: true, delete: true },
         admin: { view: true, add: true, edit: true, delete: true },
     },
     livestocks: {
-        far: { view: true, add: true, edit: true, delete: true },
+        far: { view: true, add: false, edit: true, delete: false },
         aew: { view: true, add: false, edit: false, delete: false },
         coordinator: { view: true, add: true, edit: true, delete: true },
         admin: { view: true, add: true, edit: true, delete: true },

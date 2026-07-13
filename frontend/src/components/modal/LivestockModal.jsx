@@ -1,60 +1,96 @@
 import { useState } from "react";
-import {
-  Button,
-  Field,
-  FullSelect,
-  TextInput,
-  SingleSelect,
-} from "@/components/ui";
+import { Button, Field, FullSelect, TextInput } from "@/components/ui";
 import { ModalShell } from "./ModalShell";
-import { LIVESTOCK_LIST, LIVESTOCK_HEALTH_OPTIONS } from "@/constants/data";
+import {
+  ANIMAL_OPTIONS,
+  LIVESTOCK_CATALOG,
+  GENDER_OPTIONS,
+} from "@/constants/data";
 
-export function LivestockModal({ initial, existingIds, onClose, onSave }) {
+export function LivestockModal({
+  mode,
+  initial,
+  animalCatalog,
+  breedCatalog,
+  onClose,
+  onSave,
+}) {
   const [form, setForm] = useState(initial);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-  const available = LIVESTOCK_LIST.filter((c) => !existingIds.includes(c.id));
+
   const submit = (e) => {
     e?.preventDefault();
-    if (!form.catalogId || !form.acquisitionDate) return;
+    if (!form.tag || !form.animal || !form.breed) return;
     onSave(form);
   };
+
   return (
     <ModalShell
-      title="Add New Livestock"
+      eyebrow={`Livestock · ${form.id || "New"}`}
+      title={mode === "add" ? "Add New Livestock" : `Edit ${initial.id}`}
       onClose={onClose}
+      maxWidth="max-w-lg"
       footer={
         <>
           <Button variant="outline" onClick={onClose} type="button">
             Cancel
           </Button>
           <Button variant="accent" onClick={submit} type="submit">
-            Add Livestock
+            {mode === "add" ? "Add Livestock" : "Save Changes"}
           </Button>
         </>
       }
     >
-      <form onSubmit={submit} className="space-y-4">
-        <Field label="Livestock" full>
-          <SingleSelect
-            value={form.catalogId}
-            onChange={(v) => set("catalogId", v)}
-            options={available}
-            placeholder="Select livestock…"
-            searchPlaceholder="Search livestock…"
+      <form onSubmit={submit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Field label="Livestock Tag ID" full>
+          <TextInput
+            value={form.tag}
+            onChange={(v) => set("tag", v)}
+            placeholder="e.g. Cow #A-204"
           />
         </Field>
-        <Field label="Status (Health)" full>
+        <Field label="Animal Type">
+          <TextInput
+            value={form.animal}
+            onChange={(v) => set("animal", v)}
+            placeholder="e.g. Cow, Goat, Sheep"
+          />
+        </Field>
+        <Field label="Breed Type">
+          <TextInput
+            value={form.breed}
+            onChange={(v) => set("breed", v)}
+            placeholder="e.g. Hereford, Angus"
+          />
+        </Field>
+        <Field label="Gender">
           <FullSelect
-            value={form.health}
-            onChange={(v) => set("health", v)}
-            options={LIVESTOCK_HEALTH_OPTIONS}
+            value={form.gender}
+            onChange={(v) => set("gender", v)}
+            options={GENDER_OPTIONS}
           />
         </Field>
-        <Field label="Acquisition Date" full>
+        <Field label="Date of Birth">
           <TextInput
             type="date"
-            value={form.acquisitionDate}
-            onChange={(v) => set("acquisitionDate", v)}
+            value={form.dob}
+            onChange={(v) => set("dob", v)}
+          />
+        </Field>
+        <Field label="Color">
+          <TextInput
+            value={form.color}
+            onChange={(v) => set("color", v)}
+            placeholder="e.g. Brown & White"
+          />
+        </Field>
+        <Field label="Weight (kg)">
+          <TextInput
+            min="0"
+            step="0.1"
+            value={form.weight}
+            onChange={(v) => set("weight", v)}
+            placeholder="0.0"
           />
         </Field>
       </form>

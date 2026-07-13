@@ -1,27 +1,12 @@
-import { useState, useMemo, useRef, useEffect } from "react";
-import {
-  Plus,
-  X,
-  Search,
-  ChevronDown,
-  User,
-  Calendar,
-  Activity,
-  Info,
-  AlertTriangle,
-  Eye,
-  UserPlus,
-  HeartPulse,
-  RotateCcw,
-  Trash2,
-} from "lucide-react";
+import { useState } from "react";
+import { Plus, Eye, UserPlus, HeartPulse } from "lucide-react";
 import {
   PageHeader,
   DataTable,
   RowActions,
   StatusPill,
 } from "@/components/public";
-import { Button, IconButton, Select } from "@/components/ui";
+import { Button, IconButton } from "@/components/ui";
 
 import {
   LIVESTOCKS,
@@ -36,35 +21,14 @@ import {
   LivestockDrawer,
   AssignModal,
   StatusUpdateModal,
-  ReturnConfirmModal,
   DeleteConfirmModal,
-  ManagerLivestockModal,
   LivestockModal,
 } from "@/components/modal";
 import { usePermissions } from "@/constants/permissions";
 import useAuth from "@/hooks/useAuth";
 
-const FARMERS = [
-  "Lina Okoro",
-  "Samuel Mwangi",
-  "Aisha Bello",
-  "Chidi Okafor",
-  "Joseph Kamau",
-  "Fatou Diop",
-  "Grace Mensah",
-  "Ibrahim Sow",
-  "Helen Adeyemi",
-  "Ravi Patel",
-];
-
 const ANIMAL_CATALOG_SEED = ANIMAL_OPTIONS.map((o) => o.value);
 const BREED_CATALOG_SEED = [...new Set(LIVESTOCK_CATALOG.map((c) => c.breed))];
-
-const blankForm = {
-  catalogId: "",
-  health: "healthy",
-  acquisitionDate: "",
-};
 
 const blankCoordForm = {
   id: "",
@@ -81,32 +45,29 @@ export function LivestocksPage() {
   const can = usePermissions("livestocks");
   const { role } = useAuth();
 
-  // Coordinators manage livestock directly (tag/animal/breed/gender/dob/
-  // color/weight) via a dedicated add/edit modal and plain View/Edit/Delete
-  // actions. FAR keeps the assign/update-status/return workflow.
+  // Coordinators/admins are the "managers": they add, edit (tag/animal/
+  // breed/gender/dob/color/weight), and delete livestock via
+  // LivestockModal + plain View/Edit/Delete actions.
+  // FAR can only assign livestock to a farmer and update its health —
+  // no add, no delete/return.
   const isManagerRole = role === "coordinator" || role === "admin";
 
   const [rows, setRows] = useState(LIVESTOCKS);
   const [animalCatalog, setAnimalCatalog] = useState(ANIMAL_CATALOG_SEED);
   const [breedCatalog, setBreedCatalog] = useState(BREED_CATALOG_SEED);
-  const [modal, setModal] = useState(null); // { type: 'add' | 'assign' | 'status' , row }
+  const [modal, setModal] = useState(null); // { type: 'assign' | 'status', row }
   const [coordModal, setCoordModal] = useState(null); // { mode: 'add' | 'edit', data }
   const [drawer, setDrawer] = useState(null);
-  const [confirmReturn, setConfirmReturn] = useState(null);
   const [deleteRow, setDeleteRow] = useState(null);
 
   const nextId = () => `LS-${String(rows.length + 1).padStart(3, "0")}`;
 
   const openAdd = () => {
-    if (!can.add) return;
-    if (isManagerRole) {
-      setCoordModal({ mode: "add", data: { ...blankCoordForm, id: nextId() } });
-      return;
-    }
-    setModal({ type: "add", data: { ...blankForm } });
+    if (!can.add || !isManagerRole) return;
+    setCoordModal({ mode: "add", data: { ...blankCoordForm, id: nextId() } });
   };
   const openCoordEdit = (row) => {
-    if (!can.edit) return;
+    if (!can.edit || !isManagerRole) return;
     setCoordModal({
       mode: "edit",
       data: {
@@ -130,66 +91,15 @@ export function LivestocksPage() {
     setModal({ type: "status", row });
   };
   const openView = (row) => setDrawer(row);
-  const askReturn = (row) => {
-    if (!can.delete) return;
-    setConfirmReturn(row);
-  };
   const askDelete = (row) => {
-    if (!can.delete) return;
+    if (!can.delete || !isManagerRole) return;
     setDeleteRow(row);
   };
 
-  const confirmReturnAction = () => {
-    if (!confirmReturn || !can.delete) return;
-    const today = new Date().toISOString().slice(0, 10);
-    setRows((r) =>
-      r.map((x) =>
-        x.id === confirmReturn.id
-          ? {
-              ...x,
-              farmer: "",
-              status: "active",
-              history: [
-                ...(x.history || []),
-                { farmer: "Returned to cooperative", date: today },
-              ],
-            }
-          : x,
-      ),
-    );
-    setConfirmReturn(null);
-  };
-
   const handleDelete = () => {
-    if (!deleteRow || !can.delete) return;
+    if (!deleteRow || !can.delete || !isManagerRole) return;
     setRows((r) => r.filter((x) => x.id !== deleteRow.id));
     setDeleteRow(null);
-  };
-
-  const handleAdd = (data) => {
-    if (!can.add) return;
-    const catalog = LIVESTOCK_CATALOG.find((c) => c.id === data.catalogId);
-    if (!catalog) return;
-    const newId = nextId();
-    setRows((r) => [
-      ...r,
-      {
-        id: newId,
-        tag: `${catalog.animal} #${newId}`,
-        animal: catalog.animal,
-        breed: catalog.breed,
-        gender: catalog.gender,
-        dob: "",
-        color: "",
-        weight: 0,
-        farmer: "",
-        health: data.health,
-        status: "active",
-        acquisitionDate: data.acquisitionDate,
-        history: [],
-      },
-    ]);
-    setModal(null);
   };
 
   const handleCoordSave = (data) => {
@@ -244,6 +154,7 @@ export function LivestocksPage() {
     setCoordModal(null);
   };
 
+  // FAR: assign livestock to a farmer.
   const handleAssign = (farmer) => {
     if (!modal?.row || !can.edit) return;
     const today = new Date().toISOString().slice(0, 10);
@@ -261,6 +172,7 @@ export function LivestocksPage() {
     setModal(null);
   };
 
+  // FAR: update livestock health.
   const handleStatus = (health) => {
     if (!modal?.row || !can.edit) return;
     setRows((r) =>
@@ -275,7 +187,7 @@ export function LivestocksPage() {
         title="Livestock"
         subtitle="Animal welfare and livestock inventory management."
         action={
-          can.add ? (
+          can.add && isManagerRole ? (
             <Button variant="accent" onClick={openAdd}>
               <Plus className="h-4 w-4" /> Add Livestock
             </Button>
@@ -361,16 +273,8 @@ export function LivestocksPage() {
                   {can.edit && (
                     <IconButton
                       icon={HeartPulse}
-                      label="Update Status"
+                      label="Update Health"
                       onClick={() => openStatus(r)}
-                    />
-                  )}
-                  {can.delete && (
-                    <IconButton
-                      icon={RotateCcw}
-                      label="Return"
-                      tone="danger"
-                      onClick={() => askReturn(r)}
                     />
                   )}
                 </div>
@@ -379,16 +283,8 @@ export function LivestocksPage() {
         ]}
       />
 
-      {modal?.type === "add" && can.add && !isManagerRole && (
+      {coordModal && isManagerRole && (
         <LivestockModal
-          initial={modal.data}
-          existingIds={rows.map((r) => r.id)}
-          onClose={() => setModal(null)}
-          onSave={handleAdd}
-        />
-      )}
-      {coordModal && (
-        <ManagerLivestockModal
           mode={coordModal.mode}
           initial={coordModal.data}
           animalCatalog={animalCatalog}
@@ -417,13 +313,6 @@ export function LivestocksPage() {
       )}
       {drawer && (
         <LivestockDrawer row={drawer} onClose={() => setDrawer(null)} />
-      )}
-      {confirmReturn && can.delete && !isManagerRole && (
-        <ReturnConfirmModal
-          row={confirmReturn}
-          onCancel={() => setConfirmReturn(null)}
-          onConfirm={confirmReturnAction}
-        />
       )}
       {deleteRow && can.delete && isManagerRole && (
         <DeleteConfirmModal

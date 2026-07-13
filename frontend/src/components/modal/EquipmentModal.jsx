@@ -1,31 +1,22 @@
-import {
-  Button,
-  IconButton,
-  Select,
-  SingleSelect,
-  Field,
-  TextInput,
-  FullSelect,
-} from "@/components/ui";
 import { useState } from "react";
+import { Button, Field, FullSelect, TextInput } from "@/components/ui";
 import { ModalShell } from "./ModalShell";
-import { EQUIPMENT_CONDITION_OPTIONS } from "@/constants/data";
+import { EQUIPMENT_CONDITION_OPTIONS, STATUS_OPTIONS } from "@/constants/data";
 
-export function EquipmentModal({ nextId, catalog, onClose, onSave }) {
-  const [name, setName] = useState("");
-  const [status, setStatus] = useState("available");
-  const [acquisitionDate, setAcquisitionDate] = useState("");
+export function EquipmentModal({ mode, initial, catalog, onClose, onSave }) {
+  const [form, setForm] = useState(initial);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const submit = (e) => {
     e.preventDefault();
-    if (!name) return;
-    onSave({ name, status, acquisitionDate });
+    if (!form.id || !form.name) return;
+    onSave(form);
   };
 
   return (
     <ModalShell
-      eyebrow={`Equipment · ${nextId}`}
-      title="Add New Equipment"
+      eyebrow={`Equipment · ${form.id || "New"}`}
+      title={mode === "add" ? "Add New Equipment" : `Edit ${initial.id}`}
       onClose={onClose}
       footer={
         <>
@@ -33,33 +24,31 @@ export function EquipmentModal({ nextId, catalog, onClose, onSave }) {
             Cancel
           </Button>
           <Button variant="accent" onClick={submit} type="submit">
-            Add Equipment
+            {mode === "add" ? "Add Equipment" : "Save Changes"}
           </Button>
         </>
       }
     >
       <form onSubmit={submit} className="space-y-4">
-        <Field label="Equipment">
-          <SingleSelect
-            value={name}
-            onChange={setName}
-            options={catalog}
-            placeholder="Select equipment…"
-            searchPlaceholder="Search equipment…"
+        <Field label="Equipment Tag ID">
+          <TextInput
+            value={form.id}
+            onChange={(v) => set("id", v)}
+            placeholder="EQ-001"
+          />
+        </Field>
+        <Field label="Equipment Name">
+          <TextInput
+            value={form.name}
+            onChange={(v) => set("name", v)}
+            placeholder="Tractor, Plough, Harvester…"
           />
         </Field>
         <Field label="Condition">
           <FullSelect
-            value={status}
-            onChange={setStatus}
+            value={form.condition}
+            onChange={(v) => set("condition", v)}
             options={EQUIPMENT_CONDITION_OPTIONS}
-          />
-        </Field>
-        <Field label="Acquisition Date">
-          <TextInput
-            type="date"
-            value={acquisitionDate}
-            onChange={setAcquisitionDate}
           />
         </Field>
       </form>
