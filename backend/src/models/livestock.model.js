@@ -46,6 +46,16 @@ const livestockSchema = new mongoose.Schema(
             min: 0,
             default: 0,
         },
+        condition: {
+            type: String,
+            enum: [
+                "healthy",
+                "pregnant",
+                "sick",
+                "deceased",
+            ],
+            default: "healthy",
+        },
         status: {
             type: String,
             enum: [
@@ -57,7 +67,6 @@ const livestockSchema = new mongoose.Schema(
         assignedFarmer: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Farmer",
-            required: true,
         },
     },
     {
