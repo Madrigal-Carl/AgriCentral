@@ -18,7 +18,7 @@ import {
 } from "@/constants/data";
 
 import { useUsers, useDeleteUser, useUpdateUser } from "@/hooks/useUsers";
-import { useAssociations } from "@/hooks/useAssociations";
+import { useAvailableAssociations } from "@/hooks/useAssociations";
 
 const blankForm = {
   fullname: "",
@@ -64,7 +64,7 @@ export function UsersPage() {
   // want that guarantee here too; left as `useAssociations({ all: true })`
   // for now to match prior behavior, but flagging it.
   const { data: associationsData, isLoading: associationsLoading } =
-    useAssociations({ all: true });
+    useAvailableAssociations({ all: true });
   const associationOptions = (associationsData?.associations ?? []).map(
     (a) => ({
       value: a._id,

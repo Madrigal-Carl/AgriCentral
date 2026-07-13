@@ -1,6 +1,8 @@
 import bcrypt from "bcrypt";
 import User from "../models/user.model.js";
 import Association from "../models/association.model.js";
+import emailQueue from "../queues/email.queue.js";
+import { EMAIL_JOBS } from "../queues/email.jobs.js";
 
 const SALT_ROUNDS = 10;
 
@@ -63,6 +65,16 @@ export const updateUser = async (id, data) => {
         }
     }
 
+    // Fetch the current state once — used both for the association/role
+    // fallback below and to detect the isVerified false->true transition.
+    const existingUser = await User.findById(id).select("role isVerified email fullname");
+
+    if (!existingUser) {
+        const notFoundError = new Error("User not found");
+        notFoundError.statusCode = 404;
+        throw notFoundError;
+    }
+
     const updateData = { ...rest };
 
     if (password) {
@@ -75,7 +87,7 @@ export const updateUser = async (id, data) => {
         Object.prototype.hasOwnProperty.call(data, "association") || rest.role;
 
     if (touchesAssociation) {
-        const role = rest.role ?? (await User.findById(id).select("role"))?.role;
+        const role = rest.role ?? existingUser.role;
         updateData.association = await resolveAssociation(role, association, id);
     }
 
@@ -89,6 +101,20 @@ export const updateUser = async (id, data) => {
         const notFoundError = new Error("User not found");
         notFoundError.statusCode = 404;
         throw notFoundError;
+    }
+
+    const resolvedRole = rest.role ?? existingUser.role;
+    const justVerified =
+        data.isVerified === true && existingUser.isVerified !== true;
+
+    if (justVerified && resolvedRole === "far") {
+        await emailQueue.add(EMAIL_JOBS.ACCOUNT_APPROVED, {
+            type: EMAIL_JOBS.ACCOUNT_APPROVED,
+            data: {
+                to: user.email,
+                name: user.fullname,
+            },
+        });
     }
 
     return user;
