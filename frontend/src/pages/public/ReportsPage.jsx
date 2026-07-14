@@ -139,7 +139,7 @@ export function ReportsPage() {
         action={
           canAdd ? (
             <Button variant="accent" onClick={openAdd}>
-              <Plus className="h-4 w-4" /> Add Request
+              <Plus className="h-4 w-4" /> Add Report
             </Button>
           ) : null
         }
@@ -159,7 +159,6 @@ export function ReportsPage() {
           {
             key: "title",
             header: "Title",
-            sortable: true,
             cell: (r) => (
               <div>
                 <div className="font-semibold text-foreground">{r.title}</div>
@@ -179,7 +178,6 @@ export function ReportsPage() {
           {
             key: "reportedBy",
             header: "Reported By",
-            sortable: true,
             cell: (r) => r.reportedBy || "—",
           },
           {
@@ -194,7 +192,6 @@ export function ReportsPage() {
           {
             key: "date",
             header: "Date",
-            sortable: true,
             cell: (r) => fmtDate(r.date),
           },
           {

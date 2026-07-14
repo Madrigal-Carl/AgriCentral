@@ -40,14 +40,19 @@ export const createCrop = async (data, authenticatedUserId) => {
 };
 
 export const updateCrop = async (id, data) => {
-    const needsPrevious = data.assignedFarmer !== undefined;
+    const { associationId, ...cropData } = data;
+    if (associationId !== undefined) {
+        cropData.association = associationId;
+    }
+
+    const needsPrevious = cropData.assignedFarmer !== undefined;
     const previousCrop = needsPrevious
-        ? await Crop.findById(id).select("assignedFarmer name")
+        ? await Crop.findOne({ _id: id, deletedAt: null }).select("assignedFarmer name")
         : null;
 
-    const crop = await Crop.findByIdAndUpdate(
-        id,
-        { $set: data },
+    const crop = await Crop.findOneAndUpdate(
+        { _id: id, deletedAt: null },
+        { $set: cropData },
         { new: true, runValidators: true }
     );
 
@@ -59,7 +64,7 @@ export const updateCrop = async (id, data) => {
 
     // Crop reassigned to a different farmer.
     if (
-        data.assignedFarmer !== undefined &&
+        cropData.assignedFarmer !== undefined &&
         String(previousCrop?.assignedFarmer ?? "") !== String(crop.assignedFarmer)
     ) {
         const farmer = await Farmer.findById(crop.assignedFarmer).select("fullName");
@@ -76,12 +81,31 @@ export const updateCrop = async (id, data) => {
     return crop;
 };
 
-
 export const deleteCrop = async (id) => {
-    const crop = await Crop.findByIdAndDelete(id);
+    const crop = await Crop.findOneAndUpdate(
+        { _id: id, deletedAt: null },
+        { $set: { deletedAt: new Date() } },
+        { new: true }
+    );
 
     if (!crop) {
         const notFoundError = new Error("Crop not found");
+        notFoundError.statusCode = 404;
+        throw notFoundError;
+    }
+
+    return crop;
+};
+
+export const restoreCrop = async (id) => {
+    const crop = await Crop.findOneAndUpdate(
+        { _id: id, deletedAt: { $ne: null } },
+        { $set: { deletedAt: null } },
+        { new: true }
+    );
+
+    if (!crop) {
+        const notFoundError = new Error("Deleted crop not found");
         notFoundError.statusCode = 404;
         throw notFoundError;
     }
@@ -106,6 +130,7 @@ export const getCropsByFarmId = async (farmId) => {
 
     const crops = await Crop.find({
         assignedFarmer: { $in: farm.assignedFarmers },
+        deletedAt: null,
         $or: [
             { status: "not_planted" },
             { _id: { $in: plantedOnThisFarmIds } },
@@ -115,8 +140,8 @@ export const getCropsByFarmId = async (farmId) => {
     return crops;
 };
 
-export const getCrops = async ({ status, search, associationId, all, page, limit }) => {
-    const filter = {};
+export const getCrops = async ({ status, search, associationId, all, page, limit, includeDeleted = false }) => {
+    const filter = includeDeleted ? {} : { deletedAt: null };
     if (status) filter.status = status;
     if (associationId) filter.association = associationId;
 

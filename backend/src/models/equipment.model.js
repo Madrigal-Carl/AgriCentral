@@ -9,7 +9,6 @@ const equipmentSchema = new mongoose.Schema(
         tag: {
             type: String,
             required: true,
-            unique: true,
             trim: true,
             uppercase: true,
         },
@@ -40,10 +39,19 @@ const equipmentSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "Farmer",
         },
+        deletedAt: {
+            type: Date,
+            default: null,
+        },
     },
     {
         timestamps: true,
     }
+);
+
+equipmentSchema.index(
+    { tag: 1 },
+    { unique: true, partialFilterExpression: { deletedAt: null } }
 );
 
 export default mongoose.model("Equipment", equipmentSchema);

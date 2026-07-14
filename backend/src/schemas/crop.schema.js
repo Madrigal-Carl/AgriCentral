@@ -2,11 +2,14 @@ import { z } from "zod";
 
 const STATUSES = ["planted", "not_planted"];
 
+const objectIdOrEmpty = (message) =>
+    z.preprocess(
+        (val) => (val === "" ? undefined : val),
+        z.string().regex(/^[0-9a-fA-F]{24}$/, message).optional(),
+    );
+
 export const createCropSchema = z.object({
-    associationId: z
-        .string()
-        .regex(/^[0-9a-fA-F]{24}$/, "Invalid association id")
-        .optional(),
+    associationId: objectIdOrEmpty("Invalid association id"),
     name: z
         .string({ required_error: "Crop name is required" })
         .trim()
@@ -17,14 +20,11 @@ export const createCropSchema = z.object({
         .min(0, "Kilo cannot be negative")
         .optional()
         .default(0),
-    assignedFarmer: z
-        .string({ required_error: "Assigned farmer is required" })
-        .regex(/^[0-9a-fA-F]{24}$/, "Invalid farmer id"),
+    assignedFarmer: objectIdOrEmpty("Invalid farmer id"),
     status: z.enum(STATUSES).optional().default("not_planted"),
 });
 
 export const updateCropSchema = createCropSchema
-    .omit({ associationId: true })
     .partial()
     .refine((data) => Object.keys(data).length > 0, {
         message: "At least one field must be provided",

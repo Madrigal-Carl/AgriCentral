@@ -175,7 +175,6 @@ export function FarmersPage() {
           {
             key: "name",
             header: "Name",
-            sortable: true,
             cell: (r) => (
               <div className="flex items-center gap-3">
                 <div className="grid h-9 w-9 shrink-0 place-items-center bg-accent-soft font-display text-xs text-accent rounded-full">
@@ -212,7 +211,6 @@ export function FarmersPage() {
           {
             key: "position",
             header: "Position",
-            sortable: true,
             cell: (r) => (
               <span className="text-sm font-medium text-foreground">
                 {positionLabel[r.position] || "—"}

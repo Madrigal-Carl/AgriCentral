@@ -15,7 +15,7 @@ const resolveAssociationId = async (associationId, authenticatedUserId) => {
 export const createEquipment = async (data, authenticatedUserId) => {
     const { associationId, ...equipmentData } = data;
 
-    const existing = await Equipment.findOne({ tag: equipmentData.tag });
+    const existing = await Equipment.findOne({ tag: equipmentData.tag, deletedAt: null });
 
     if (existing) {
         throw new Error("Equipment with this tag already exists");
@@ -82,6 +82,7 @@ export const updateEquipment = async (id, data) => {
         const existing = await Equipment.findOne({
             tag: equipmentData.tag,
             _id: { $ne: id },
+            deletedAt: null,
         });
 
         if (existing) {
@@ -89,20 +90,14 @@ export const updateEquipment = async (id, data) => {
         }
     }
 
-    // Snapshot the fields we diff against after the update, so we only log
-    // changes that actually happened (not just fields that were resent
-    // with the same value).
     const needsPrevious =
         equipmentData.assignedFarmer !== undefined ||
         equipmentData.condition !== undefined ||
         equipmentData.association !== undefined;
     const previousEquipment = needsPrevious
-        ? await Equipment.findById(id).select("assignedFarmer condition name tag association")
+        ? await Equipment.findOne({ _id: id, deletedAt: null }).select("assignedFarmer condition name tag association")
         : null;
 
-    // Derive status from the assignment when the caller didn't explicitly
-    // set one: assigning a farmer implies "assigned", clearing it (null)
-    // implies "available" (this covers the return workflow too).
     if (equipmentData.assignedFarmer !== undefined && equipmentData.status === undefined) {
         equipmentData.status = equipmentData.assignedFarmer ? "assigned" : "available";
     }
@@ -114,8 +109,8 @@ export const updateEquipment = async (id, data) => {
         unset.assignedFarmer = "";
     }
 
-    const equipment = await Equipment.findByIdAndUpdate(
-        id,
+    const equipment = await Equipment.findOneAndUpdate(
+        { _id: id, deletedAt: null },
         {
             $set: update,
             ...(Object.keys(unset).length ? { $unset: unset } : {}),
@@ -129,7 +124,6 @@ export const updateEquipment = async (id, data) => {
         throw notFoundError;
     }
 
-    // Association changed (assigned, reassigned, or cleared).
     if (
         equipmentData.association !== undefined &&
         String(previousEquipment?.association ?? "") !== String(equipment.association ?? "")
@@ -153,7 +147,6 @@ export const updateEquipment = async (id, data) => {
         }
     }
 
-    // Assignment changed (assigned, reassigned, or cleared/returned).
     if (
         equipmentData.assignedFarmer !== undefined &&
         String(previousEquipment?.assignedFarmer ?? "") !== String(equipment.assignedFarmer?._id ?? "")
@@ -195,7 +188,6 @@ export const updateEquipment = async (id, data) => {
         }
     }
 
-    // Condition changed.
     if (
         equipmentData.condition !== undefined &&
         previousEquipment?.condition !== equipment.condition
@@ -212,7 +204,11 @@ export const updateEquipment = async (id, data) => {
 };
 
 export const deleteEquipment = async (id) => {
-    const equipment = await Equipment.findByIdAndDelete(id);
+    const equipment = await Equipment.findOneAndUpdate(
+        { _id: id, deletedAt: null },
+        { $set: { deletedAt: new Date() } },
+        { new: true }
+    );
 
     if (!equipment) {
         const notFoundError = new Error("Equipment not found");
@@ -221,6 +217,32 @@ export const deleteEquipment = async (id) => {
     }
 
     return equipment;
+};
+
+export const restoreEquipment = async (id) => {
+    const toRestore = await Equipment.findOne({ _id: id, deletedAt: { $ne: null } });
+
+    if (!toRestore) {
+        const notFoundError = new Error("Deleted equipment not found");
+        notFoundError.statusCode = 404;
+        throw notFoundError;
+    }
+
+    const tagTaken = await Equipment.findOne({
+        _id: { $ne: id },
+        tag: toRestore.tag,
+        deletedAt: null,
+    });
+
+    if (tagTaken) {
+        const conflictError = new Error("An active equipment with this tag already exists");
+        conflictError.statusCode = 409;
+        throw conflictError;
+    }
+
+    toRestore.deletedAt = null;
+    await toRestore.save();
+    return toRestore;
 };
 
 const attachHistory = async (equipments, associationId) => {
@@ -252,8 +274,9 @@ export const getEquipments = async ({
     all,
     page,
     limit,
+    includeDeleted = false,
 }) => {
-    const filter = {};
+    const filter = includeDeleted ? {} : { deletedAt: null };
     if (condition) filter.condition = condition;
     if (status) filter.status = status;
     if (associationId) filter.association = associationId;

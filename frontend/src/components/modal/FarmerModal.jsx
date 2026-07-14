@@ -294,24 +294,22 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
             </Field>
           )}
 
-          {isFar && (
-            <Field label="Position" full>
-              <Controller
-                name="position"
-                control={control}
-                render={({ field }) => (
-                  <FullSelect
-                    value={field.value}
-                    onChange={field.onChange}
-                    options={POSITION_OPTIONS}
-                    defaultValue="member"
-                  />
-                )}
-              />
-            </Field>
-          )}
+          <Field label="Position" full>
+            <Controller
+              name="position"
+              control={control}
+              render={({ field }) => (
+                <FullSelect
+                  value={field.value}
+                  onChange={field.onChange}
+                  options={POSITION_OPTIONS}
+                  defaultValue="member"
+                />
+              )}
+            />
+          </Field>
 
-          <Field label="Attachments" full>
+          <Field label="RSBSA Form" full>
             <Controller
               name="files"
               control={control}

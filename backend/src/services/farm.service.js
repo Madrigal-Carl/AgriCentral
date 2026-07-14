@@ -18,9 +18,6 @@ function filterActiveCrops(farm) {
     return farmObj;
 }
 
-// If the caller explicitly picked an association, use it. Otherwise fall
-// back to the authenticated user's own association — the FAR-user path,
-// where a farm they register should land under their own association.
 const resolveAssociationId = async (associationId, authenticatedUserId) => {
     if (associationId) return associationId;
     if (!authenticatedUserId) return undefined;
@@ -29,8 +26,6 @@ const resolveAssociationId = async (associationId, authenticatedUserId) => {
     return user?.association ?? undefined;
 };
 
-// Logs one entry per crop whose status changed (including brand-new crop
-// entries, which start at "planted"). cropIdToName resolves display names.
 const logCropStatusChanges = async ({ farm, changes, cropIdToName }) => {
     for (const { cropId, fromStatus, toStatus } of changes) {
         const cropName = cropIdToName.get(cropId) ?? "A crop";
@@ -63,9 +58,6 @@ const attachFarmHistory = async (farms, associationId) => {
     });
 };
 
-// Logs both additions and removals from a farm's assignedFarmers list,
-// writing a log entry on each side (the farmer entity and the farm
-// entity) so both timelines show the change.
 const logFarmerAssignmentChanges = async ({ farm, addedFarmerIds, removedFarmerIds }) => {
     const allIds = [...addedFarmerIds, ...removedFarmerIds];
     if (!allIds.length) return;
@@ -111,7 +103,7 @@ const logFarmerAssignmentChanges = async ({ farm, addedFarmerIds, removedFarmerI
 export const createFarm = async (data, authenticatedUserId) => {
     const { associationId, ...farmData } = data;
 
-    const existing = await Farm.findOne({ tag: farmData.tag });
+    const existing = await Farm.findOne({ tag: farmData.tag, deletedAt: null });
 
     if (existing) {
         const error = new Error("A farm with this tag already exists");
@@ -129,7 +121,6 @@ export const createFarm = async (data, authenticatedUserId) => {
         association: resolvedAssociationId || undefined,
     });
 
-    // A brand-new farm has no "previous" crops, so anything in crops[] here is newly assigned.
     if (farmData.crops?.length) {
         const cropIds = farmData.crops.map((c) => c.crop);
         await Crop.updateMany(
@@ -170,7 +161,7 @@ export const updateFarm = async (id, data) => {
     }
 
     if (farmData.tag) {
-        const existing = await Farm.findOne({ tag: farmData.tag, _id: { $ne: id } });
+        const existing = await Farm.findOne({ tag: farmData.tag, _id: { $ne: id }, deletedAt: null });
 
         if (existing) {
             const error = new Error("A farm with this tag already exists");
@@ -179,15 +170,13 @@ export const updateFarm = async (id, data) => {
         }
     }
 
-    // Grab the pre-update state so we can diff both crops and
-    // assignedFarmers against it below.
     const needsPrevious = farmData.crops || farmData.assignedFarmers;
     const previousFarm = needsPrevious
-        ? await Farm.findById(id).select("crops.crop crops.status assignedFarmers tag")
+        ? await Farm.findOne({ _id: id, deletedAt: null }).select("crops.crop crops.status assignedFarmers tag")
         : null;
 
-    const farm = await Farm.findByIdAndUpdate(
-        id,
+    const farm = await Farm.findOneAndUpdate(
+        { _id: id, deletedAt: null },
         { $set: farmData },
         { new: true, runValidators: true }
     ).populate([FARMER_POPULATE, CROP_POPULATE]);
@@ -221,7 +210,6 @@ export const updateFarm = async (id, data) => {
             );
         }
 
-        // Crop removed from this farm — free it back up so it's assignable elsewhere again.
         if (removedCropIds.length) {
             await Crop.updateMany(
                 { _id: { $in: removedCropIds } },
@@ -229,8 +217,6 @@ export const updateFarm = async (id, data) => {
             );
         }
 
-        // Build the changes list: additions (no previous status) and
-        // status transitions on crops that stayed on this farm.
         const changes = [];
         for (const c of newCrops) {
             const prevStatus = previousCropsById.get(c.cropId);
@@ -272,7 +258,11 @@ export const updateFarm = async (id, data) => {
 };
 
 export const deleteFarm = async (id) => {
-    const farm = await Farm.findByIdAndDelete(id);
+    const farm = await Farm.findOneAndUpdate(
+        { _id: id, deletedAt: null },
+        { $set: { deletedAt: new Date() } },
+        { new: true }
+    );
 
     if (!farm) {
         const notFoundError = new Error("Farm not found");
@@ -292,8 +282,34 @@ export const deleteFarm = async (id) => {
     return farm;
 };
 
-export const getFarms = async ({ search, crop, associationId, all, page, limit }) => {
-    const filter = {};
+export const restoreFarm = async (id) => {
+    const toRestore = await Farm.findOne({ _id: id, deletedAt: { $ne: null } });
+
+    if (!toRestore) {
+        const notFoundError = new Error("Deleted farm not found");
+        notFoundError.statusCode = 404;
+        throw notFoundError;
+    }
+
+    const tagTaken = await Farm.findOne({
+        _id: { $ne: id },
+        tag: toRestore.tag,
+        deletedAt: null,
+    });
+
+    if (tagTaken) {
+        const conflictError = new Error("An active farm with this tag already exists");
+        conflictError.statusCode = 409;
+        throw conflictError;
+    }
+
+    toRestore.deletedAt = null;
+    await toRestore.save();
+    return toRestore;
+};
+
+export const getFarms = async ({ search, crop, associationId, all, page, limit, includeDeleted = false }) => {
+    const filter = includeDeleted ? {} : { deletedAt: null };
 
     if (associationId) filter.association = associationId;
 
@@ -305,6 +321,7 @@ export const getFarms = async ({ search, crop, associationId, all, page, limit }
     if (crop) {
         const matchingCropIds = await Crop.find({
             name: new RegExp(escapeRegex(crop), "i"),
+            deletedAt: null,
         }).distinct("_id");
 
         if (!matchingCropIds.length) {

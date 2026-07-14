@@ -216,7 +216,6 @@ export function FarmsPage() {
           {
             key: "tag",
             header: "Farm Tag ID",
-            sortable: true,
             cell: (r) => (
               <div>
                 <div className="font-semibold text-foreground">{r.tag}</div>

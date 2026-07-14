@@ -22,13 +22,16 @@ const cropSchema = new mongoose.Schema(
         assignedFarmer: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Farmer",
-            required: true,
         },
         status: {
             type: String,
             enum: ["planted", "not_planted"],
             default: "not_planted",
-        }
+        },
+        deletedAt: {
+            type: Date,
+            default: null,
+        },
     },
     {
         timestamps: true,

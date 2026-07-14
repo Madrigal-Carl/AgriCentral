@@ -15,7 +15,7 @@ const resolveAssociationId = async (associationId, authenticatedUserId) => {
 export const createLivestock = async (data, authenticatedUserId) => {
     const { associationId, ...livestockData } = data;
 
-    const existing = await Livestock.findOne({ tag: livestockData.tag });
+    const existing = await Livestock.findOne({ tag: livestockData.tag, deletedAt: null });
 
     if (existing) {
         throw new Error("Livestock with this tag already exists");
@@ -82,6 +82,7 @@ export const updateLivestock = async (id, data) => {
         const existing = await Livestock.findOne({
             tag: livestockData.tag,
             _id: { $ne: id },
+            deletedAt: null,
         });
 
         if (existing) {
@@ -89,20 +90,14 @@ export const updateLivestock = async (id, data) => {
         }
     }
 
-    // Snapshot the fields we diff against after the update, so we only log
-    // changes that actually happened (not just fields that were resent
-    // with the same value).
     const needsPrevious =
         livestockData.assignedFarmer !== undefined ||
         livestockData.condition !== undefined ||
         livestockData.association !== undefined;
     const previousLivestock = needsPrevious
-        ? await Livestock.findById(id).select("assignedFarmer condition animal tag association")
+        ? await Livestock.findOne({ _id: id, deletedAt: null }).select("assignedFarmer condition animal tag association")
         : null;
 
-    // Derive status from the assignment when the caller didn't explicitly
-    // set one: assigning a farmer implies "assigned", clearing it (null)
-    // implies "available" (this covers the return workflow too).
     if (livestockData.assignedFarmer !== undefined && livestockData.status === undefined) {
         livestockData.status = livestockData.assignedFarmer ? "assigned" : "available";
     }
@@ -114,8 +109,8 @@ export const updateLivestock = async (id, data) => {
         unset.assignedFarmer = "";
     }
 
-    const livestock = await Livestock.findByIdAndUpdate(
-        id,
+    const livestock = await Livestock.findOneAndUpdate(
+        { _id: id, deletedAt: null },
         {
             $set: update,
             ...(Object.keys(unset).length ? { $unset: unset } : {}),
@@ -129,7 +124,6 @@ export const updateLivestock = async (id, data) => {
         throw notFoundError;
     }
 
-    // Association changed (assigned, reassigned, or cleared).
     if (
         livestockData.association !== undefined &&
         String(previousLivestock?.association ?? "") !== String(livestock.association ?? "")
@@ -153,7 +147,6 @@ export const updateLivestock = async (id, data) => {
         }
     }
 
-    // Assignment changed (assigned, reassigned, or cleared/returned).
     if (
         livestockData.assignedFarmer !== undefined &&
         String(previousLivestock?.assignedFarmer ?? "") !== String(livestock.assignedFarmer?._id ?? "")
@@ -195,7 +188,6 @@ export const updateLivestock = async (id, data) => {
         }
     }
 
-    // Condition changed.
     if (
         livestockData.condition !== undefined &&
         previousLivestock?.condition !== livestock.condition
@@ -212,7 +204,11 @@ export const updateLivestock = async (id, data) => {
 };
 
 export const deleteLivestock = async (id) => {
-    const livestock = await Livestock.findByIdAndDelete(id);
+    const livestock = await Livestock.findOneAndUpdate(
+        { _id: id, deletedAt: null },
+        { $set: { deletedAt: new Date() } },
+        { new: true }
+    );
 
     if (!livestock) {
         const notFoundError = new Error("Livestock not found");
@@ -221,6 +217,32 @@ export const deleteLivestock = async (id) => {
     }
 
     return livestock;
+};
+
+export const restoreLivestock = async (id) => {
+    const toRestore = await Livestock.findOne({ _id: id, deletedAt: { $ne: null } });
+
+    if (!toRestore) {
+        const notFoundError = new Error("Deleted livestock not found");
+        notFoundError.statusCode = 404;
+        throw notFoundError;
+    }
+
+    const tagTaken = await Livestock.findOne({
+        _id: { $ne: id },
+        tag: toRestore.tag,
+        deletedAt: null,
+    });
+
+    if (tagTaken) {
+        const conflictError = new Error("An active livestock record with this tag already exists");
+        conflictError.statusCode = 409;
+        throw conflictError;
+    }
+
+    toRestore.deletedAt = null;
+    await toRestore.save();
+    return toRestore;
 };
 
 const attachHistory = async (livestocks, associationId) => {
@@ -252,8 +274,9 @@ export const getLivestocks = async ({
     all,
     page,
     limit,
+    includeDeleted = false,
 }) => {
-    const filter = {};
+    const filter = includeDeleted ? {} : { deletedAt: null };
     if (condition) filter.condition = condition;
     if (status) filter.status = status;
     if (associationId) filter.association = associationId;

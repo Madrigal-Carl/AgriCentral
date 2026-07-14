@@ -20,7 +20,8 @@ export const cropFormSchema = z.object({
         .refine((val) => val !== undefined, {
             message: "Kilogram is required",
         }),
-    assignedFarmer: z.string().min(1, "Assigned farmer is required"),
+    assignedFarmer: z.string().optional().default(""),
+    association: z.string().optional().default(""),
 });
 
 export const cropUpdateSchema = cropFormSchema.partial();

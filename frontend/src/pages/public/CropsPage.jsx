@@ -146,7 +146,6 @@ export function CropsPage() {
           {
             key: "name",
             header: "Crop Name",
-            sortable: true,
             cell: (r) => (
               <div className="font-semibold text-foreground">{r.name}</div>
             ),
@@ -154,13 +153,11 @@ export function CropsPage() {
           {
             key: "kilo",
             header: "Kilogram",
-            sortable: true,
             cell: (r) => `${(r.kilo || 0).toLocaleString()} kg`,
           },
           {
             key: "status",
             header: "Status",
-            sortable: true,
             cell: (r) => (
               <StatusPill tone={r.status === "planted" ? "success" : "neutral"}>
                 {r.status === "planted" ? "Planted" : "Not Planted"}

@@ -2,15 +2,25 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button, Field, TextInput, SingleSelect } from "@/components/ui";
+import {
+  Button,
+  Field,
+  TextInput,
+  SingleSelect,
+  FullSelect,
+} from "@/components/ui";
 import useAuth from "@/hooks/useAuth";
 import { useFarmersByAssociationId } from "@/hooks/useFarmers";
+import { useAssociations } from "@/hooks/useAssociations";
 import { useCreateCrop, useUpdateCrop } from "@/hooks/useCrops";
 import { cropFormSchema, cropUpdateSchema } from "@/schemas/crop.schema";
 
 export function CropModal({ mode, initial, onClose, onSave }) {
   const isEdit = mode === "edit";
   const [submitError, setSubmitError] = useState(null);
+
+  const { user, role } = useAuth();
+  const isFar = role === "far";
 
   const {
     register,
@@ -24,13 +34,20 @@ export function CropModal({ mode, initial, onClose, onSave }) {
 
   // Only the farmer(s) that belong to the current user's own association —
   // via GET /farmers/:associationId — rather than every farmer in the system.
-  const { user } = useAuth();
   const { data: farmersData, isLoading: farmersLoading } =
     useFarmersByAssociationId(user?.association);
   const farmerOptions = (farmersData?.farmers ?? []).map((f) => ({
     value: f._id,
     label: f.fullName,
   }));
+
+  // Non-FAR roles pick which association the crop belongs to; FAR users
+  // don't since it's always resolved to their own on the backend.
+  const { data: associationsData, isLoading: associationsLoading } =
+    useAssociations({ all: true }, { enabled: !isFar });
+  const associationOptions = (associationsData?.associations ?? []).map(
+    (a) => ({ value: a._id, label: a.name }),
+  );
 
   const { mutateAsync: createMutateAsync, isPending: isCreating } =
     useCreateCrop({
@@ -58,8 +75,13 @@ export function CropModal({ mode, initial, onClose, onSave }) {
     const payload = {
       name: values.name,
       kilo: values.kilo,
-      assignedFarmer: values.assignedFarmer,
-      status: initial.status, // preserved, never user-editable from this modal
+      status: initial.status,
+      ...(isFar && values.assignedFarmer
+        ? { assignedFarmer: values.assignedFarmer }
+        : {}),
+      ...(!isFar && values.association
+        ? { associationId: values.association }
+        : {}),
     };
 
     try {
@@ -129,24 +151,49 @@ export function CropModal({ mode, initial, onClose, onSave }) {
                 placeholder="e.g. 1200.5"
               />
             </Field>
-            <Field label="Assign Farmer" error={errors.assignedFarmer?.message}>
-              <Controller
-                name="assignedFarmer"
-                control={control}
-                render={({ field }) => (
-                  <SingleSelect
-                    value={field.value}
-                    onChange={field.onChange}
-                    options={farmerOptions}
-                    error={errors.assignedFarmer?.message}
-                    placeholder={
-                      farmersLoading ? "Loading farmers…" : "Select farmer…"
-                    }
-                    searchPlaceholder="Search farmer…"
-                  />
-                )}
-              />
-            </Field>
+            {isFar && (
+              <Field
+                label="Assign Farmer"
+                error={errors.assignedFarmer?.message}
+              >
+                <Controller
+                  name="assignedFarmer"
+                  control={control}
+                  render={({ field }) => (
+                    <SingleSelect
+                      value={field.value}
+                      onChange={field.onChange}
+                      options={farmerOptions}
+                      error={errors.assignedFarmer?.message}
+                      placeholder={
+                        farmersLoading ? "Loading farmers…" : "Select farmer…"
+                      }
+                      searchPlaceholder="Search farmer…"
+                    />
+                  )}
+                />
+              </Field>
+            )}
+            {!isFar && (
+              <Field label="Association" error={errors.association?.message}>
+                <Controller
+                  name="association"
+                  control={control}
+                  render={({ field }) => (
+                    <FullSelect
+                      value={field.value}
+                      onChange={field.onChange}
+                      options={associationOptions}
+                      placeholder={
+                        associationsLoading
+                          ? "Loading associations…"
+                          : "Select association…"
+                      }
+                    />
+                  )}
+                />
+              </Field>
+            )}
           </div>
         </form>
 

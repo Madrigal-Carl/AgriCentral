@@ -4,13 +4,24 @@ import Farmer from "../models/farmer.model.js";
 import User from "../models/user.model.js";
 
 export const createAssociation = async (data) => {
+    const existing = await Association.findOne({
+        name: new RegExp(`^${escapeRegex(data.name.trim())}$`, "i"),
+        deletedAt: null,
+    });
+
+    if (existing) {
+        const conflictError = new Error("Association already exists");
+        conflictError.statusCode = 409;
+        throw conflictError;
+    }
+
     const association = await Association.create(data);
     return association;
 };
 
 export const updateAssociation = async (id, data) => {
-    const association = await Association.findByIdAndUpdate(
-        id,
+    const association = await Association.findOneAndUpdate(
+        { _id: id, deletedAt: null },
         { $set: data },
         { returnDocument: "after", runValidators: true }
     );
@@ -25,7 +36,11 @@ export const updateAssociation = async (id, data) => {
 };
 
 export const deleteAssociation = async (id) => {
-    const association = await Association.findByIdAndDelete(id);
+    const association = await Association.findOneAndUpdate(
+        { _id: id, deletedAt: null },
+        { $set: { deletedAt: new Date() } },
+        { returnDocument: "after" }
+    );
 
     if (!association) {
         const notFoundError = new Error("Association not found");
@@ -49,6 +64,34 @@ export const deleteAssociation = async (id) => {
     return association;
 };
 
+export const restoreAssociation = async (id) => {
+    // Restoring can collide with an active association that has since
+    // taken the same name, so guard against that up front.
+    const toRestore = await Association.findOne({ _id: id, deletedAt: { $ne: null } });
+
+    if (!toRestore) {
+        const notFoundError = new Error("Deleted association not found");
+        notFoundError.statusCode = 404;
+        throw notFoundError;
+    }
+
+    const nameTaken = await Association.findOne({
+        _id: { $ne: id },
+        name: new RegExp(`^${escapeRegex(toRestore.name.trim())}$`, "i"),
+        deletedAt: null,
+    });
+
+    if (nameTaken) {
+        const conflictError = new Error("An active association with this name already exists");
+        conflictError.statusCode = 409;
+        throw conflictError;
+    }
+
+    toRestore.deletedAt = null;
+    await toRestore.save();
+    return toRestore;
+};
+
 const attachMembers = async (associations) => {
     const associationIds = associations.map((a) => a._id);
 
@@ -63,8 +106,7 @@ const attachMembers = async (associations) => {
         farUserByAssociationId.set(u.association.toString(), u);
     }
 
-    // Members are now farmers directly linked to the association —
-    // no more hopping through User.
+    // Farmers directly linked to the association.
     const farmers = await Farmer.find({
         association: { $in: associationIds },
     }).select("fullName position association");
@@ -84,17 +126,31 @@ const attachMembers = async (associations) => {
         const obj = typeof a.toObject === "function" ? a.toObject() : a;
         const key = obj._id.toString();
         const farUser = farUserByAssociationId.get(key);
+        const farmerMembers = membersByAssociationId.get(key) ?? [];
+
+        // The FAR user is a member of the association too, not just the farmers.
+        const members = farUser
+            ? [
+                {
+                    name: farUser.fullname,
+                    position: "far",
+                    userId: farUser._id,
+                },
+                ...farmerMembers,
+            ]
+            : farmerMembers;
+
         return {
             ...obj,
             assignedUser: farUser?._id ?? null,
             far: farUser?.fullname ?? null,
-            members: membersByAssociationId.get(key) ?? [],
+            members,
         };
     });
 };
 
-export const getAssociations = async ({ search, all, page, limit }) => {
-    const filter = {};
+export const getAssociations = async ({ search, all, page, limit, includeDeleted = false }) => {
+    const filter = includeDeleted ? {} : { deletedAt: null };
 
     if (search) {
         filter.name = new RegExp(escapeRegex(search), "i");
@@ -138,6 +194,7 @@ export const getAvailableAssociations = async ({ includeId } = {}) => {
     }).distinct("association");
 
     const filter = {
+        deletedAt: null,
         $or: [
             { _id: { $nin: claimedIds } },
             ...(validIncludeId ? [{ _id: validIncludeId }] : []),

@@ -7,10 +7,6 @@ import Association from "../models/association.model.js";
 import cloudinary from "../config/cloudinary.js";
 import { createLog, getLogsForEntities, humanize } from "./log.service.js";
 
-// If the caller explicitly picked an association, use it. Otherwise fall
-// back to the authenticated user's own association (this is the FAR-user
-// path — they don't pick an association in the form, so the farmer they
-// register should land under whichever association *they* belong to).
 const resolveAssociationId = async (associationId, authenticatedUserId) => {
     if (associationId) return associationId;
     if (!authenticatedUserId) return undefined;
@@ -22,7 +18,7 @@ const resolveAssociationId = async (associationId, authenticatedUserId) => {
 export const createFarmer = async (data, authenticatedUserId) => {
     const { associationId, ...farmerData } = data;
 
-    const existing = await Farmer.findOne({ emailAddress: farmerData.emailAddress });
+    const existing = await Farmer.findOne({ emailAddress: farmerData.emailAddress, deletedAt: null });
 
     if (existing) {
         throw new Error("A farmer with this email already exists");
@@ -69,6 +65,7 @@ export const updateFarmer = async (id, data) => {
         const existing = await Farmer.findOne({
             emailAddress: farmerData.emailAddress,
             _id: { $ne: id },
+            deletedAt: null,
         });
 
         if (existing) {
@@ -76,18 +73,15 @@ export const updateFarmer = async (id, data) => {
         }
     }
 
-    // Snapshot the fields we diff against after the update, so we only log
-    // changes that actually happened (not just fields that were resent
-    // with the same value).
     const needsPrevious =
         farmerData.association !== undefined || farmerData.position !== undefined;
     const previousFarmer = needsPrevious
-        ? await Farmer.findById(id).select("association position fullName")
+        ? await Farmer.findOne({ _id: id, deletedAt: null }).select("association position fullName")
         : null;
 
     let removedAttachments = [];
     if (farmerData.attachments) {
-        const existingFarmer = await Farmer.findById(id).select("attachments");
+        const existingFarmer = await Farmer.findOne({ _id: id, deletedAt: null }).select("attachments");
         if (existingFarmer) {
             const keptPublicIds = new Set(
                 farmerData.attachments.map((a) => a.publicId),
@@ -98,8 +92,8 @@ export const updateFarmer = async (id, data) => {
         }
     }
 
-    const farmer = await Farmer.findByIdAndUpdate(
-        id,
+    const farmer = await Farmer.findOneAndUpdate(
+        { _id: id, deletedAt: null },
         { $set: farmerData },
         { new: true, runValidators: true }
     );
@@ -114,7 +108,6 @@ export const updateFarmer = async (id, data) => {
         await deleteCloudinaryAttachments(removedAttachments);
     }
 
-    // Association changed (assigned, reassigned, or cleared).
     if (
         farmerData.association !== undefined &&
         String(previousFarmer?.association ?? "") !== String(farmer.association ?? "")
@@ -142,7 +135,6 @@ export const updateFarmer = async (id, data) => {
         }
     }
 
-    // Position changed.
     if (
         farmerData.position !== undefined &&
         previousFarmer?.position !== farmer.position
@@ -159,7 +151,11 @@ export const updateFarmer = async (id, data) => {
 };
 
 export const deleteFarmer = async (id) => {
-    const farmer = await Farmer.findByIdAndDelete(id);
+    const farmer = await Farmer.findOneAndUpdate(
+        { _id: id, deletedAt: null },
+        { $set: { deletedAt: new Date() } },
+        { new: true }
+    );
 
     if (!farmer) {
         const notFoundError = new Error("Farmer not found");
@@ -167,9 +163,33 @@ export const deleteFarmer = async (id) => {
         throw notFoundError;
     }
 
-    await deleteCloudinaryAttachments(farmer.attachments);
-
     return farmer;
+};
+
+export const restoreFarmer = async (id) => {
+    const toRestore = await Farmer.findOne({ _id: id, deletedAt: { $ne: null } });
+
+    if (!toRestore) {
+        const notFoundError = new Error("Deleted farmer not found");
+        notFoundError.statusCode = 404;
+        throw notFoundError;
+    }
+
+    const emailTaken = await Farmer.findOne({
+        _id: { $ne: id },
+        emailAddress: toRestore.emailAddress,
+        deletedAt: null,
+    });
+
+    if (emailTaken) {
+        const conflictError = new Error("An active farmer with this email already exists");
+        conflictError.statusCode = 409;
+        throw conflictError;
+    }
+
+    toRestore.deletedAt = null;
+    await toRestore.save();
+    return toRestore;
 };
 
 const attachRelatedRecords = async (farmers, associationId) => {
@@ -177,9 +197,10 @@ const attachRelatedRecords = async (farmers, associationId) => {
 
     if (!farmerIds.length) return [];
 
-    const farms = await Farm.find({ assignedFarmers: { $in: farmerIds } }).select(
-        "tag assignedFarmers",
-    );
+    const farms = await Farm.find({
+        assignedFarmers: { $in: farmerIds },
+        deletedAt: null,
+    }).select("tag assignedFarmers");
 
     const farmsByFarmerId = new Map();
     for (const farm of farms) {
@@ -190,12 +211,9 @@ const attachRelatedRecords = async (farmers, associationId) => {
         }
     }
 
-    // Livestock and equipment each carry a single `assignedFarmer` ref
-    // (unlike farms, which hold an array of farmers), so they both group
-    // the same simple way: fetch everything pointing at any of these
-    // farmer ids, then bucket by that id.
     const livestocks = await Livestock.find({
         assignedFarmer: { $in: farmerIds },
+        deletedAt: null,
     }).select("tag animal breed condition status assignedFarmer");
 
     const livestockByFarmerId = new Map();
@@ -214,6 +232,7 @@ const attachRelatedRecords = async (farmers, associationId) => {
 
     const equipments = await Equipment.find({
         assignedFarmer: { $in: farmerIds },
+        deletedAt: null,
     }).select("tag name condition status assignedFarmer");
 
     const equipmentByFarmerId = new Map();
@@ -245,14 +264,14 @@ const attachRelatedRecords = async (farmers, associationId) => {
 };
 
 export const getFarmersByAssociationId = async (associationId) => {
-    const farmers = await Farmer.find({ association: associationId }).sort({
+    const farmers = await Farmer.find({ association: associationId, deletedAt: null }).sort({
         createdAt: -1,
     });
     return attachRelatedRecords(farmers, associationId);
 };
 
-export const getFarmers = async ({ status, search, associationId, all, page, limit }) => {
-    const filter = {};
+export const getFarmers = async ({ status, search, associationId, all, page, limit, includeDeleted = false }) => {
+    const filter = includeDeleted ? {} : { deletedAt: null };
     if (status) filter.status = status;
     if (associationId) filter.association = associationId;
 

@@ -195,7 +195,6 @@ export function UsersPage() {
           {
             key: "fullname",
             header: "Name",
-            sortable: true,
             cell: (r) => (
               <div className="flex items-center gap-3">
                 <div className="grid h-9 w-9 shrink-0 place-items-center bg-accent-soft font-display text-xs text-accent rounded-full">
@@ -210,7 +209,6 @@ export function UsersPage() {
           {
             key: "email",
             header: "Email Address",
-            sortable: true,
             cell: (r) => r.email || "—",
           },
           {
@@ -221,8 +219,18 @@ export function UsersPage() {
                 <StatusPill tone={roleTone[r.role]}>
                   {roleLabel[r.role]}
                 </StatusPill>
-                {!r.isVerified && (
+              </div>
+            ),
+          },
+          {
+            key: "status",
+            header: "Status",
+            cell: (r) => (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {!r.isVerified ? (
                   <StatusPill tone="warning">Pending</StatusPill>
+                ) : (
+                  <StatusPill tone="success">Active</StatusPill>
                 )}
               </div>
             ),

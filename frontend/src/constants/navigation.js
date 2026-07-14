@@ -438,6 +438,7 @@ export const adminNavSections = [
                 label: "Livestock",
                 icon: Beef,
             },
+            { to: "/admin/crops", label: "Crop", icon: Carrot },
         ],
     },
     {
@@ -505,6 +506,10 @@ export const adminBreadcrumbs = {
     "/admin/livestocks": {
         group: "Inventory",
         label: "Livestock",
+    },
+    "/admin/crops": {
+        group: "Inventory",
+        label: "Crop",
     },
     "/admin/requests": {
         group: "Records",

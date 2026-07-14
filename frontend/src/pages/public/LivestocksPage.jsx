@@ -233,7 +233,6 @@ export function LivestocksPage() {
           {
             key: "tag",
             header: "Livestock Tag ID",
-            sortable: true,
             cell: (r) => (
               <div>
                 <div className="font-semibold text-foreground">
@@ -246,7 +245,6 @@ export function LivestocksPage() {
           {
             key: "farmer",
             header: "Assigned Farmer",
-            sortable: true,
             accessor: (r) => r.assignedFarmer?.fullName || "",
             cell: (r) => r.assignedFarmer?.fullName || "—",
           },

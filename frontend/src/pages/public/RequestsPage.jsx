@@ -182,7 +182,6 @@ export function RequestsPage() {
           {
             key: "title",
             header: "Title",
-            sortable: true,
             cell: (r) => (
               <div>
                 <div className="font-semibold text-foreground">{r.title}</div>
@@ -203,7 +202,6 @@ export function RequestsPage() {
           {
             key: "quantity",
             header: "Qty",
-            sortable: true,
             cell: (r) => r.quantity,
           },
           {
@@ -225,7 +223,6 @@ export function RequestsPage() {
           {
             key: "date",
             header: "Date",
-            sortable: true,
             cell: (r) => fmtDate(r.date),
           },
           {

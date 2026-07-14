@@ -129,7 +129,6 @@ export function AssociationsPage() {
           {
             key: "name",
             header: "Association Name",
-            sortable: true,
             cell: (r) => (
               <div className="font-semibold text-foreground">{r.name}</div>
             ),
@@ -137,13 +136,11 @@ export function AssociationsPage() {
           {
             key: "far",
             header: "Farmers Representative",
-            sortable: true,
             cell: (r) => r.far || "—",
           },
           {
             key: "membersCount",
             header: "Members",
-            sortable: true,
             cell: (r) => r.members?.length ?? 0,
           },
           {

@@ -38,7 +38,6 @@ const farmSchema = new mongoose.Schema(
         tag: {
             type: String,
             required: true,
-            unique: true,
             trim: true,
             uppercase: true,
         },
@@ -62,10 +61,19 @@ const farmSchema = new mongoose.Schema(
             type: Number,
             required: true,
         },
+        deletedAt: {
+            type: Date,
+            default: null,
+        },
     },
     {
         timestamps: true,
     }
+);
+
+farmSchema.index(
+    { tag: 1 },
+    { unique: true, partialFilterExpression: { deletedAt: null } }
 );
 
 export default mongoose.model("Farm", farmSchema);
