@@ -1,5 +1,5 @@
 import "./config/env.js";
-import "./config/redis.js";
+import "./config/valkey.js";
 import "./config/cloudinary.js";
 import "./queues/workers/email.worker.js";
 

@@ -1,8 +1,8 @@
 import { Queue } from "bullmq";
-import { bullRedisConnection } from "../config/redis.js";
+import { valkeyConnection } from "../config/valkey.js";
 
 const emailQueue = new Queue("emailQueue", {
-  connection: bullRedisConnection,
+  connection: valkeyConnection,
   defaultJobOptions: {
     attempts: 3,
     backoff: {
@@ -10,7 +10,7 @@ const emailQueue = new Queue("emailQueue", {
       delay: 3000,
     },
     removeOnComplete: true,
-    removeOnFail: false,
+    removeOnFail: { age: 24 * 3600 },
   },
 });
 

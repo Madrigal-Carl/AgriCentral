@@ -1,5 +1,5 @@
 import { Worker } from "bullmq";
-import { bullRedisConnection } from "../../config/redis.js";
+import { valkeyConnection } from "../../config/valkey.js";
 import { sendEmail } from "../../services/email.service.js";
 import { EMAIL_JOBS } from "../email.jobs.js";
 import { accountApprovedTemplate } from "../../templates/email/account-approved.template.js";
@@ -28,7 +28,7 @@ const emailWorker = new Worker(
     return handler();
   },
   {
-    connection: bullRedisConnection,
+    connection: valkeyConnection,
   },
 );
 
