@@ -528,22 +528,22 @@ export function HomePage() {
     {
       icon: Sprout,
       title: "Crop Monitoring",
-      desc: "Track crop types, seasons, and yield estimates.",
+      desc: "Track crop types, and yield estimates.",
     },
     {
       icon: Beef,
       title: "Livestock Monitoring",
-      desc: "Inventory, vaccinations, and distribution history.",
+      desc: "Inventory, and distribution history.",
     },
     {
       icon: Tractor,
       title: "Equipment Tracking",
-      desc: "Ownership, location, usage, and maintenance logs.",
+      desc: "Ownership, usage, and maintenance logs.",
     },
     {
       icon: Package,
       title: "Resource Requests",
-      desc: "Manage seed, fertilizer, and assistance requests.",
+      desc: "Manage crop, equipment, livestock requests.",
     },
     {
       icon: ClipboardList,
@@ -558,7 +558,7 @@ export function HomePage() {
     {
       icon: Building2,
       title: "Organization Management",
-      desc: "Manage cooperatives, offices, and roles.",
+      desc: "Manage cooperatives, and roles.",
     },
     {
       icon: LayoutDashboard,
