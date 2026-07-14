@@ -109,7 +109,7 @@ export function FarmerDrawer({ row, onClose }) {
                     <span className="absolute -left-[5px] top-1.5 h-2.5 w-2.5 bg-accent" />
                     <div className="text-sm text-foreground">{h.message}</div>
                     <div className="text-xs text-secondary">
-                      {fmtDate(h.createdAt)}
+                      {fmtDate(h.date)}
                     </div>
                   </li>
                 ))}

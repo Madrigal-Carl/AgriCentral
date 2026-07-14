@@ -236,10 +236,10 @@ export function LivestocksPage() {
             sortable: true,
             cell: (r) => (
               <div>
-                <div className="font-semibold text-foreground">{r.tag}</div>
-                <div className="text-xs text-secondary">
+                <div className="font-semibold text-foreground">
                   {r.animal} · {r.breed}
                 </div>
+                <div className="text-xs text-secondary">{r.tag}</div>
               </div>
             ),
           },
