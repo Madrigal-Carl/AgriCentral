@@ -4,9 +4,7 @@ export function DefList({ items }) {
       {items.map(([k, v]) => (
         <div key={k} className="flex flex-col">
           <dt className="label-eyebrow mb-0.5">{k}</dt>
-          <dd className="text-sm font-medium text-foreground capitalize">
-            {v}
-          </dd>
+          <dd className="text-sm font-medium text-foreground  ">{v}</dd>
         </div>
       ))}
     </dl>

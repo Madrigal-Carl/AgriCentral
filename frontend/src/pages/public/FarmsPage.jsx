@@ -135,11 +135,13 @@ export function FarmsPage() {
         address: values.address,
         latitude: Number(values.latitude),
         longitude: Number(values.longitude),
-        assignedFarmers: values.assignedFarmers,
-        crops: values.crops,
+        assignedFarmers: values.assignedFarmers ?? [],
+        crops: values.crops ?? [],
         // FAR users don't pick an association — omit the key entirely so
         // the backend falls back to resolving it from req.user.
-        ...(!isFar ? { associationId: values.association } : {}),
+        ...(!isFar && values.association
+          ? { associationId: values.association }
+          : {}),
       };
 
       if (modal.mode === "add") {
@@ -149,7 +151,9 @@ export function FarmsPage() {
       }
       setModal(null);
     } catch (err) {
-      setSubmitError(err.message || "Failed to save farm");
+      setSubmitError(
+        err?.response?.data?.message || err?.message || "Failed to save farm",
+      );
     }
   };
 

@@ -114,7 +114,9 @@ export const createFarm = async (data, authenticatedUserId) => {
     const existing = await Farm.findOne({ tag: farmData.tag });
 
     if (existing) {
-        throw new Error("A farm with this tag already exists");
+        const error = new Error("A farm with this tag already exists");
+        error.statusCode = 409;
+        throw error;
     }
 
     const resolvedAssociationId = await resolveAssociationId(
@@ -171,7 +173,9 @@ export const updateFarm = async (id, data) => {
         const existing = await Farm.findOne({ tag: farmData.tag, _id: { $ne: id } });
 
         if (existing) {
-            throw new Error("A farm with this tag already exists");
+            const error = new Error("A farm with this tag already exists");
+            error.statusCode = 409;
+            throw error;
         }
     }
 

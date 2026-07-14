@@ -74,7 +74,9 @@ export function CropModal({ mode, initial, onClose, onSave }) {
         onSave?.(crop);
       }
     } catch (err) {
-      setSubmitError(err.message || "Failed to save crop");
+      setSubmitError(
+        err?.response?.data?.message || err?.message || "Failed to save crop",
+      );
     }
   };
 

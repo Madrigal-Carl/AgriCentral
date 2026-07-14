@@ -88,7 +88,7 @@ export function EquipmentModal({ mode, initial, onClose, onSave }) {
     } catch (err) {
       setSubmitError(
         err?.response?.data?.message ||
-          err.message ||
+          err?.message ||
           "Failed to save equipment",
       );
     }

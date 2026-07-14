@@ -11,13 +11,16 @@ const CROP_STATUSES = [
 const objectId = (label) =>
     z.string().regex(/^[0-9a-fA-F]{24}$/, `Invalid ${label}`);
 
+const emptyToUndefined = (val) => (val === "" || val === null ? undefined : val);
+
+const optionalObjectId = (label) =>
+    z.preprocess(emptyToUndefined, objectId(label).optional());
+
 const farmCropSchema = z.object({
     crop: objectId("crop id"),
     status: z.enum(CROP_STATUSES).optional().default("planted"),
     yield: z.coerce.number().min(0).optional().default(0),
 });
-
-const emptyToUndefined = (val) => (val === "" || val === null ? undefined : val);
 
 const latitudeSchema = z.preprocess(
     emptyToUndefined,
@@ -36,7 +39,7 @@ const longitudeSchema = z.preprocess(
 );
 
 export const createFarmSchema = z.object({
-    associationId: objectId("association id").optional(),
+    associationId: optionalObjectId("association id"),
     tag: z
         .string({ required_error: "Tag is required" })
         .trim()

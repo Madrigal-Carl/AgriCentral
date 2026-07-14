@@ -180,7 +180,9 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
         );
       }
     } catch (err) {
-      setSubmitError(err.message || "Failed to save farmer");
+      setSubmitError(
+        err?.response?.data?.message || err?.message || "Failed to save farmer",
+      );
     }
   };
 
