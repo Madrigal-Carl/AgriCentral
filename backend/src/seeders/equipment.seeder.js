@@ -1,9 +1,9 @@
 import Equipment from "../models/equipment.model.js";
 
 const EQUIPMENT_TO_SEED = [
-    { tag: "EQP-001", name: "Hand Tractor", condition: "good" },
-    { tag: "EQP-002", name: "Water Pump", condition: "excellent" },
-    { tag: "EQP-003", name: "Rice Thresher", condition: "maintenance" },
+    { propertyNumber: "EQP-001", name: "Hand Tractor", condition: "good" },
+    { propertyNumber: "EQP-002", name: "Water Pump", condition: "excellent" },
+    { propertyNumber: "EQP-003", name: "Rice Thresher", condition: "maintenance" },
 ];
 
 export const wipeEquipments = async () => {

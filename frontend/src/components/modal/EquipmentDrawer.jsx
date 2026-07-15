@@ -15,7 +15,9 @@ export function EquipmentDrawer({ row, onClose }) {
         <div className="border-b border-border px-6 py-5">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <div className="label-eyebrow mb-1">Equipment · {row.tag}</div>
+              <div className="label-eyebrow mb-1">
+                Equipment · {row.propertyNumber}
+              </div>
               <h2 className="font-display text-xl tracking-tight text-foreground truncate">
                 {row.name}
               </h2>
@@ -42,9 +44,7 @@ export function EquipmentDrawer({ row, onClose }) {
           <Section icon={Info} title="Basic Information">
             <DefList
               items={[
-                ["Equipment Tag ID", row.tag],
-                // association is now a populated { _id, name } object
-                // (or absent) — display the name, not the object itself.
+                ["Property Number", row.propertyNumber],
                 ["Association", row.association?.name || "—"],
                 ["Name", row.name],
                 ["Condition", condLabel[row.condition]],

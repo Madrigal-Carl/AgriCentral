@@ -6,7 +6,7 @@ const equipmentSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "Association",
         },
-        tag: {
+        propertyNumber: {
             type: String,
             required: true,
             trim: true,
@@ -50,7 +50,7 @@ const equipmentSchema = new mongoose.Schema(
 );
 
 equipmentSchema.index(
-    { tag: 1 },
+    { propertyNumber: 1 },
     { unique: true, partialFilterExpression: { deletedAt: null } }
 );
 

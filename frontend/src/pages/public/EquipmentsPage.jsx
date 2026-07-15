@@ -94,6 +94,7 @@ export function EquipmentsPage() {
       mode: "add",
       data: {
         id: "",
+        propertyNumber: "",
         name: "",
         condition: "good",
         status: "available",
@@ -109,7 +110,8 @@ export function EquipmentsPage() {
       mode: "edit",
       data: {
         _id: row._id,
-        id: row.tag,
+        id: row.propertyNumber,
+        propertyNumber: row.propertyNumber,
         name: row.name,
         condition: row.condition,
         status: row.status,
@@ -220,12 +222,14 @@ export function EquipmentsPage() {
         ]}
         columns={[
           {
-            key: "tag",
-            header: "Equipment Tag ID",
+            key: "propertyNumber",
+            header: "Property Number",
             cell: (r) => (
               <div>
-                <div className="font-semibold text-foreground">{r.name}</div>
-                <div className="text-xs text-secondary">{r.tag}</div>
+                <div className="font-semibold text-foreground">
+                  {r.propertyNumber}
+                </div>
+                <div className="text-xs text-secondary">{r.name}</div>
               </div>
             ),
           },

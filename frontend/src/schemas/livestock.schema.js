@@ -6,11 +6,11 @@ const HEALTH_STATUSES = LIVESTOCK_HEALTH_OPTIONS.map((o) => o.value);
 const objectId = (message) => z.string().regex(/^[0-9a-fA-F]{24}$/, message);
 
 export const livestockFormSchema = z.object({
-    tag: z
-        .string({ required_error: "Tag is required" })
+    propertyNumber: z
+        .string({ required_error: "Property number is required" })
         .trim()
-        .min(1, "Tag is required")
-        .max(30, "Tag must not exceed 30 characters"),
+        .min(1, "Property number is required")
+        .max(30, "Property number must not exceed 30 characters"),
     animal: z
         .string({ required_error: "Animal type is required" })
         .trim()

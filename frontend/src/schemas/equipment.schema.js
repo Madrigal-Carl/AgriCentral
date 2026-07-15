@@ -4,11 +4,11 @@ const CONDITIONS = ["good", "excellent", "damaged", "maintenance"];
 const objectId = (message) => z.string().regex(/^[0-9a-fA-F]{24}$/, message);
 
 export const equipmentFormSchema = z.object({
-    tag: z
-        .string({ required_error: "Tag is required" })
+    propertyNumber: z
+        .string({ required_error: "Property number is required" })
         .trim()
-        .min(1, "Tag is required")
-        .max(30, "Tag must not exceed 30 characters"),
+        .min(1, "Property number is required")
+        .max(30, "Property number must not exceed 30 characters"),
     name: z
         .string({ required_error: "Name is required" })
         .trim()

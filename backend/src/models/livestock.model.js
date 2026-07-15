@@ -6,7 +6,7 @@ const livestockSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "Association",
         },
-        tag: {
+        property_number: {
             type: String,
             required: true,
             trim: true,
@@ -78,7 +78,7 @@ const livestockSchema = new mongoose.Schema(
 );
 
 livestockSchema.index(
-    { tag: 1 },
+    { property_number: 1 },
     { unique: true, partialFilterExpression: { deletedAt: null } }
 );
 

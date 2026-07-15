@@ -16,7 +16,9 @@ export function LivestockDrawer({ row, onClose }) {
         <div className="border-b border-border px-6 py-5">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <div className="label-eyebrow mb-1">Livestock · {row.tag}</div>
+              <div className="label-eyebrow mb-1">
+                Livestock · {row.property_number}
+              </div>
               <h2 className="font-display text-xl tracking-tight text-foreground truncate">
                 {row.animal} · {row.breed}
               </h2>
@@ -47,7 +49,7 @@ export function LivestockDrawer({ row, onClose }) {
           <Section icon={Info} title="Basic Information">
             <DefList
               items={[
-                ["Livestock Tag ID", row.tag],
+                ["Property Number", row.property_number],
                 // association is now a populated { _id, name } object
                 // (or absent) — display the name, not the object itself.
                 ["Association", row.association?.name || "—"],

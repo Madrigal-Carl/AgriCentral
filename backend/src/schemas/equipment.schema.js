@@ -9,11 +9,11 @@ const objectId = (message) =>
 export const createEquipmentSchema = z
     .object({
         associationId: objectId("Invalid association id").optional(),
-        tag: z
-            .string({ required_error: "Tag is required" })
+        propertyNumber: z
+            .string({ required_error: "Property number is required" })
             .trim()
-            .min(1, "Tag is required")
-            .max(30, "Tag must not exceed 30 characters")
+            .min(1, "Property number is required")
+            .max(30, "Property number must not exceed 30 characters")
             .toUpperCase(),
         name: z
             .string({ required_error: "Name is required" })
@@ -32,11 +32,11 @@ export const createEquipmentSchema = z
 export const updateEquipmentSchema = z
     .object({
         associationId: objectId("Invalid association id").optional(),
-        tag: z
+        propertyNumber: z
             .string()
             .trim()
-            .min(1, "Tag is required")
-            .max(30, "Tag must not exceed 30 characters")
+            .min(1, "Property number is required")
+            .max(30, "Property number must not exceed 30 characters")
             .toUpperCase()
             .optional(),
         name: z

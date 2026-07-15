@@ -17,10 +17,10 @@ const resolveAssociationId = async (associationId, authenticatedUserId) => {
 export const createEquipment = async (data, authenticatedUserId) => {
     const { associationId, ...equipmentData } = data;
 
-    const existing = await Equipment.findOne({ tag: equipmentData.tag, deletedAt: null });
+    const existing = await Equipment.findOne({ propertyNumber: equipmentData.propertyNumber, deletedAt: null });
 
     if (existing) {
-        throw new Error("Equipment with this tag already exists");
+        throw new Error("Equipment with this property number already exists");
     }
 
     const resolvedAssociationId = await resolveAssociationId(
@@ -37,7 +37,7 @@ export const createEquipment = async (data, authenticatedUserId) => {
         entityType: "equipment",
         entityId: equipment._id,
         association: equipment.association,
-        message: `${equipment.name} (${equipment.tag}) has been added to the equipment inventory.`,
+        message: `${equipment.name} (${equipment.propertyNumber}) has been added to the equipment inventory.`,
     });
 
     if (equipment.association) {
@@ -47,7 +47,7 @@ export const createEquipment = async (data, authenticatedUserId) => {
             entityType: "equipment",
             entityId: equipment._id,
             association: equipment.association,
-            message: `${equipment.name} (${equipment.tag}) has been assigned to ${association?.name ?? "an association"}.`,
+            message: `${equipment.name} (${equipment.propertyNumber}) has been assigned to ${association?.name ?? "an association"}.`,
         });
     }
 
@@ -59,14 +59,14 @@ export const createEquipment = async (data, authenticatedUserId) => {
             entityType: "equipment",
             entityId: equipment._id,
             association: equipment.association,
-            message: `${equipment.name} (${equipment.tag}) has been assigned to ${farmerName}.`,
+            message: `${equipment.name} (${equipment.propertyNumber}) has been assigned to ${farmerName}.`,
         });
 
         await createLog({
             entityType: "farmer",
             entityId: equipment.assignedFarmer,
             association: equipment.association,
-            message: `${farmer ? farmer.getFullName() : "The farmer"} has received ${equipment.name} (${equipment.tag}).`,
+            message: `${farmer ? farmer.getFullName() : "The farmer"} has received ${equipment.name} (${equipment.propertyNumber}).`,
         });
     }
 
@@ -84,15 +84,15 @@ export const updateEquipment = async (id, data) => {
         equipmentData.association = associationId;
     }
 
-    if (equipmentData.tag) {
+    if (equipmentData.propertyNumber) {
         const existing = await Equipment.findOne({
-            tag: equipmentData.tag,
+            propertyNumber: equipmentData.propertyNumber,
             _id: { $ne: id },
             deletedAt: null,
         });
 
         if (existing) {
-            throw new Error("Equipment with this tag already exists");
+            throw new Error("Equipment with this property number already exists");
         }
     }
 
@@ -101,7 +101,7 @@ export const updateEquipment = async (id, data) => {
         equipmentData.condition !== undefined ||
         equipmentData.association !== undefined;
     const previousEquipment = needsPrevious
-        ? await Equipment.findOne({ _id: id, deletedAt: null }).select("assignedFarmer condition name tag association")
+        ? await Equipment.findOne({ _id: id, deletedAt: null }).select("assignedFarmer condition name propertyNumber association")
         : null;
 
     if (equipmentData.assignedFarmer !== undefined && equipmentData.status === undefined) {
@@ -141,14 +141,14 @@ export const updateEquipment = async (id, data) => {
                 entityType: "equipment",
                 entityId: equipment._id,
                 association: equipment.association._id ?? equipment.association,
-                message: `${equipment.name} (${equipment.tag}) has been assigned to ${association?.name ?? "an association"}.`,
+                message: `${equipment.name} (${equipment.propertyNumber}) has been assigned to ${association?.name ?? "an association"}.`,
             });
         } else {
             await createLog({
                 entityType: "equipment",
                 entityId: equipment._id,
                 association: previousEquipment?.association,
-                message: `${equipment.name} (${equipment.tag}) has been removed from its association.`,
+                message: `${equipment.name} (${equipment.propertyNumber}) has been removed from its association.`,
             });
         }
     }
@@ -164,14 +164,14 @@ export const updateEquipment = async (id, data) => {
                 entityType: "equipment",
                 entityId: equipment._id,
                 association: equipment.association?._id ?? equipment.association,
-                message: `${equipment.name} (${equipment.tag}) has been assigned to ${assignedName}.`,
+                message: `${equipment.name} (${equipment.propertyNumber}) has been assigned to ${assignedName}.`,
             });
 
             await createLog({
                 entityType: "farmer",
                 entityId: equipment.assignedFarmer._id,
                 association: equipment.association?._id ?? equipment.association,
-                message: `${equipment.assignedFarmer.getFullName?.() ?? "The farmer"} has received ${equipment.name} (${equipment.tag}).`,
+                message: `${equipment.assignedFarmer.getFullName?.() ?? "The farmer"} has received ${equipment.name} (${equipment.propertyNumber}).`,
             });
         } else {
             const previousFarmer = previousEquipment?.assignedFarmer
@@ -182,7 +182,7 @@ export const updateEquipment = async (id, data) => {
                 entityType: "equipment",
                 entityId: equipment._id,
                 association: equipment.association?._id ?? equipment.association,
-                message: `${equipment.name} (${equipment.tag}) has been returned.`,
+                message: `${equipment.name} (${equipment.propertyNumber}) has been returned.`,
             });
 
             if (previousFarmer) {
@@ -190,7 +190,7 @@ export const updateEquipment = async (id, data) => {
                     entityType: "farmer",
                     entityId: previousEquipment.assignedFarmer,
                     association: equipment.association?._id ?? equipment.association,
-                    message: `${previousFarmer.getFullName()} has returned ${equipment.name} (${equipment.tag}).`,
+                    message: `${previousFarmer.getFullName()} has returned ${equipment.name} (${equipment.propertyNumber}).`,
                 });
             }
         }
@@ -204,7 +204,7 @@ export const updateEquipment = async (id, data) => {
             entityType: "equipment",
             entityId: equipment._id,
             association: equipment.association?._id ?? equipment.association,
-            message: `${equipment.name} (${equipment.tag})'s condition has been changed from ${previousEquipment?.condition ?? "unknown"} to ${equipment.condition}.`,
+            message: `${equipment.name} (${equipment.propertyNumber})'s condition has been changed from ${previousEquipment?.condition ?? "unknown"} to ${equipment.condition}.`,
         });
     }
 
@@ -236,14 +236,14 @@ export const restoreEquipment = async (id) => {
         throw notFoundError;
     }
 
-    const tagTaken = await Equipment.findOne({
+    const propertyNumberTaken = await Equipment.findOne({
         _id: { $ne: id },
-        tag: toRestore.tag,
+        propertyNumber: toRestore.propertyNumber,
         deletedAt: null,
     });
 
-    if (tagTaken) {
-        const conflictError = new Error("An active equipment with this tag already exists");
+    if (propertyNumberTaken) {
+        const conflictError = new Error("An active equipment with this property number already exists");
         conflictError.statusCode = 409;
         throw conflictError;
     }

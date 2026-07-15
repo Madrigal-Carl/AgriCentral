@@ -10,11 +10,11 @@ const objectId = (message) =>
 export const createLivestockSchema = z
     .object({
         associationId: objectId("Invalid association id").optional(),
-        tag: z
-            .string({ required_error: "Tag is required" })
+        property_number: z
+            .string({ required_error: "Property number is required" })
             .trim()
-            .min(1, "Tag is required")
-            .max(30, "Tag must not exceed 30 characters")
+            .min(1, "Property number is required")
+            .max(30, "Property number must not exceed 30 characters")
             .toUpperCase(),
         animal: z
             .string({ required_error: "Animal is required" })
@@ -49,11 +49,11 @@ export const createLivestockSchema = z
 export const updateLivestockSchema = z
     .object({
         associationId: objectId("Invalid association id").optional(),
-        tag: z
+        property_number: z
             .string()
             .trim()
-            .min(1, "Tag is required")
-            .max(30, "Tag must not exceed 30 characters")
+            .min(1, "Property number is required")
+            .max(30, "Property number must not exceed 30 characters")
             .toUpperCase()
             .optional(),
         animal: z
