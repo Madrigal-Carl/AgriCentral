@@ -231,8 +231,8 @@ export function FarmMapsPage() {
         f.latitude != null && f.longitude != null
           ? { lat: Number(f.latitude), lng: Number(f.longitude) }
           : null,
-      farmers: (f.assignedFarmers || []).map((farmer) =>
-        typeof farmer === "string" ? farmer : farmer.fullName,
+      farmers: (f.assignedFarmers || []).map((a) =>
+        typeof a.farmer === "string" ? a.farmer : a.farmer?.fullName,
       ),
       crops: (f.crops || []).map((c) => ({
         name:
