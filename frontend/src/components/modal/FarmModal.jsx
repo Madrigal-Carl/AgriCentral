@@ -98,7 +98,6 @@ export function FarmModal({
   } = useForm({
     resolver: zodResolver(isEdit ? farmUpdateSchema : farmFormSchema),
     defaultValues: {
-      tag: "",
       address: "",
       size: "",
       assignedFarmers: [],
@@ -261,21 +260,17 @@ export function FarmModal({
         )}
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Farm Tag ID" error={errors.tag?.message}>
-            <TextInput {...register("tag")} placeholder="FM-001" />
+          <Field label="Address" full error={errors.address?.message}>
+            <TextInput {...register("address")} placeholder="Nakuru, KE" />
           </Field>
 
-          <Field label="Size (hectares)" error={errors.size?.message}>
+          <Field label="Size (hectares)" full error={errors.size?.message}>
             <TextInput
               type="number"
               step="0.01"
               {...register("size")}
               placeholder="2.5"
             />
-          </Field>
-
-          <Field label="Address" full error={errors.address?.message}>
-            <TextInput {...register("address")} placeholder="Nakuru, KE" />
           </Field>
 
           {isFar ? (

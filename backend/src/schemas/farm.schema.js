@@ -63,12 +63,6 @@ const sizeSchema = z.preprocess(
 
 export const createFarmSchema = z.object({
     associationId: optionalObjectId("association id"),
-    tag: z
-        .string({ required_error: "Tag is required" })
-        .trim()
-        .min(1, "Tag is required")
-        .max(30, "Tag must not exceed 30 characters")
-        .transform((v) => v.toUpperCase()),
     address: z
         .string({ required_error: "Address is required" })
         .trim()

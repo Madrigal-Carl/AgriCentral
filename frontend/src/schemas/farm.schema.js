@@ -67,11 +67,6 @@ const sizeSchema = z
     .refine((num) => num === undefined || num >= 0, "Size must not be negative");
 
 export const farmFormSchema = z.object({
-    tag: z
-        .string({ required_error: "Farm tag is required" })
-        .trim()
-        .min(1, "Farm tag is required")
-        .max(30, "Farm tag must not exceed 30 characters"),
     address: z
         .string({ required_error: "Address is required" })
         .trim()

@@ -32,7 +32,7 @@ export const seedEquipments = async ({ farmers } = {}) => {
         });
 
         equipments.push(equipment);
-        console.log(`  Seeded: ${equipment.name} (${equipment.tag}) -> ${farmer.getFullName()}`);
+        console.log(`  Seeded: ${equipment.name} (${equipment.propertyNumber}) -> ${farmer.getFullName()}`);
     }
 
     return { equipments };

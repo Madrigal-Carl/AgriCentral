@@ -32,7 +32,7 @@ export const seedLogs = async ({ farmers = [], farms = [], livestocks = [], equi
             entityType: "equipment",
             entityId: e._id,
             association: e.association,
-            message: `${e.name} (${e.tag}) has been added to the equipment inventory.`,
+            message: `${e.name} (${e.propertyNumber}) has been added to the equipment inventory.`,
         })),
     ];
 

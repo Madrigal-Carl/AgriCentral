@@ -2,7 +2,6 @@ import Farm from "../models/farm.model.js";
 
 const FARMS_TO_SEED = [
     {
-        tag: "FARM-001",
         address: "Sitio Malinis, Brgy. San Isidro, Nueva Ecija",
         size: 3.5,
         latitude: 15.5784,
@@ -12,7 +11,6 @@ const FARMS_TO_SEED = [
         cropIndexes: [0, 1],
     },
     {
-        tag: "FARM-002",
         address: "Sitio Bagong Buhay, Brgy. Mabuhay, Bulacan",
         size: 2.75,
         latitude: 14.7943,
@@ -51,7 +49,6 @@ export const seedFarms = async ({ associations, farmers, crops } = {}) => {
 
         const farm = await Farm.create({
             association: association._id,
-            tag: data.tag,
             address: data.address,
             size: data.size,
             assignedFarmers,

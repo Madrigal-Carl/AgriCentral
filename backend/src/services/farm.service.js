@@ -115,14 +115,6 @@ const logFarmerAssignmentChanges = async ({ farm, changes }) => {
 export const createFarm = async (data, authenticatedUserId) => {
     const { associationId, ...farmData } = data;
 
-    const existing = await Farm.findOne({ tag: farmData.tag, deletedAt: null });
-
-    if (existing) {
-        const error = new Error("A farm with this tag already exists");
-        error.statusCode = 409;
-        throw error;
-    }
-
     const resolvedAssociationId = await resolveAssociationId(
         associationId,
         authenticatedUserId,
@@ -173,16 +165,6 @@ export const updateFarm = async (id, data) => {
     const { associationId, ...farmData } = data;
     if (associationId !== undefined) {
         farmData.association = associationId;
-    }
-
-    if (farmData.tag) {
-        const existing = await Farm.findOne({ tag: farmData.tag, _id: { $ne: id }, deletedAt: null });
-
-        if (existing) {
-            const error = new Error("A farm with this tag already exists");
-            error.statusCode = 409;
-            throw error;
-        }
     }
 
     const needsPrevious = farmData.crops || farmData.assignedFarmers;

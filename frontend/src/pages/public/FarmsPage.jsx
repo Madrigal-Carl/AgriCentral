@@ -18,7 +18,6 @@ import { useCrops } from "@/hooks/useCrops";
 
 const blankForm = {
   id: "",
-  tag: "",
   address: "",
   size: "",
   latitude: "",
@@ -133,7 +132,6 @@ export function FarmsPage() {
     setSubmitError(null);
     try {
       const payload = {
-        tag: values.tag,
         address: values.address,
         size: Number(values.size),
         latitude: Number(values.latitude),

@@ -102,4 +102,26 @@ farmSchema.index(
     { unique: true, partialFilterExpression: { deletedAt: null } }
 );
 
+// Auto-generates a sequential tag (FM-001, FM-002, ...) for every new
+// farm, regardless of caller (API service, seeder, etc). Runs before
+// validation so the required `tag` field is already populated by the time
+// the required-field check happens. Scans ALL farms (not just active ones)
+// so a soft-deleted farm's number is never reused.
+farmSchema.pre("validate", async function () {
+    if (!this.isNew || this.tag) return;
+
+    const existing = await this.constructor
+        .find({ tag: { $regex: /^FARM-\d+$/ } })
+        .select("tag")
+        .lean();
+
+    const maxNumber = existing.reduce((max, doc) => {
+        const match = doc.tag.match(/^FARM-(\d+)$/);
+        const num = match ? parseInt(match[1], 10) : 0;
+        return num > max ? num : max;
+    }, 0);
+
+    this.tag = `FARM-${String(maxNumber + 1).padStart(3, "0")}`;
+});
+
 export default mongoose.model("Farm", farmSchema);
