@@ -23,7 +23,7 @@ export function LivestockModal({ mode, initial, onClose, onSave }) {
   } = useForm({
     resolver: zodResolver(isEdit ? livestockUpdateSchema : livestockFormSchema),
     defaultValues: {
-      tag: initial.tag,
+      propertyNumber: initial.propertyNumber,
       animal: initial.animal,
       breed: initial.breed,
       gender: initial.gender,
@@ -71,7 +71,7 @@ export function LivestockModal({ mode, initial, onClose, onSave }) {
     // the payload boundary, so this is the single source of truth for
     // the name mapping.
     const payload = {
-      tag: values.tag,
+      propertyNumber: values.propertyNumber,
       animal: values.animal,
       breed: values.breed,
       gender: values.gender,
@@ -149,8 +149,15 @@ export function LivestockModal({ mode, initial, onClose, onSave }) {
         onSubmit={handleSubmit(onSubmit)}
         className="grid grid-cols-1 gap-4 sm:grid-cols-2"
       >
-        <Field label="Livestock Tag ID" error={errors.tag?.message} full>
-          <TextInput {...register("tag")} placeholder="e.g. Cow #A-204" />
+        <Field
+          label="Property Number"
+          error={errors.propertyNumber?.message}
+          full
+        >
+          <TextInput
+            {...register("propertyNumber")}
+            placeholder="e.g. LVS-001"
+          />
         </Field>
         <Field label="Animal Type" error={errors.animal?.message} full>
           <TextInput

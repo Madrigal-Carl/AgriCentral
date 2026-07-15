@@ -10,7 +10,7 @@ const objectId = (message) =>
 export const createLivestockSchema = z
     .object({
         associationId: objectId("Invalid association id").optional(),
-        property_number: z
+        propertyNumber: z
             .string({ required_error: "Property number is required" })
             .trim()
             .min(1, "Property number is required")
@@ -49,7 +49,7 @@ export const createLivestockSchema = z
 export const updateLivestockSchema = z
     .object({
         associationId: objectId("Invalid association id").optional(),
-        property_number: z
+        propertyNumber: z
             .string()
             .trim()
             .min(1, "Property number is required")

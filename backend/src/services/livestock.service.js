@@ -17,7 +17,7 @@ const resolveAssociationId = async (associationId, authenticatedUserId) => {
 export const createLivestock = async (data, authenticatedUserId) => {
     const { associationId, ...livestockData } = data;
 
-    const existing = await Livestock.findOne({ property_number: livestockData.property_number, deletedAt: null });
+    const existing = await Livestock.findOne({ propertyNumber: livestockData.propertyNumber, deletedAt: null });
 
     if (existing) {
         throw new Error("Livestock with this property number already exists");
@@ -37,7 +37,7 @@ export const createLivestock = async (data, authenticatedUserId) => {
         entityType: "livestock",
         entityId: livestock._id,
         association: livestock.association,
-        message: `${livestock.animal} (${livestock.property_number}) has been added to the livestock inventory.`,
+        message: `${livestock.animal} (${livestock.propertyNumber}) has been added to the livestock inventory.`,
     });
 
     if (livestock.association) {
@@ -47,7 +47,7 @@ export const createLivestock = async (data, authenticatedUserId) => {
             entityType: "livestock",
             entityId: livestock._id,
             association: livestock.association,
-            message: `${livestock.animal} (${livestock.property_number}) has been assigned to ${association?.name ?? "an association"}.`,
+            message: `${livestock.animal} (${livestock.propertyNumber}) has been assigned to ${association?.name ?? "an association"}.`,
         });
     }
 
@@ -59,14 +59,14 @@ export const createLivestock = async (data, authenticatedUserId) => {
             entityType: "livestock",
             entityId: livestock._id,
             association: livestock.association,
-            message: `${livestock.animal} (${livestock.property_number}) has been assigned to ${farmerName}.`,
+            message: `${livestock.animal} (${livestock.propertyNumber}) has been assigned to ${farmerName}.`,
         });
 
         await createLog({
             entityType: "farmer",
             entityId: livestock.assignedFarmer,
             association: livestock.association,
-            message: `${farmer ? farmer.getFullName() : "The farmer"} has received ${livestock.animal} (${livestock.property_number}).`,
+            message: `${farmer ? farmer.getFullName() : "The farmer"} has received ${livestock.animal} (${livestock.propertyNumber}).`,
         });
     }
 
@@ -83,9 +83,9 @@ export const updateLivestock = async (id, data) => {
         livestockData.association = associationId;
     }
 
-    if (livestockData.property_number) {
+    if (livestockData.propertyNumber) {
         const existing = await Livestock.findOne({
-            property_number: livestockData.property_number,
+            propertyNumber: livestockData.propertyNumber,
             _id: { $ne: id },
             deletedAt: null,
         });
@@ -100,7 +100,7 @@ export const updateLivestock = async (id, data) => {
         livestockData.condition !== undefined ||
         livestockData.association !== undefined;
     const previousLivestock = needsPrevious
-        ? await Livestock.findOne({ _id: id, deletedAt: null }).select("assignedFarmer condition animal property_number association")
+        ? await Livestock.findOne({ _id: id, deletedAt: null }).select("assignedFarmer condition animal propertyNumber association")
         : null;
 
     if (livestockData.assignedFarmer !== undefined && livestockData.status === undefined) {
@@ -140,14 +140,14 @@ export const updateLivestock = async (id, data) => {
                 entityType: "livestock",
                 entityId: livestock._id,
                 association: livestock.association._id ?? livestock.association,
-                message: `${livestock.animal} (${livestock.property_number}) has been assigned to ${association?.name ?? "an association"}.`,
+                message: `${livestock.animal} (${livestock.propertyNumber}) has been assigned to ${association?.name ?? "an association"}.`,
             });
         } else {
             await createLog({
                 entityType: "livestock",
                 entityId: livestock._id,
                 association: previousLivestock?.association,
-                message: `${livestock.animal} (${livestock.property_number}) has been removed from its association.`,
+                message: `${livestock.animal} (${livestock.propertyNumber}) has been removed from its association.`,
             });
         }
     }
@@ -163,14 +163,14 @@ export const updateLivestock = async (id, data) => {
                 entityType: "livestock",
                 entityId: livestock._id,
                 association: livestock.association?._id ?? livestock.association,
-                message: `${livestock.animal} (${livestock.property_number}) has been assigned to ${assignedName}.`,
+                message: `${livestock.animal} (${livestock.propertyNumber}) has been assigned to ${assignedName}.`,
             });
 
             await createLog({
                 entityType: "farmer",
                 entityId: livestock.assignedFarmer._id,
                 association: livestock.association?._id ?? livestock.association,
-                message: `${livestock.assignedFarmer.getFullName?.() ?? "The farmer"} has received ${livestock.animal} (${livestock.property_number}).`,
+                message: `${livestock.assignedFarmer.getFullName?.() ?? "The farmer"} has received ${livestock.animal} (${livestock.propertyNumber}).`,
             });
         } else {
             const previousFarmer = previousLivestock?.assignedFarmer
@@ -181,7 +181,7 @@ export const updateLivestock = async (id, data) => {
                 entityType: "livestock",
                 entityId: livestock._id,
                 association: livestock.association?._id ?? livestock.association,
-                message: `${livestock.animal} (${livestock.property_number}) has been returned.`,
+                message: `${livestock.animal} (${livestock.propertyNumber}) has been returned.`,
             });
 
             if (previousFarmer) {
@@ -189,7 +189,7 @@ export const updateLivestock = async (id, data) => {
                     entityType: "farmer",
                     entityId: previousLivestock.assignedFarmer,
                     association: livestock.association?._id ?? livestock.association,
-                    message: `${previousFarmer.getFullName()} has returned ${livestock.animal} (${livestock.property_number}).`,
+                    message: `${previousFarmer.getFullName()} has returned ${livestock.animal} (${livestock.propertyNumber}).`,
                 });
             }
         }
@@ -203,7 +203,7 @@ export const updateLivestock = async (id, data) => {
             entityType: "livestock",
             entityId: livestock._id,
             association: livestock.association?._id ?? livestock.association,
-            message: `${livestock.animal} (${livestock.property_number})'s condition has been changed from ${previousLivestock?.condition ?? "unknown"} to ${livestock.condition}.`,
+            message: `${livestock.animal} (${livestock.propertyNumber})'s condition has been changed from ${previousLivestock?.condition ?? "unknown"} to ${livestock.condition}.`,
         });
     }
 
@@ -237,7 +237,7 @@ export const restoreLivestock = async (id) => {
 
     const propertyNumberTaken = await Livestock.findOne({
         _id: { $ne: id },
-        property_number: toRestore.property_number,
+        propertyNumber: toRestore.propertyNumber,
         deletedAt: null,
     });
 

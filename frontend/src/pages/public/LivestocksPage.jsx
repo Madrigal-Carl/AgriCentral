@@ -97,7 +97,7 @@ export function LivestocksPage() {
       mode: "add",
       data: {
         id: "",
-        property_number: "",
+        propertyNumber: "",
         animal: "",
         breed: "",
         gender: "male",
@@ -117,8 +117,8 @@ export function LivestocksPage() {
       mode: "edit",
       data: {
         _id: row._id,
-        id: row.property_number,
-        property_number: row.property_number,
+        id: row.propertyNumber,
+        propertyNumber: row.propertyNumber,
         animal: row.animal,
         breed: row.breed,
         gender: row.gender,
@@ -233,12 +233,12 @@ export function LivestocksPage() {
         ]}
         columns={[
           {
-            key: "property_number",
+            key: "propertyNumber",
             header: "Property Number",
             cell: (r) => (
               <div>
                 <div className="font-semibold text-foreground">
-                  {r.property_number}
+                  {r.propertyNumber}
                 </div>
                 <div className="text-xs text-secondary">
                   {r.animal} · {r.breed}

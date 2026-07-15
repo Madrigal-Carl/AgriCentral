@@ -26,7 +26,7 @@ export const seedLogs = async ({ farmers = [], farms = [], livestocks = [], equi
             entityType: "livestock",
             entityId: l._id,
             association: l.association,
-            message: `${l.animal} (${l.property_number}) has been added to the livestock inventory.`,
+            message: `${l.animal} (${l.propertyNumber}) has been added to the livestock inventory.`,
         })),
         ...equipments.map((e) => ({
             entityType: "equipment",

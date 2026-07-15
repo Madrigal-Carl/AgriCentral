@@ -23,7 +23,7 @@ export function EquipmentModal({ mode, initial, onClose, onSave }) {
   } = useForm({
     resolver: zodResolver(isEdit ? equipmentUpdateSchema : equipmentFormSchema),
     defaultValues: {
-      tag: initial.id,
+      propertyNumber: initial.id,
       name: initial.name,
       condition: initial.condition,
       associationId: initial.associationId || "",
@@ -62,7 +62,7 @@ export function EquipmentModal({ mode, initial, onClose, onSave }) {
     const derivedStatus = initial.farmer ? "assigned" : "available";
 
     const payload = {
-      tag: values.tag,
+      propertyNumber: values.propertyNumber,
       name: values.name,
       condition: values.condition,
       status: derivedStatus,
@@ -134,8 +134,8 @@ export function EquipmentModal({ mode, initial, onClose, onSave }) {
         onSubmit={handleSubmit(onSubmit)}
         className="space-y-4"
       >
-        <Field label="Equipment Tag ID" error={errors.tag?.message}>
-          <TextInput {...register("tag")} placeholder="EQ-001" />
+        <Field label="Property Number" error={errors.propertyNumber?.message}>
+          <TextInput {...register("propertyNumber")} placeholder="EQ-001" />
         </Field>
         <Field label="Equipment Name" error={errors.name?.message}>
           <TextInput
