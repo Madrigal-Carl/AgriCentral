@@ -2,7 +2,7 @@ import Livestock from "../models/livestock.model.js";
 
 const LIVESTOCK_TO_SEED = [
     {
-        tag: "LVS-001",
+        property_number: "LVS-001",
         animal: "Carabao",
         breed: "Native",
         gender: "male",
@@ -12,7 +12,7 @@ const LIVESTOCK_TO_SEED = [
         condition: "healthy",
     },
     {
-        tag: "LVS-002",
+        property_number: "LVS-002",
         animal: "Cattle",
         breed: "Brahman",
         gender: "female",
@@ -22,7 +22,7 @@ const LIVESTOCK_TO_SEED = [
         condition: "healthy",
     },
     {
-        tag: "LVS-003",
+        property_number: "LVS-003",
         animal: "Goat",
         breed: "Boer",
         gender: "female",
@@ -59,7 +59,7 @@ export const seedLivestocks = async ({ farmers } = {}) => {
         });
 
         livestocks.push(livestock);
-        console.log(`  Seeded: ${livestock.animal} (${livestock.tag}) -> ${farmer.getFullName()}`);
+        console.log(`  Seeded: ${livestock.animal} (${livestock.property_number}) -> ${farmer.getFullName()}`);
     }
 
     return { livestocks };
