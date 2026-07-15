@@ -4,6 +4,8 @@ import User from "../models/user.model.js";
 import Association from "../models/association.model.js";
 import { createLog, getLogsForEntities } from "./log.service.js";
 
+const ASSOCIATION_POPULATE = { path: "association", select: "name" };
+
 const resolveAssociationId = async (associationId, authenticatedUserId) => {
     if (associationId) return associationId;
     if (!authenticatedUserId) return undefined;
@@ -50,24 +52,28 @@ export const createEquipment = async (data, authenticatedUserId) => {
     }
 
     if (equipment.assignedFarmer) {
-        const farmer = await Farmer.findById(equipment.assignedFarmer).select("fullName");
+        const farmer = await Farmer.findById(equipment.assignedFarmer).select("firstName lastName");
+        const farmerName = farmer?.getFullName() ?? "a farmer";
 
         await createLog({
             entityType: "equipment",
             entityId: equipment._id,
             association: equipment.association,
-            message: `${equipment.name} (${equipment.tag}) has been assigned to ${farmer?.fullName ?? "a farmer"}.`,
+            message: `${equipment.name} (${equipment.tag}) has been assigned to ${farmerName}.`,
         });
 
         await createLog({
             entityType: "farmer",
             entityId: equipment.assignedFarmer,
             association: equipment.association,
-            message: `${farmer?.fullName ?? "The farmer"} has received ${equipment.name} (${equipment.tag}).`,
+            message: `${farmer ? farmer.getFullName() : "The farmer"} has received ${equipment.name} (${equipment.tag}).`,
         });
     }
 
-    await equipment.populate("assignedFarmer", "fullName");
+    await equipment.populate([
+        { path: "assignedFarmer", select: "firstName lastName" },
+        ASSOCIATION_POPULATE,
+    ]);
 
     return equipment;
 };
@@ -116,7 +122,7 @@ export const updateEquipment = async (id, data) => {
             ...(Object.keys(unset).length ? { $unset: unset } : {}),
         },
         { new: true, runValidators: true },
-    ).populate("assignedFarmer", "fullName");
+    ).populate([{ path: "assignedFarmer", select: "firstName lastName" }, ASSOCIATION_POPULATE]);
 
     if (!equipment) {
         const notFoundError = new Error("Equipment not found");
@@ -126,15 +132,15 @@ export const updateEquipment = async (id, data) => {
 
     if (
         equipmentData.association !== undefined &&
-        String(previousEquipment?.association ?? "") !== String(equipment.association ?? "")
+        String(previousEquipment?.association ?? "") !== String(equipment.association?._id ?? equipment.association ?? "")
     ) {
         if (equipment.association) {
-            const association = await Association.findById(equipment.association).select("name");
+            const association = await Association.findById(equipment.association._id ?? equipment.association).select("name");
 
             await createLog({
                 entityType: "equipment",
                 entityId: equipment._id,
-                association: equipment.association,
+                association: equipment.association._id ?? equipment.association,
                 message: `${equipment.name} (${equipment.tag}) has been assigned to ${association?.name ?? "an association"}.`,
             });
         } else {
@@ -152,28 +158,30 @@ export const updateEquipment = async (id, data) => {
         String(previousEquipment?.assignedFarmer ?? "") !== String(equipment.assignedFarmer?._id ?? "")
     ) {
         if (equipment.assignedFarmer) {
+            const assignedName = equipment.assignedFarmer.getFullName?.() ?? "a farmer";
+
             await createLog({
                 entityType: "equipment",
                 entityId: equipment._id,
-                association: equipment.association,
-                message: `${equipment.name} (${equipment.tag}) has been assigned to ${equipment.assignedFarmer?.fullName ?? "a farmer"}.`,
+                association: equipment.association?._id ?? equipment.association,
+                message: `${equipment.name} (${equipment.tag}) has been assigned to ${assignedName}.`,
             });
 
             await createLog({
                 entityType: "farmer",
                 entityId: equipment.assignedFarmer._id,
-                association: equipment.association,
-                message: `${equipment.assignedFarmer?.fullName ?? "The farmer"} has received ${equipment.name} (${equipment.tag}).`,
+                association: equipment.association?._id ?? equipment.association,
+                message: `${equipment.assignedFarmer.getFullName?.() ?? "The farmer"} has received ${equipment.name} (${equipment.tag}).`,
             });
         } else {
             const previousFarmer = previousEquipment?.assignedFarmer
-                ? await Farmer.findById(previousEquipment.assignedFarmer).select("fullName")
+                ? await Farmer.findById(previousEquipment.assignedFarmer).select("firstName lastName")
                 : null;
 
             await createLog({
                 entityType: "equipment",
                 entityId: equipment._id,
-                association: equipment.association,
+                association: equipment.association?._id ?? equipment.association,
                 message: `${equipment.name} (${equipment.tag}) has been returned.`,
             });
 
@@ -181,8 +189,8 @@ export const updateEquipment = async (id, data) => {
                 await createLog({
                     entityType: "farmer",
                     entityId: previousEquipment.assignedFarmer,
-                    association: equipment.association,
-                    message: `${previousFarmer.fullName} has returned ${equipment.name} (${equipment.tag}).`,
+                    association: equipment.association?._id ?? equipment.association,
+                    message: `${previousFarmer.getFullName()} has returned ${equipment.name} (${equipment.tag}).`,
                 });
             }
         }
@@ -195,7 +203,7 @@ export const updateEquipment = async (id, data) => {
         await createLog({
             entityType: "equipment",
             entityId: equipment._id,
-            association: equipment.association,
+            association: equipment.association?._id ?? equipment.association,
             message: `${equipment.name} (${equipment.tag})'s condition has been changed from ${previousEquipment?.condition ?? "unknown"} to ${equipment.condition}.`,
         });
     }
@@ -287,7 +295,7 @@ export const getEquipments = async ({
 
     if (all) {
         const equipments = await Equipment.find(filter)
-            .populate("assignedFarmer", "fullName")
+            .populate([{ path: "assignedFarmer", select: "firstName lastName" }, ASSOCIATION_POPULATE])
             .sort({ createdAt: -1 });
 
         return {
@@ -300,7 +308,7 @@ export const getEquipments = async ({
 
     const [equipments, total] = await Promise.all([
         Equipment.find(filter)
-            .populate("assignedFarmer", "fullName")
+            .populate([{ path: "assignedFarmer", select: "firstName lastName" }, ASSOCIATION_POPULATE])
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit),

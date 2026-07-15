@@ -26,13 +26,13 @@ export const createCrop = async (data, authenticatedUserId) => {
     });
 
     // assignedFarmer is required at creation, so this always fires.
-    const farmer = await Farmer.findById(crop.assignedFarmer).select("fullName");
+    const farmer = await Farmer.findById(crop.assignedFarmer).select("firstName lastName");
     if (farmer) {
         await createLog({
             entityType: "farmer",
             entityId: farmer._id,
             association: crop.association,
-            message: `${farmer.fullName} received a new crop batch: ${crop.name} (${crop.kilo} kg).`,
+            message: `${farmer.getFullName()} received a new crop batch: ${crop.name} (${crop.kilo} kg).`,
         });
     }
 
@@ -67,13 +67,13 @@ export const updateCrop = async (id, data) => {
         cropData.assignedFarmer !== undefined &&
         String(previousCrop?.assignedFarmer ?? "") !== String(crop.assignedFarmer)
     ) {
-        const farmer = await Farmer.findById(crop.assignedFarmer).select("fullName");
+        const farmer = await Farmer.findById(crop.assignedFarmer).select("firstName lastName");
         if (farmer) {
             await createLog({
                 entityType: "farmer",
                 entityId: farmer._id,
                 association: crop.association,
-                message: `${farmer.fullName} received a new crop batch: ${crop.name} (${crop.quantity} kg).`,
+                message: `${farmer.getFullName()} received a new crop batch: ${crop.name} (${crop.quantity} kg).`,
             });
         }
     }

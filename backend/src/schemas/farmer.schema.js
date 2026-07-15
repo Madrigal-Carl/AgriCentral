@@ -25,21 +25,32 @@ export const createFarmerSchema = z.object({
         .string()
         .regex(/^[0-9a-fA-F]{24}$/, "Invalid association id")
         .optional(),
-    fullName: z
-        .string({ required_error: "Full name is required" })
+    lastName: z
+        .string({ required_error: "Last name is required" })
         .trim()
-        .min(2, "Full name must be at least 2 characters")
-        .max(100, "Full name must not exceed 100 characters"),
+        .min(1, "Last name must be at least 1 character")
+        .max(50, "Last name must not exceed 50 characters"),
+    firstName: z
+        .string({ required_error: "First name is required" })
+        .trim()
+        .min(1, "First name must be at least 1 character")
+        .max(50, "First name must not exceed 50 characters"),
+    middleName: z
+        .string()
+        .trim()
+        .max(50, "Middle name must not exceed 50 characters")
+        .optional(),
     contactNumber: z
         .string({ required_error: "Contact number is required" })
         .trim()
         .min(7, "Contact number is too short")
         .max(20, "Contact number is too long"),
     emailAddress: z
-        .string({ required_error: "Email address is required" })
+        .string()
         .trim()
         .toLowerCase()
-        .email("Invalid email format"),
+        .email("Invalid email format")
+        .optional(),
     gender: z.enum(["male", "female"], {
         required_error: "Gender is required",
     }),

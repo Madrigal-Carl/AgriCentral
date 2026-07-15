@@ -5,7 +5,8 @@ import User from "../models/user.model.js";
 import { createLog, getLogsForEntities, humanize } from "./log.service.js";
 
 const CROP_POPULATE = { path: "crops.crop" };
-const FARMER_POPULATE = { path: "assignedFarmers", select: "fullName emailAddress" };
+const FARMER_POPULATE = { path: "assignedFarmers", select: "firstName lastName emailAddress" };
+const ASSOCIATION_POPULATE = { path: "association", select: "name" };
 
 const ACTIVE_CROP_STATUSES = ["planted", "growing"];
 
@@ -62,8 +63,8 @@ const logFarmerAssignmentChanges = async ({ farm, addedFarmerIds, removedFarmerI
     const allIds = [...addedFarmerIds, ...removedFarmerIds];
     if (!allIds.length) return;
 
-    const farmers = await Farmer.find({ _id: { $in: allIds } }).select("fullName");
-    const farmerIdToName = new Map(farmers.map((f) => [f._id.toString(), f.fullName]));
+    const farmers = await Farmer.find({ _id: { $in: allIds } }).select("firstName lastName");
+    const farmerIdToName = new Map(farmers.map((f) => [f._id.toString(), f.getFullName()]));
 
     for (const farmerId of addedFarmerIds) {
         const farmerName = farmerIdToName.get(farmerId.toString()) ?? "A farmer";
@@ -150,7 +151,7 @@ export const createFarm = async (data, authenticatedUserId) => {
         });
     }
 
-    const populated = await farm.populate([FARMER_POPULATE, CROP_POPULATE]);
+    const populated = await farm.populate([FARMER_POPULATE, CROP_POPULATE, ASSOCIATION_POPULATE]);
     return filterActiveCrops(populated);
 };
 
@@ -179,7 +180,7 @@ export const updateFarm = async (id, data) => {
         { _id: id, deletedAt: null },
         { $set: farmData },
         { new: true, runValidators: true }
-    ).populate([FARMER_POPULATE, CROP_POPULATE]);
+    ).populate([FARMER_POPULATE, CROP_POPULATE, ASSOCIATION_POPULATE]);
 
     if (!farm) {
         const notFoundError = new Error("Farm not found");
@@ -343,7 +344,7 @@ export const getFarms = async ({ search, crop, associationId, all, page, limit, 
     if (all) {
         const farms = await Farm.find(filter)
             .sort({ createdAt: -1 })
-            .populate([FARMER_POPULATE, CROP_POPULATE]);
+            .populate([FARMER_POPULATE, CROP_POPULATE, ASSOCIATION_POPULATE]);
 
         return {
             farms: await attachFarmHistory(farms.map(filterActiveCrops), associationId),
@@ -358,7 +359,7 @@ export const getFarms = async ({ search, crop, associationId, all, page, limit, 
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
-            .populate([FARMER_POPULATE, CROP_POPULATE]),
+            .populate([FARMER_POPULATE, CROP_POPULATE, ASSOCIATION_POPULATE]),
         Farm.countDocuments(filter),
     ]);
 

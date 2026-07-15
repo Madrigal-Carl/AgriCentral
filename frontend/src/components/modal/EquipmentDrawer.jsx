@@ -43,6 +43,9 @@ export function EquipmentDrawer({ row, onClose }) {
             <DefList
               items={[
                 ["Equipment Tag ID", row.tag],
+                // association is now a populated { _id, name } object
+                // (or absent) — display the name, not the object itself.
+                ["Association", row.association?.name || "—"],
                 ["Name", row.name],
                 ["Condition", condLabel[row.condition]],
                 ["Status", row.status],

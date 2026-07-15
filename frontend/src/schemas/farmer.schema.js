@@ -15,21 +15,34 @@ export const POSITIONS = [
 export const STATUSES = ["active", "inactive"];
 
 const baseFarmerFormSchema = z.object({
-    name: z
-        .string({ required_error: "Full name is required" })
+    lastName: z
+        .string({ required_error: "Last name is required" })
         .trim()
-        .min(2, "Full name must be at least 2 characters")
-        .max(100, "Full name must not exceed 100 characters"),
+        .min(1, "Last name is required")
+        .max(50, "Last name must not exceed 50 characters"),
+    firstName: z
+        .string({ required_error: "First name is required" })
+        .trim()
+        .min(1, "First name is required")
+        .max(50, "First name must not exceed 50 characters"),
+    middleName: z
+        .string()
+        .trim()
+        .max(50, "Middle name must not exceed 50 characters")
+        .optional(),
     contact: z
         .string({ required_error: "Contact number is required" })
         .trim()
         .min(7, "Contact number is too short")
         .max(20, "Contact number is too long"),
+    // Optional to mirror the backend, which does not require emailAddress.
     email: z
-        .string({ required_error: "Email address is required" })
+        .string()
         .trim()
         .toLowerCase()
-        .email("Invalid email format"),
+        .email("Invalid email format")
+        .optional()
+        .or(z.literal("")),
     gender: z.enum(["male", "female"], {
         required_error: "Gender is required",
     }),

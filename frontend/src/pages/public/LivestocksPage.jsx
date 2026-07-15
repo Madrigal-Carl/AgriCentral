@@ -71,7 +71,9 @@ export function LivestocksPage() {
   // Farmer options for the assign modal, scoped to the livestock's own
   // association. Only fires while a row is actually being assigned.
   const { data: farmersData, isLoading: farmersLoading } =
-    useFarmersByAssociationId(assignRow?.association);
+    useFarmersByAssociationId(
+      assignRow?.association?._id ?? assignRow?.association,
+    );
   const farmerOptions = (farmersData?.farmers ?? []).map((f) => ({
     value: f._id,
     label: f.fullName,
@@ -125,7 +127,7 @@ export function LivestocksPage() {
         color: row.color,
         weight: row.weight,
         farmer: row.assignedFarmer?._id,
-        associationId: row.association,
+        associationId: row.association?._id ?? row.association,
       },
     });
   };

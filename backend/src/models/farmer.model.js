@@ -27,9 +27,18 @@ const farmerSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "Association",
         },
-        fullName: {
+        lastName: {
             type: String,
             required: true,
+            trim: true,
+        },
+        firstName: {
+            type: String,
+            required: true,
+            trim: true,
+        },
+        middleName: {
+            type: String,
             trim: true,
         },
         contactNumber: {
@@ -39,7 +48,6 @@ const farmerSchema = new mongoose.Schema(
         },
         emailAddress: {
             type: String,
-            required: true,
             trim: true,
             lowercase: true,
         },
@@ -85,7 +93,30 @@ const farmerSchema = new mongoose.Schema(
     },
     {
         timestamps: true,
+        toJSON: { virtuals: true },
+        toObject: { virtuals: true },
     }
 );
 
-export default mongoose.model("Farmer", farmerSchema);
+// Builds a full name from any object/document that has firstName/lastName.
+// Static so it can be reused with partial docs (e.g. .select("firstName lastName"))
+// or plain objects, not just full Farmer instances.
+farmerSchema.statics.buildFullName = function (source = {}) {
+    const firstName = source.firstName?.trim();
+    const lastName = source.lastName?.trim();
+    return [firstName, lastName].filter(Boolean).join(" ");
+};
+
+// Instance convenience method, e.g. farmer.getFullName()
+farmerSchema.methods.getFullName = function () {
+    return this.constructor.buildFullName(this);
+};
+
+// Virtual so farmer.fullName / JSON responses expose it automatically
+farmerSchema.virtual("fullName").get(function () {
+    return this.constructor.buildFullName(this);
+});
+
+const Farmer = mongoose.model("Farmer", farmerSchema);
+
+export default Farmer;

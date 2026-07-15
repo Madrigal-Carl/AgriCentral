@@ -109,7 +109,7 @@ const attachMembers = async (associations) => {
     // Farmers directly linked to the association.
     const farmers = await Farmer.find({
         association: { $in: associationIds },
-    }).select("fullName position association");
+    }).select("firstName lastName position association");
 
     const membersByAssociationId = new Map();
     for (const farmer of farmers) {
@@ -117,7 +117,7 @@ const attachMembers = async (associations) => {
         if (!key) continue;
         if (!membersByAssociationId.has(key)) membersByAssociationId.set(key, []);
         membersByAssociationId.get(key).push({
-            name: farmer.fullName,
+            name: farmer.getFullName(),
             position: farmer.position,
         });
     }

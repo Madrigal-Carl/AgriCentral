@@ -18,10 +18,12 @@ const resolveAssociationId = async (associationId, authenticatedUserId) => {
 export const createFarmer = async (data, authenticatedUserId) => {
     const { associationId, ...farmerData } = data;
 
-    const existing = await Farmer.findOne({ emailAddress: farmerData.emailAddress, deletedAt: null });
+    if (farmerData.emailAddress) {
+        const existing = await Farmer.findOne({ emailAddress: farmerData.emailAddress, deletedAt: null });
 
-    if (existing) {
-        throw new Error("A farmer with this email already exists");
+        if (existing) {
+            throw new Error("A farmer with this email already exists");
+        }
     }
 
     const resolvedAssociationId = await resolveAssociationId(
@@ -38,7 +40,7 @@ export const createFarmer = async (data, authenticatedUserId) => {
         entityType: "farmer",
         entityId: farmer._id,
         association: farmer.association,
-        message: `${farmer.fullName} was registered as a new farmer.`,
+        message: `${farmer.getFullName()} was registered as a new farmer.`,
     });
 
     if (farmer.association) {
@@ -48,7 +50,7 @@ export const createFarmer = async (data, authenticatedUserId) => {
             entityType: "farmer",
             entityId: farmer._id,
             association: farmer.association,
-            message: `${farmer.fullName} was assigned to ${association?.name ?? "an association"}.`,
+            message: `${farmer.getFullName()} was assigned to ${association?.name ?? "an association"}.`,
         });
     }
 
@@ -76,7 +78,7 @@ export const updateFarmer = async (id, data) => {
     const needsPrevious =
         farmerData.association !== undefined || farmerData.position !== undefined;
     const previousFarmer = needsPrevious
-        ? await Farmer.findOne({ _id: id, deletedAt: null }).select("association position fullName")
+        ? await Farmer.findOne({ _id: id, deletedAt: null }).select("association position")
         : null;
 
     let removedAttachments = [];
@@ -119,7 +121,7 @@ export const updateFarmer = async (id, data) => {
                 entityType: "farmer",
                 entityId: farmer._id,
                 association: farmer.association,
-                message: `${farmer.fullName} was assigned to ${association?.name ?? "an association"}.`,
+                message: `${farmer.getFullName()} was assigned to ${association?.name ?? "an association"}.`,
             });
         } else {
             const previousAssociation = previousFarmer?.association
@@ -130,7 +132,7 @@ export const updateFarmer = async (id, data) => {
                 entityType: "farmer",
                 entityId: farmer._id,
                 association: previousFarmer?.association,
-                message: `${farmer.fullName} was removed from ${previousAssociation?.name ?? "their association"}.`,
+                message: `${farmer.getFullName()} was removed from ${previousAssociation?.name ?? "their association"}.`,
             });
         }
     }
@@ -143,7 +145,7 @@ export const updateFarmer = async (id, data) => {
             entityType: "farmer",
             entityId: farmer._id,
             association: farmer.association,
-            message: `${farmer.fullName}'s position changed from ${humanize(previousFarmer?.position)} to ${humanize(farmer.position)}.`,
+            message: `${farmer.getFullName()}'s position changed from ${humanize(previousFarmer?.position)} to ${humanize(farmer.position)}.`,
         });
     }
 
@@ -175,16 +177,18 @@ export const restoreFarmer = async (id) => {
         throw notFoundError;
     }
 
-    const emailTaken = await Farmer.findOne({
-        _id: { $ne: id },
-        emailAddress: toRestore.emailAddress,
-        deletedAt: null,
-    });
+    if (toRestore.emailAddress) {
+        const emailTaken = await Farmer.findOne({
+            _id: { $ne: id },
+            emailAddress: toRestore.emailAddress,
+            deletedAt: null,
+        });
 
-    if (emailTaken) {
-        const conflictError = new Error("An active farmer with this email already exists");
-        conflictError.statusCode = 409;
-        throw conflictError;
+        if (emailTaken) {
+            const conflictError = new Error("An active farmer with this email already exists");
+            conflictError.statusCode = 409;
+            throw conflictError;
+        }
     }
 
     toRestore.deletedAt = null;
@@ -264,9 +268,9 @@ const attachRelatedRecords = async (farmers, associationId) => {
 };
 
 export const getFarmersByAssociationId = async (associationId) => {
-    const farmers = await Farmer.find({ association: associationId, deletedAt: null }).sort({
-        createdAt: -1,
-    });
+    const farmers = await Farmer.find({ association: associationId, deletedAt: null })
+        .sort({ createdAt: -1 })
+        .populate("association", "name");
     return attachRelatedRecords(farmers, associationId);
 };
 
@@ -276,11 +280,18 @@ export const getFarmers = async ({ status, search, associationId, all, page, lim
     if (associationId) filter.association = associationId;
 
     if (search) {
-        filter.fullName = new RegExp(escapeRegex(search), "i");
+        const searchRegex = new RegExp(escapeRegex(search), "i");
+        filter.$or = [
+            { firstName: searchRegex },
+            { lastName: searchRegex },
+            { middleName: searchRegex },
+        ];
     }
 
     if (all) {
-        const farmers = await Farmer.find(filter).sort({ createdAt: -1 });
+        const farmers = await Farmer.find(filter)
+            .sort({ createdAt: -1 })
+            .populate("association", "name");
         return {
             farmers: await attachRelatedRecords(farmers, associationId),
             pagination: null,
@@ -290,7 +301,11 @@ export const getFarmers = async ({ status, search, associationId, all, page, lim
     const skip = (page - 1) * limit;
 
     const [farmers, total] = await Promise.all([
-        Farmer.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+        Farmer.find(filter)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .populate("association", "name"),
         Farmer.countDocuments(filter),
     ]);
 

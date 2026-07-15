@@ -74,8 +74,13 @@ export function FarmerDrawer({ row, onClose }) {
           <Section icon={Info} title="Basic Information">
             <DefList
               items={[
+                // association is now a populated { _id, name } object
+                // (or absent) — display the name, not the object itself.
+                ["Association", row.association?.name || "—"],
                 ["Position", positionLabel[row.position] || "—"],
-                ["Full Name", row.fullName],
+                ["Last Name", row.lastName || "—"],
+                ["First Name", row.firstName || "—"],
+                ["Middle Name", row.middleName || "—"],
                 ["Contact Number", row.contactNumber || "—"],
                 ["Email Address", row.emailAddress || "—"],
                 ["Gender", row.gender === "male" ? "Male" : "Female"],

@@ -25,7 +25,9 @@ const STATUS_OPTIONS = [
 
 const blankForm = {
   id: "",
-  name: "",
+  lastName: "",
+  firstName: "",
+  middleName: "",
   contact: "",
   email: "",
   gender: "male",
@@ -90,13 +92,17 @@ export function FarmersPage() {
       mode: "edit",
       data: {
         id: row._id,
-        name: row.fullName,
+        lastName: row.lastName,
+        firstName: row.firstName,
+        middleName: row.middleName || "",
         contact: row.contactNumber,
         email: row.emailAddress,
         gender: row.gender,
         dob: row.birthDate?.slice ? row.birthDate.slice(0, 10) : row.birthDate,
         address: row.address,
-        association: row.association,
+        // association comes back populated ({ _id, name }) from the list
+        // endpoints; unwrap to the id for the form's <select>.
+        association: row.association?._id ?? row.association ?? "",
         position: row.position,
         status: row.status,
         files: row.attachments || [],

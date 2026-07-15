@@ -28,7 +28,9 @@ const STATUS_OPTIONS = [
 function toFormShape(farmer, extra = {}) {
   return {
     id: farmer._id,
-    name: farmer.fullName,
+    lastName: farmer.lastName,
+    firstName: farmer.firstName,
+    middleName: farmer.middleName || "",
     contact: farmer.contactNumber,
     email: farmer.emailAddress,
     gender: farmer.gender,
@@ -50,10 +52,6 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
   const [submitError, setSubmitError] = useState(null);
   const isEdit = mode === "edit";
 
-  // FAR users edit position directly and don't pick an association — the
-  // backend resolves their own association from the authenticated user.
-  // Everyone else assigns the farmer to an association explicitly, and
-  // must do so — see createFarmerFormSchema/createFarmerUpdateSchema.
   const { data: associationsData } = useAssociations(
     { all: true },
     { enabled: !isFar },
@@ -63,9 +61,6 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
     (a) => ({ value: a._id, label: a.name }),
   );
 
-  // Association may arrive populated ({_id, name, ...}) or as a plain id
-  // string depending on the endpoint — normalize so SingleSelect/useForm
-  // always work with a string.
   const normalizedInitial = useMemo(() => {
     if (!initial) return initial;
 
@@ -80,8 +75,6 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
     };
   }, [initial]);
 
-  // Schema depends on isFar (association required or not) — build it once
-  // per isFar value rather than on every render.
   const resolver = useMemo(
     () =>
       zodResolver(
@@ -140,17 +133,16 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
     setSubmitError(null);
     try {
       const payload = {
-        fullName: values.name,
+        lastName: values.lastName,
+        firstName: values.firstName,
+        middleName: values.middleName,
         contactNumber: values.contact,
-        emailAddress: values.email,
+        emailAddress: values.email || undefined,
         gender: values.gender,
         birthDate: values.dob,
         address: values.address,
         position: values.position,
         files: values.files, // hook resolves this into `attachments`
-        // FAR users never pick an association — omit the key entirely so
-        // the backend falls back to resolving it from req.user. For edits,
-        // only include an association if the field is actually populated.
         ...(!isFar && values.association
           ? { associationId: values.association }
           : {}),
@@ -188,9 +180,14 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
 
   const busy = isCreating || isUpdating;
 
+  const modalTitle =
+    mode === "add"
+      ? "Add New Farmer"
+      : `Edit ${[initial.firstName, initial.lastName].filter(Boolean).join(" ")}`;
+
   return (
     <ModalShell
-      title={mode === "add" ? "Add New Farmer" : `Edit ${initial.name}`}
+      title={modalTitle}
       eyebrow="Farmer"
       onClose={onClose}
       maxWidth="max-w-2xl"
@@ -218,22 +215,31 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
         )}
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Full Name" full error={errors.name?.message}>
-            <TextInput {...register("name")} placeholder="Jane Doe" />
+          <Field label="Last Name" error={errors.lastName?.message}>
+            <TextInput {...register("lastName")} placeholder="Doe" />
+          </Field>
+          <Field label="First Name" error={errors.firstName?.message}>
+            <TextInput {...register("firstName")} placeholder="Jane" />
+          </Field>
+          <Field
+            label="Middle Name (Optional)"
+            error={errors.middleName?.message}
+          >
+            <TextInput {...register("middleName")} placeholder="Reyes" />
           </Field>
 
-          <Field label="Contact Number" error={errors.contact?.message}>
-            <TextInput
-              {...register("contact")}
-              placeholder="+254 700 000 000"
-            />
-          </Field>
-
-          <Field label="Email Address" error={errors.email?.message}>
+          <Field label="Email Address (Optional)" error={errors.email?.message}>
             <TextInput
               type="email"
               {...register("email")}
               placeholder="name@email.com"
+            />
+          </Field>
+
+          <Field label="Contact Number" full error={errors.contact?.message}>
+            <TextInput
+              {...register("contact")}
+              placeholder="+254 700 000 000"
             />
           </Field>
 

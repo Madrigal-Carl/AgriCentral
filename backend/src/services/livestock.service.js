@@ -4,6 +4,8 @@ import User from "../models/user.model.js";
 import Association from "../models/association.model.js";
 import { createLog, getLogsForEntities } from "./log.service.js";
 
+const ASSOCIATION_POPULATE = { path: "association", select: "name" };
+
 const resolveAssociationId = async (associationId, authenticatedUserId) => {
     if (associationId) return associationId;
     if (!authenticatedUserId) return undefined;
@@ -50,24 +52,27 @@ export const createLivestock = async (data, authenticatedUserId) => {
     }
 
     if (livestock.assignedFarmer) {
-        const farmer = await Farmer.findById(livestock.assignedFarmer).select("fullName");
+        const farmer = await Farmer.findById(livestock.assignedFarmer).select("firstName lastName");
+        const farmerName = farmer?.getFullName() ?? "a farmer";
 
         await createLog({
             entityType: "livestock",
             entityId: livestock._id,
             association: livestock.association,
-            message: `${livestock.animal} (${livestock.tag}) has been assigned to ${farmer?.fullName ?? "a farmer"}.`,
+            message: `${livestock.animal} (${livestock.tag}) has been assigned to ${farmerName}.`,
         });
 
         await createLog({
             entityType: "farmer",
             entityId: livestock.assignedFarmer,
             association: livestock.association,
-            message: `${farmer?.fullName ?? "The farmer"} has received ${livestock.animal} (${livestock.tag}).`,
+            message: `${farmer ? farmer.getFullName() : "The farmer"} has received ${livestock.animal} (${livestock.tag}).`,
         });
     }
 
-    await livestock.populate("assignedFarmer", "fullName");
+    await livestock.populate(["assignedFarmer", ASSOCIATION_POPULATE].map((p) =>
+        p === "assignedFarmer" ? { path: "assignedFarmer", select: "firstName lastName" } : p
+    ));
 
     return livestock;
 };
@@ -116,7 +121,7 @@ export const updateLivestock = async (id, data) => {
             ...(Object.keys(unset).length ? { $unset: unset } : {}),
         },
         { new: true, runValidators: true },
-    ).populate("assignedFarmer", "fullName");
+    ).populate([{ path: "assignedFarmer", select: "firstName lastName" }, ASSOCIATION_POPULATE]);
 
     if (!livestock) {
         const notFoundError = new Error("Livestock not found");
@@ -126,15 +131,15 @@ export const updateLivestock = async (id, data) => {
 
     if (
         livestockData.association !== undefined &&
-        String(previousLivestock?.association ?? "") !== String(livestock.association ?? "")
+        String(previousLivestock?.association ?? "") !== String(livestock.association?._id ?? livestock.association ?? "")
     ) {
         if (livestock.association) {
-            const association = await Association.findById(livestock.association).select("name");
+            const association = await Association.findById(livestock.association._id ?? livestock.association).select("name");
 
             await createLog({
                 entityType: "livestock",
                 entityId: livestock._id,
-                association: livestock.association,
+                association: livestock.association._id ?? livestock.association,
                 message: `${livestock.animal} (${livestock.tag}) has been assigned to ${association?.name ?? "an association"}.`,
             });
         } else {
@@ -152,28 +157,30 @@ export const updateLivestock = async (id, data) => {
         String(previousLivestock?.assignedFarmer ?? "") !== String(livestock.assignedFarmer?._id ?? "")
     ) {
         if (livestock.assignedFarmer) {
+            const assignedName = livestock.assignedFarmer.getFullName?.() ?? "a farmer";
+
             await createLog({
                 entityType: "livestock",
                 entityId: livestock._id,
-                association: livestock.association,
-                message: `${livestock.animal} (${livestock.tag}) has been assigned to ${livestock.assignedFarmer?.fullName ?? "a farmer"}.`,
+                association: livestock.association?._id ?? livestock.association,
+                message: `${livestock.animal} (${livestock.tag}) has been assigned to ${assignedName}.`,
             });
 
             await createLog({
                 entityType: "farmer",
                 entityId: livestock.assignedFarmer._id,
-                association: livestock.association,
-                message: `${livestock.assignedFarmer?.fullName ?? "The farmer"} has received ${livestock.animal} (${livestock.tag}).`,
+                association: livestock.association?._id ?? livestock.association,
+                message: `${livestock.assignedFarmer.getFullName?.() ?? "The farmer"} has received ${livestock.animal} (${livestock.tag}).`,
             });
         } else {
             const previousFarmer = previousLivestock?.assignedFarmer
-                ? await Farmer.findById(previousLivestock.assignedFarmer).select("fullName")
+                ? await Farmer.findById(previousLivestock.assignedFarmer).select("firstName lastName")
                 : null;
 
             await createLog({
                 entityType: "livestock",
                 entityId: livestock._id,
-                association: livestock.association,
+                association: livestock.association?._id ?? livestock.association,
                 message: `${livestock.animal} (${livestock.tag}) has been returned.`,
             });
 
@@ -181,8 +188,8 @@ export const updateLivestock = async (id, data) => {
                 await createLog({
                     entityType: "farmer",
                     entityId: previousLivestock.assignedFarmer,
-                    association: livestock.association,
-                    message: `${previousFarmer.fullName} has returned ${livestock.animal} (${livestock.tag}).`,
+                    association: livestock.association?._id ?? livestock.association,
+                    message: `${previousFarmer.getFullName()} has returned ${livestock.animal} (${livestock.tag}).`,
                 });
             }
         }
@@ -195,7 +202,7 @@ export const updateLivestock = async (id, data) => {
         await createLog({
             entityType: "livestock",
             entityId: livestock._id,
-            association: livestock.association,
+            association: livestock.association?._id ?? livestock.association,
             message: `${livestock.animal} (${livestock.tag})'s condition has been changed from ${previousLivestock?.condition ?? "unknown"} to ${livestock.condition}.`,
         });
     }
@@ -287,7 +294,7 @@ export const getLivestocks = async ({
 
     if (all) {
         const livestocks = await Livestock.find(filter)
-            .populate("assignedFarmer", "fullName")
+            .populate([{ path: "assignedFarmer", select: "firstName lastName" }, ASSOCIATION_POPULATE])
             .sort({ createdAt: -1 });
 
         return {
@@ -300,7 +307,7 @@ export const getLivestocks = async ({
 
     const [livestocks, total] = await Promise.all([
         Livestock.find(filter)
-            .populate("assignedFarmer", "fullName")
+            .populate([{ path: "assignedFarmer", select: "firstName lastName" }, ASSOCIATION_POPULATE])
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit),

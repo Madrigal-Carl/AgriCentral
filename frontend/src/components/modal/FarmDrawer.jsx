@@ -63,9 +63,10 @@ export function FarmDrawer({ row, onClose }) {
             <DefList
               items={[
                 ["Farm Tag ID", row.tag],
+                ["Association", row.association?.name || "—"],
                 ["Address", row.address],
-                ["Crops", crops.length],
                 ["Farmer", farmers.length],
+                ["Crops", crops.length],
               ]}
             />
           </Section>

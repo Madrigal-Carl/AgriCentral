@@ -48,6 +48,9 @@ export function LivestockDrawer({ row, onClose }) {
             <DefList
               items={[
                 ["Livestock Tag ID", row.tag],
+                // association is now a populated { _id, name } object
+                // (or absent) — display the name, not the object itself.
+                ["Association", row.association?.name || "—"],
                 ["Animal", row.animal],
                 ["Breed", row.breed || "—"],
                 ["Gender", row.gender === "male" ? "Male" : "Female"],
