@@ -23,6 +23,7 @@ const blankForm = {
   name: "",
   kilo: "",
   assignedFarmer: "",
+  association: "",
   status: "not_planted",
 };
 
@@ -79,6 +80,7 @@ export function CropsPage() {
         name: row.name,
         kilo: row.kilo,
         assignedFarmer: row.assignedFarmer,
+        association: row.association?._id ?? row.association ?? "",
         status: row.status,
       },
     });
