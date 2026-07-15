@@ -5,7 +5,7 @@ import User from "../models/user.model.js";
 import { createLog, getLogsForEntities, humanize } from "./log.service.js";
 
 const CROP_POPULATE = { path: "crops.crop" };
-const FARMER_POPULATE = { path: "assignedFarmers", select: "firstName lastName emailAddress" };
+const FARMER_POPULATE = { path: "assignedFarmers.farmer", select: "firstName lastName emailAddress" };
 const ASSOCIATION_POPULATE = { path: "association", select: "name" };
 
 const ACTIVE_CROP_STATUSES = ["planted", "growing"];
@@ -59,45 +59,56 @@ const attachFarmHistory = async (farms, associationId) => {
     });
 };
 
-const logFarmerAssignmentChanges = async ({ farm, addedFarmerIds, removedFarmerIds }) => {
-    const allIds = [...addedFarmerIds, ...removedFarmerIds];
-    if (!allIds.length) return;
+// changes: array of
+//   { farmerId, type: "added", toClassification }
+//   { farmerId, type: "removed" }
+//   { farmerId, type: "classification", fromClassification, toClassification }
+const logFarmerAssignmentChanges = async ({ farm, changes }) => {
+    if (!changes.length) return;
 
-    const farmers = await Farmer.find({ _id: { $in: allIds } }).select("firstName lastName");
+    const farmerIds = changes.map((c) => c.farmerId);
+    const farmers = await Farmer.find({ _id: { $in: farmerIds } }).select("firstName lastName");
     const farmerIdToName = new Map(farmers.map((f) => [f._id.toString(), f.getFullName()]));
 
-    for (const farmerId of addedFarmerIds) {
-        const farmerName = farmerIdToName.get(farmerId.toString()) ?? "A farmer";
+    for (const change of changes) {
+        const farmerName = farmerIdToName.get(change.farmerId) ?? "A farmer";
 
-        await createLog({
-            entityType: "farmer",
-            entityId: farmerId,
-            association: farm.association,
-            message: `${farmerName} was assigned to farm ${farm.tag}.`,
-        });
-        await createLog({
-            entityType: "farm",
-            entityId: farm._id,
-            association: farm.association,
-            message: `${farmerName} was assigned to this farm.`,
-        });
-    }
+        if (change.type === "added") {
+            const classificationLabel = humanize(change.toClassification).toLowerCase();
 
-    for (const farmerId of removedFarmerIds) {
-        const farmerName = farmerIdToName.get(farmerId.toString()) ?? "A farmer";
-
-        await createLog({
-            entityType: "farmer",
-            entityId: farmerId,
-            association: farm.association,
-            message: `${farmerName} was removed from farm ${farm.tag}.`,
-        });
-        await createLog({
-            entityType: "farm",
-            entityId: farm._id,
-            association: farm.association,
-            message: `${farmerName} was removed from this farm.`,
-        });
+            await createLog({
+                entityType: "farmer",
+                entityId: change.farmerId,
+                association: farm.association,
+                message: `${farmerName} was assigned to farm ${farm.tag} as ${classificationLabel}.`,
+            });
+            await createLog({
+                entityType: "farm",
+                entityId: farm._id,
+                association: farm.association,
+                message: `${farmerName} was assigned to this farm as ${classificationLabel}.`,
+            });
+        } else if (change.type === "removed") {
+            await createLog({
+                entityType: "farmer",
+                entityId: change.farmerId,
+                association: farm.association,
+                message: `${farmerName} was removed from farm ${farm.tag}.`,
+            });
+            await createLog({
+                entityType: "farm",
+                entityId: farm._id,
+                association: farm.association,
+                message: `${farmerName} was removed from this farm.`,
+            });
+        } else if (change.type === "classification") {
+            await createLog({
+                entityType: "farm",
+                entityId: farm._id,
+                association: farm.association,
+                message: `${farmerName}'s classification on ${farm.tag} changed from ${humanize(change.fromClassification)} to ${humanize(change.toClassification)}.`,
+            });
+        }
     }
 };
 
@@ -146,8 +157,11 @@ export const createFarm = async (data, authenticatedUserId) => {
     if (farmData.assignedFarmers?.length) {
         await logFarmerAssignmentChanges({
             farm,
-            addedFarmerIds: farmData.assignedFarmers,
-            removedFarmerIds: [],
+            changes: farmData.assignedFarmers.map((a) => ({
+                farmerId: a.farmer.toString(),
+                type: "added",
+                toClassification: a.classification ?? "owner",
+            })),
         });
     }
 
@@ -238,20 +252,38 @@ export const updateFarm = async (id, data) => {
     }
 
     if (farmData.assignedFarmers) {
-        const previousFarmerIds = (previousFarm?.assignedFarmers ?? []).map((f) =>
-            f.toString(),
-        );
-        const newFarmerIds = farmData.assignedFarmers.map((f) => f.toString());
-
-        const addedFarmerIds = newFarmerIds.filter(
-            (fid) => !previousFarmerIds.includes(fid),
-        );
-        const removedFarmerIds = previousFarmerIds.filter(
-            (fid) => !newFarmerIds.includes(fid),
+        const newFarmers = farmData.assignedFarmers.map((a) => ({
+            farmerId: a.farmer.toString(),
+            classification: a.classification ?? "owner",
+        }));
+        const previousFarmersById = new Map(
+            (previousFarm?.assignedFarmers ?? []).map((a) => [a.farmer.toString(), a.classification]),
         );
 
-        if (addedFarmerIds.length || removedFarmerIds.length) {
-            await logFarmerAssignmentChanges({ farm, addedFarmerIds, removedFarmerIds });
+        const changes = [];
+        for (const nf of newFarmers) {
+            const prevClassification = previousFarmersById.get(nf.farmerId);
+            if (prevClassification === undefined) {
+                changes.push({ farmerId: nf.farmerId, type: "added", toClassification: nf.classification });
+            } else if (prevClassification !== nf.classification) {
+                changes.push({
+                    farmerId: nf.farmerId,
+                    type: "classification",
+                    fromClassification: prevClassification,
+                    toClassification: nf.classification,
+                });
+            }
+        }
+
+        const newFarmerIds = new Set(newFarmers.map((f) => f.farmerId));
+        for (const [farmerId] of previousFarmersById) {
+            if (!newFarmerIds.has(farmerId)) {
+                changes.push({ farmerId, type: "removed" });
+            }
+        }
+
+        if (changes.length) {
+            await logFarmerAssignmentChanges({ farm, changes });
         }
     }
 

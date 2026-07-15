@@ -8,6 +8,16 @@ const CROP_STATUSES = [
     "destroyed",
 ];
 
+const FARMER_CLASSIFICATIONS = [
+    "owner",
+    "tenant",
+    "lessee",
+    "caretaker",
+    "farm_worker",
+    "co_owner",
+    "beneficiary",
+];
+
 const objectId = (label) =>
     z.string().regex(/^[0-9a-fA-F]{24}$/, `Invalid ${label}`);
 
@@ -20,6 +30,11 @@ const farmCropSchema = z.object({
     crop: objectId("crop id"),
     status: z.enum(CROP_STATUSES).optional().default("planted"),
     yield: z.coerce.number().min(0).optional().default(0),
+});
+
+const farmFarmerSchema = z.object({
+    farmer: objectId("farmer id"),
+    classification: z.enum(FARMER_CLASSIFICATIONS).optional().default("owner"),
 });
 
 const latitudeSchema = z.preprocess(
@@ -38,6 +53,14 @@ const longitudeSchema = z.preprocess(
     }).min(-180).max(180),
 );
 
+const sizeSchema = z.preprocess(
+    emptyToUndefined,
+    z.coerce.number({
+        required_error: "Size is required",
+        invalid_type_error: "Size must be a number",
+    }).min(0, "Size must not be negative"),
+);
+
 export const createFarmSchema = z.object({
     associationId: optionalObjectId("association id"),
     tag: z
@@ -50,7 +73,8 @@ export const createFarmSchema = z.object({
         .string({ required_error: "Address is required" })
         .trim()
         .min(2, "Address must be at least 2 characters"),
-    assignedFarmers: z.array(objectId("farmer id")).optional().default([]),
+    size: sizeSchema,
+    assignedFarmers: z.array(farmFarmerSchema).optional().default([]),
     crops: z.array(farmCropSchema).optional().default([]),
     latitude: latitudeSchema,
     longitude: longitudeSchema,

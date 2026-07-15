@@ -128,8 +128,10 @@ export const getCropsByFarmId = async (farmId) => {
         .filter((c) => activeStatuses.includes(c.status))
         .map((c) => c.crop);
 
+    const assignedFarmerIds = farm.assignedFarmers.map((a) => a.farmer);
+
     const crops = await Crop.find({
-        assignedFarmer: { $in: farm.assignedFarmers },
+        assignedFarmer: { $in: assignedFarmerIds },
         deletedAt: null,
         $or: [
             { status: "not_planted" },

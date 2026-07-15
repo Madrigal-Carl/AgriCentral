@@ -20,6 +20,7 @@ const blankForm = {
   id: "",
   tag: "",
   address: "",
+  size: "",
   latitude: "",
   longitude: "",
   assignedFarmers: [],
@@ -108,6 +109,7 @@ export function FarmsPage() {
         id: row._id,
         tag: row.tag,
         address: row.address,
+        size: row.size,
         latitude: row.latitude,
         longitude: row.longitude,
         assignedFarmers: row.assignedFarmers || [],
@@ -133,6 +135,7 @@ export function FarmsPage() {
       const payload = {
         tag: values.tag,
         address: values.address,
+        size: Number(values.size),
         latitude: Number(values.latitude),
         longitude: Number(values.longitude),
         assignedFarmers: values.assignedFarmers ?? [],
@@ -222,6 +225,11 @@ export function FarmsPage() {
                 <div className="text-xs text-secondary">{r.address}</div>
               </div>
             ),
+          },
+          {
+            key: "size",
+            header: "Size",
+            cell: (r) => (r.size != null ? `${r.size} ha` : "—"),
           },
           {
             key: "crops",

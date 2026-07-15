@@ -29,6 +29,32 @@ const farmCropSchema = new mongoose.Schema(
     }
 );
 
+const farmFarmerSchema = new mongoose.Schema(
+    {
+        farmer: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Farmer",
+            required: true,
+        },
+        classification: {
+            type: String,
+            enum: [
+                "owner",
+                "tenant",
+                "lessee",
+                "caretaker",
+                "farm_worker",
+                "co_owner",
+                "beneficiary",
+            ],
+            default: "owner",
+        },
+    },
+    {
+        timestamps: true,
+    }
+);
+
 const farmSchema = new mongoose.Schema(
     {
         association: {
@@ -46,12 +72,12 @@ const farmSchema = new mongoose.Schema(
             required: true,
             trim: true,
         },
-        assignedFarmers: [
-            {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: "Farmer",
-            },
-        ],
+        size: {
+            type: Number,
+            required: true,
+            min: 0,
+        },
+        assignedFarmers: [farmFarmerSchema],
         crops: [farmCropSchema],
         latitude: {
             type: Number,

@@ -1,4 +1,4 @@
-import { Wheat } from "lucide-react";
+import { Wheat, Users } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,7 +16,11 @@ import { useFarmers } from "@/hooks/useFarmers";
 import { useCropsByFarmId } from "@/hooks/useCrops";
 import { useAssociations } from "@/hooks/useAssociations";
 import useAuth from "@/hooks/useAuth";
-import { farmFormSchema, farmUpdateSchema } from "@/schemas/farm.schema";
+import {
+  farmFormSchema,
+  farmUpdateSchema,
+  FARMER_CLASSIFICATION_OPTIONS,
+} from "@/schemas/farm.schema";
 
 export function FarmModal({
   mode,
@@ -57,17 +61,20 @@ export function FarmModal({
     (a) => ({ value: a._id, label: a.name }),
   );
 
-  // The farm object returned by the backend has assignedFarmers/crops.crop/
-  // association populated (full objects), but the form + Select components
-  // work with plain id strings. Normalize before handing to useForm so all
-  // downstream comparisons (.includes(id), Map lookups, etc.) work.
+  // The farm object returned by the backend has assignedFarmers[].farmer/
+  // crops.crop/association populated (full objects), but the form + Select
+  // components work with plain id strings. Normalize before handing to
+  // useForm so all downstream comparisons (.includes(id), Map lookups,
+  // etc.) work. assignedFarmers keeps its {farmer, classification} shape —
+  // just unwraps the farmer object down to its id.
   const normalizedInitial = useMemo(() => {
     if (!initial) return initial;
     return {
       ...initial,
-      assignedFarmers: (initial.assignedFarmers ?? []).map((f) =>
-        typeof f === "string" ? f : f._id,
-      ),
+      assignedFarmers: (initial.assignedFarmers ?? []).map((a) => ({
+        farmer: typeof a.farmer === "string" ? a.farmer : a.farmer._id,
+        classification: a.classification ?? "farm_worker",
+      })),
       crops: (initial.crops ?? []).map((c) => ({
         ...c,
         crop: typeof c.crop === "string" ? c.crop : c.crop._id,
@@ -93,6 +100,7 @@ export function FarmModal({
     defaultValues: {
       tag: "",
       address: "",
+      size: "",
       assignedFarmers: [],
       crops: [],
       association: "",
@@ -104,6 +112,10 @@ export function FarmModal({
 
   const crops = watch("crops") || [];
   const assignedFarmers = watch("assignedFarmers") || [];
+  const assignedFarmerIds = useMemo(
+    () => assignedFarmers.map((a) => a.farmer),
+    [assignedFarmers],
+  );
   const latitude = watch("latitude");
   const longitude = watch("longitude");
 
@@ -124,18 +136,20 @@ export function FarmModal({
     return (cropsData?.crops ?? [])
       .filter((c) => {
         const ownerId = c.assignedFarmer?._id ?? c.assignedFarmer;
-        return assignedFarmers.includes(ownerId);
+        return assignedFarmerIds.includes(ownerId);
       })
       .map((c) => ({ value: c._id, label: `${c.name} (${c.kilo} kg)` }));
-  }, [cropsData, assignedFarmers]);
+  }, [cropsData, assignedFarmerIds]);
 
-  // Keep track of the previous assignedFarmers so we only react to actual
-  // removals (avoids stripping crops on unrelated re-renders).
-  const prevAssignedFarmersRef = useRef(assignedFarmers);
+  // Keep track of the previous assignedFarmer ids so we only react to
+  // actual removals (avoids stripping crops on unrelated re-renders).
+  const prevAssignedFarmerIdsRef = useRef(assignedFarmerIds);
 
   useEffect(() => {
-    const prev = prevAssignedFarmersRef.current;
-    const removedFarmerIds = prev.filter((id) => !assignedFarmers.includes(id));
+    const prev = prevAssignedFarmerIdsRef.current;
+    const removedFarmerIds = prev.filter(
+      (id) => !assignedFarmerIds.includes(id),
+    );
 
     if (removedFarmerIds.length > 0) {
       const currentCrops = watch("crops") || [];
@@ -151,9 +165,34 @@ export function FarmModal({
       }
     }
 
-    prevAssignedFarmersRef.current = assignedFarmers;
+    prevAssignedFarmerIdsRef.current = assignedFarmerIds;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assignedFarmers, cropOwnerMap]);
+  }, [assignedFarmerIds, cropOwnerMap]);
+
+  // Bridges MultiSelect (plain id array) with the form's {farmer,
+  // classification}[] shape — preserves each farmer's existing
+  // classification, defaults new ones to "owner".
+  const onAssignedFarmersChange = (nextIds) => {
+    const existing = new Map(assignedFarmers.map((a) => [a.farmer, a]));
+    setValue(
+      "assignedFarmers",
+      nextIds.map((id) => ({
+        farmer: id,
+        classification: existing.get(id)?.classification ?? "farm_worker",
+      })),
+      { shouldValidate: true },
+    );
+  };
+
+  const setFarmerClassification = (farmerId, classification) => {
+    setValue(
+      "assignedFarmers",
+      assignedFarmers.map((a) =>
+        a.farmer === farmerId ? { ...a, classification } : a,
+      ),
+      { shouldValidate: true },
+    );
+  };
 
   const setCropStatus = (cropId, status) => {
     setValue(
@@ -222,8 +261,17 @@ export function FarmModal({
         )}
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Farm Tag ID" full error={errors.tag?.message}>
+          <Field label="Farm Tag ID" error={errors.tag?.message}>
             <TextInput {...register("tag")} placeholder="FM-001" />
+          </Field>
+
+          <Field label="Size (hectares)" error={errors.size?.message}>
+            <TextInput
+              type="number"
+              step="0.01"
+              {...register("size")}
+              placeholder="2.5"
+            />
           </Field>
 
           <Field label="Address" full error={errors.address?.message}>
@@ -240,10 +288,10 @@ export function FarmModal({
                 <Controller
                   name="assignedFarmers"
                   control={control}
-                  render={({ field }) => (
+                  render={() => (
                     <MultiSelect
-                      values={field.value}
-                      onChange={field.onChange}
+                      values={assignedFarmerIds}
+                      onChange={onAssignedFarmersChange}
                       options={farmerOptions}
                       placeholder={
                         farmersLoading ? "Loading farmers…" : "Select farmers…"
@@ -253,6 +301,32 @@ export function FarmModal({
                   )}
                 />
               </Field>
+
+              {assignedFarmers.length > 0 && (
+                <div className="sm:col-span-2 space-y-2">
+                  {assignedFarmers.map((a) => {
+                    const label =
+                      farmerOptions.find((o) => o.value === a.farmer)?.label ??
+                      a.farmer;
+                    return (
+                      <div
+                        key={a.farmer}
+                        className="flex items-center justify-between gap-3 w-full bg-surface border border-border px-3 py-2"
+                      >
+                        <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                          <Users className="h-4 w-4 text-accent" />
+                          {label}
+                        </div>
+                        <FullSelect
+                          value={a.classification}
+                          onChange={(v) => setFarmerClassification(a.farmer, v)}
+                          options={FARMER_CLASSIFICATION_OPTIONS}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               {isEdit && (
                 <Field label="Crops" full error={errors.crops?.message}>
