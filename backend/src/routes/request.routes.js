@@ -18,7 +18,6 @@ import {
     authenticated,
     scopeByAssociationId,
     scopeByApprovalStage,
-    allowRoles,
 } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
@@ -31,12 +30,11 @@ router.get(
     validateGetRequestsQuery,
     getRequestsHandler,
 );
-router.post("/", authenticated, allowRoles("far"), validateCreateRequest, createRequestHandler);
+router.post("/", authenticated, validateCreateRequest, createRequestHandler);
 router.patch("/:id", authenticated, validateRequestIdParam, validateUpdateRequest, updateRequestHandler);
 router.patch(
     "/:id/approval",
     authenticated,
-    allowRoles("coordinator", "governor", "head"),
     validateRequestIdParam,
     validateUpdateRequestApproval,
     updateRequestApprovalHandler,
@@ -44,7 +42,6 @@ router.patch(
 router.patch(
     "/:id/release",
     authenticated,
-    allowRoles("coordinator"),
     validateRequestIdParam,
     releaseRequestHandler,
 );

@@ -33,7 +33,7 @@ export function EquipmentModal({ mode, initial, onClose, onSave }) {
   const { data: associationsData } = useAssociations({ all: true });
 
   const associationOptions = [
-    { value: "", label: "No association (return equipment)" },
+    { value: "", label: "No Association (Return Equipment)" },
     ...(associationsData?.associations ?? []).map((a) => ({
       value: a._id,
       label: a.name,

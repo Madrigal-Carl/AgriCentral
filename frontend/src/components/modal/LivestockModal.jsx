@@ -38,7 +38,7 @@ export function LivestockModal({ mode, initial, onClose, onSave }) {
   const { data: associationsData } = useAssociations({ all: true });
 
   const associationOptions = [
-    { value: "", label: "No association (return livestock)" },
+    { value: "", label: "No Association (Return Livestock)" },
     ...(associationsData?.associations ?? []).map((a) => ({
       value: a._id,
       label: a.name,
