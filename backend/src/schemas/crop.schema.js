@@ -66,7 +66,3 @@ export const getCropsQuerySchema = z.object({
     page: z.coerce.number().int().positive().optional().default(1),
     limit: z.coerce.number().int().positive().optional().default(10),
 });
-
-export const cropFarmIdParamSchema = z.object({
-    farmId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid farm id"),
-});

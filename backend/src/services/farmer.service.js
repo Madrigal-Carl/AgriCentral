@@ -2,6 +2,7 @@ import Farmer from "../models/farmer.model.js";
 import Farm from "../models/farm.model.js";
 import Livestock from "../models/livestock.model.js";
 import Equipment from "../models/equipment.model.js";
+import Crop from "../models/crop.model.js";
 import User from "../models/user.model.js";
 import Association from "../models/association.model.js";
 import cloudinary from "../config/cloudinary.js";
@@ -272,6 +273,27 @@ export const getFarmersByAssociationId = async (associationId) => {
         .sort({ createdAt: -1 })
         .populate("association", "name");
     return attachRelatedRecords(farmers, associationId);
+};
+
+export const getCropsByFarmerId = async (farmerId) => {
+    const farmer = await Farmer.findOne({ _id: farmerId, deletedAt: null }).select("_id");
+
+    if (!farmer) {
+        const notFoundError = new Error("Farmer not found");
+        notFoundError.statusCode = 404;
+        throw notFoundError;
+    }
+
+    const crops = await Crop.find({
+        assignedFarmer: farmerId,
+        deletedAt: null,
+        isDistributed: true,
+        status: "not_planted",
+    })
+        .populate("association", "name")
+        .sort({ createdAt: -1 });
+
+    return crops;
 };
 
 export const getFarmers = async ({ status, search, associationId, all, page, limit, includeDeleted = false }) => {

@@ -1,5 +1,4 @@
 import Crop from "../models/crop.model.js";
-import Farm from "../models/farm.model.js";
 import User from "../models/user.model.js";
 import Farmer from "../models/farmer.model.js";
 import Association from "../models/association.model.js";
@@ -192,39 +191,6 @@ export const distributeCrop = async (id) => {
     }
 
     return crop;
-};
-
-export const getCropsByFarmId = async (farmId) => {
-    const farm = await Farm.findById(farmId).select("assignedFarmers crops.crop crops.status");
-
-    if (!farm) {
-        const notFoundError = new Error("Farm not found");
-        notFoundError.statusCode = 404;
-        throw notFoundError;
-    }
-
-    const activeStatuses = ["planted", "growing"];
-
-    const plantedOnThisFarmIds = farm.crops
-        .filter((c) => activeStatuses.includes(c.status))
-        .map((c) => c.crop);
-
-    const assignedFarmerIds = farm.assignedFarmers.map((a) => a.farmer);
-
-    const crops = await Crop.find({
-        assignedFarmer: { $in: assignedFarmerIds },
-        deletedAt: null,
-        isDistributed: true,
-        $or: [
-            { status: "not_planted" },
-            { _id: { $in: plantedOnThisFarmIds } },
-        ],
-    })
-        .populate("association")
-        .populate("assignedFarmer", "firstName lastName")
-        .sort({ createdAt: -1 });
-
-    return crops;
 };
 
 const attachHistory = async (crops, associationId) => {

@@ -5,6 +5,7 @@ import {
     deleteFarmerHandler,
     getFarmersHandler,
     getFarmersByAssociationIdHandler,
+    getCropsByFarmerIdHandler,
 } from "../controllers/farmer.controller.js";
 import {
     validateCreateFarmer,
@@ -19,6 +20,7 @@ const router = express.Router();
 
 router.get("/", authenticated, scopeByAssociationId, validateGetFarmersQuery, getFarmersHandler);
 router.get("/:associationId", authenticated, validateFarmerAssociationIdParam, getFarmersByAssociationIdHandler);
+router.get("/:id/crops", authenticated, validateFarmerIdParam, getCropsByFarmerIdHandler);
 router.post("/", authenticated, validateCreateFarmer, createFarmerHandler);
 router.patch("/:id", authenticated, validateFarmerIdParam, validateUpdateFarmer, updateFarmerHandler);
 router.delete("/:id", authenticated, validateFarmerIdParam, deleteFarmerHandler);

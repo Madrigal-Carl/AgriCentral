@@ -10,6 +10,11 @@ export async function getFarmersByAssociationId(associationId) {
     return response.data;
 }
 
+export async function getCropsByFarmerId(farmerId) {
+    const response = await api.get(`/farmers/${farmerId}/crops`);
+    return response.data;
+}
+
 export async function createFarmer(data) {
     const response = await api.post("/farmers", data);
     return response.data;

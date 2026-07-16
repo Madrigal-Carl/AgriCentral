@@ -4,6 +4,7 @@ import {
     deleteFarmer,
     getFarmers,
     getFarmersByAssociationId,
+    getCropsByFarmerId,
 } from "../services/farmer.service.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
@@ -40,6 +41,15 @@ export const getFarmersByAssociationIdHandler = asyncHandler(async (req, res) =>
     return res.status(200).json({
         message: "Farmers fetched successfully",
         farmers,
+    });
+});
+
+export const getCropsByFarmerIdHandler = asyncHandler(async (req, res) => {
+    const crops = await getCropsByFarmerId(req.params.id);
+
+    return res.status(200).json({
+        message: "Farmer's crops fetched successfully",
+        crops,
     });
 });
 

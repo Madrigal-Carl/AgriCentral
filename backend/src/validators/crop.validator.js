@@ -2,7 +2,6 @@ import {
     createCropSchema,
     updateCropSchema,
     cropIdParamSchema,
-    cropFarmIdParamSchema,
     getCropsQuerySchema,
 } from "../schemas/crop.schema.js";
 
@@ -59,5 +58,4 @@ const validateQuery = (schema) => (req, res, next) => {
 export const validateCreateCrop = validate(createCropSchema);
 export const validateUpdateCrop = validate(updateCropSchema);
 export const validateCropIdParam = validateParams(cropIdParamSchema);
-export const validateCropFarmIdParam = validateParams(cropFarmIdParamSchema);
 export const validateGetCropsQuery = validateQuery(getCropsQuerySchema);

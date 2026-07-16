@@ -4,14 +4,12 @@ import {
     updateCropHandler,
     deleteCropHandler,
     getCropsHandler,
-    getCropsByFarmIdHandler,
     distributeCropHandler,
 } from "../controllers/crop.controller.js";
 import {
     validateCreateCrop,
     validateUpdateCrop,
     validateCropIdParam,
-    validateCropFarmIdParam,
     validateGetCropsQuery,
 } from "../validators/crop.validator.js";
 import { authenticated, scopeByAssociationId } from "../middlewares/auth.middleware.js";
@@ -19,7 +17,6 @@ import { authenticated, scopeByAssociationId } from "../middlewares/auth.middlew
 const router = express.Router();
 
 router.get("/", authenticated, scopeByAssociationId, validateGetCropsQuery, getCropsHandler);
-router.get("/:farmId", authenticated, validateCropFarmIdParam, getCropsByFarmIdHandler);
 router.post("/", authenticated, validateCreateCrop, createCropHandler);
 router.patch("/:id/distribute", authenticated, validateCropIdParam, distributeCropHandler);
 router.patch("/:id", authenticated, validateCropIdParam, validateUpdateCrop, updateCropHandler);

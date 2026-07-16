@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
     getFarmers,
     getFarmersByAssociationId,
+    getCropsByFarmerId,
     createFarmer,
     updateFarmer,
     deleteFarmer,
@@ -16,6 +17,7 @@ export const farmerKeys = {
     details: () => [...farmerKeys.all, "detail"],
     detail: (id) => [...farmerKeys.details(), id],
     byAssociation: (associationId) => [...farmerKeys.all, "byAssociation", associationId],
+    crops: (farmerId) => [...farmerKeys.all, "crops", farmerId],
 };
 
 /* ---------------- Shared: files -> attachments ---------------- */
@@ -56,6 +58,15 @@ export function useFarmersByAssociationId(associationId, options = {}) {
         queryKey: farmerKeys.byAssociation(associationId),
         queryFn: () => getFarmersByAssociationId(associationId),
         enabled: !!associationId,
+        ...options,
+    });
+}
+
+export function useCropsByFarmerId(farmerId, options = {}) {
+    return useQuery({
+        queryKey: farmerKeys.crops(farmerId),
+        queryFn: () => getCropsByFarmerId(farmerId),
+        enabled: !!farmerId,
         ...options,
     });
 }
