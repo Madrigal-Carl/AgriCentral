@@ -113,17 +113,17 @@ farmSchema.pre("validate", async function () {
     if (!this.isNew || this.tag) return;
 
     const existing = await this.constructor
-        .find({ tag: { $regex: /^FARM-\d+$/ } })
+        .find({ tag: { $regex: /^FM-\d+$/ } })
         .select("tag")
         .lean();
 
     const maxNumber = existing.reduce((max, doc) => {
-        const match = doc.tag.match(/^FARM-(\d+)$/);
+        const match = doc.tag.match(/^FM-(\d+)$/);
         const num = match ? parseInt(match[1], 10) : 0;
         return num > max ? num : max;
     }, 0);
 
-    this.tag = `FARM-${String(maxNumber + 1).padStart(3, "0")}`;
+    this.tag = `FM-${String(maxNumber + 1).padStart(3, "0")}`;
 });
 
 export default mongoose.model("Farm", farmSchema);
