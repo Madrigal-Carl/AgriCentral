@@ -43,6 +43,12 @@ const PERMISSIONS = {
         governor: { view: true, add: false, edit: false, delete: false, review: true },
         admin: { view: true, add: false, edit: false, delete: false, review: false },
     },
+    crops: {
+        far: { view: true, add: false, edit: false, delete: false, distribute: false },
+        aew: { view: true, add: false, edit: false, delete: false, distribute: true },
+        coordinator: { view: true, add: true, edit: true, delete: true, distribute: false },
+        admin: { view: true, add: true, edit: true, delete: true, distribute: false },
+    },
 };
 
 const DEFAULT_CAPABILITIES = {

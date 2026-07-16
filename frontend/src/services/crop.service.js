@@ -24,3 +24,8 @@ export async function deleteCrop(id) {
     const response = await api.delete(`/crops/${id}`);
     return response.data;
 }
+
+export async function distributeCrop(id) {
+    const response = await api.patch(`/crops/${id}/distribute`);
+    return response.data;
+}

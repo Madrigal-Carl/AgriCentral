@@ -80,6 +80,7 @@ export const aewNavSections = [
         items: [
             { to: "/aew/equipments", label: "Equipment", icon: Tractor },
             { to: "/aew/livestocks", label: "Livestock", icon: Beef },
+            { to: "/aew/crops", label: "Crop", icon: Carrot },
         ],
     },
     {
@@ -102,6 +103,7 @@ const aewBreadcrumbs = {
     },
     "/aew/equipments": { group: "Resources", label: "Equipment" },
     "/aew/livestocks": { group: "Resources", label: "Livestock" },
+    "/aew/crops": { group: "Resources", label: "Crop" },
     "/aew/farm-maps": { group: "Mapping", label: "Farm Maps" },
     "/aew/reports": { group: "Records", label: "Report" },
     "/aew/settings": { group: "Settings", label: "Settings" },
@@ -148,6 +150,7 @@ export const coordinatorNavSections = [
                 label: "Livestock",
                 icon: Beef,
             },
+            { to: "/coordinator/crops", label: "Crop", icon: Carrot },
         ],
     },
     {
@@ -199,6 +202,7 @@ export const coordinatorBreadcrumbs = {
         group: "Inventory",
         label: "Livestock",
     },
+    "/coordinator/crops": { group: "Inventory", label: "Crop" },
     "/coordinator/requests": {
         group: "Records",
         label: "Request",

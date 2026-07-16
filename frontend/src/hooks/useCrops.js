@@ -5,6 +5,7 @@ import {
     createCrop,
     updateCrop,
     deleteCrop,
+    distributeCrop,
 } from "@/services/crop.service";
 
 /* ---------------- Query Keys ---------------- */
@@ -74,6 +75,22 @@ export function useDeleteCrop(options = {}) {
         onSuccess: (data, variables, context) => {
             queryClient.invalidateQueries({ queryKey: cropKeys.lists() });
             queryClient.removeQueries({ queryKey: cropKeys.detail(variables) });
+            options.onSuccess?.(data, variables, context);
+        },
+        onError: options.onError,
+    });
+}
+
+export function useDistributeCrop(options = {}) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (id) => distributeCrop(id),
+        onSuccess: (data, variables, context) => {
+            queryClient.invalidateQueries({ queryKey: cropKeys.lists() });
+            queryClient.invalidateQueries({
+                queryKey: cropKeys.detail(variables),
+            });
             options.onSuccess?.(data, variables, context);
         },
         onError: options.onError,

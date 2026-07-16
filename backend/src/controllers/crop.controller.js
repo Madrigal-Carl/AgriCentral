@@ -4,6 +4,7 @@ import {
     deleteCrop,
     getCrops,
     getCropsByFarmId,
+    distributeCrop,
 } from "../services/crop.service.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
@@ -50,5 +51,14 @@ export const getCropsHandler = asyncHandler(async (req, res) => {
         message: "Crops fetched successfully",
         crops,
         pagination,
+    });
+});
+
+export const distributeCropHandler = asyncHandler(async (req, res) => {
+    const crop = await distributeCrop(req.params.id);
+
+    return res.status(200).json({
+        message: "Crop marked as distributed successfully",
+        crop,
     });
 });

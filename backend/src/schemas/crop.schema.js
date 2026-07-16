@@ -8,8 +8,14 @@ const objectIdOrEmpty = (message) =>
         z.string().regex(/^[0-9a-fA-F]{24}$/, message).optional(),
     );
 
+const requiredObjectId = (invalidMessage, requiredMessage) =>
+    z.preprocess(
+        (val) => (val === "" ? undefined : val),
+        z.string({ required_error: requiredMessage }).regex(/^[0-9a-fA-F]{24}$/, invalidMessage),
+    );
+
 export const createCropSchema = z.object({
-    associationId: objectIdOrEmpty("Invalid association id"),
+    associationId: requiredObjectId("Invalid association id", "Association is required"),
     name: z
         .string({ required_error: "Crop name is required" })
         .trim()
@@ -20,15 +26,27 @@ export const createCropSchema = z.object({
         .min(0, "Kilo cannot be negative")
         .optional()
         .default(0),
-    assignedFarmer: objectIdOrEmpty("Invalid farmer id"),
+    assignedFarmer: requiredObjectId("Invalid farmer id", "Assigned farmer is required"),
     status: z.enum(STATUSES).optional().default("not_planted"),
 });
 
-export const updateCropSchema = createCropSchema
-    .partial()
-    .refine((data) => Object.keys(data).length > 0, {
-        message: "At least one field must be provided",
-    });
+export const updateCropSchema = z.object({
+    associationId: requiredObjectId("Invalid association id", "Association is required").optional(),
+    name: z
+        .string()
+        .trim()
+        .min(2, "Crop name must be at least 2 characters")
+        .max(100, "Crop name must not exceed 100 characters")
+        .optional(),
+    kilo: z.coerce
+        .number({ invalid_type_error: "Kilo must be a number" })
+        .min(0, "Kilo cannot be negative")
+        .optional(),
+    assignedFarmer: requiredObjectId("Invalid farmer id", "Assigned farmer is required").optional(),
+    status: z.enum(STATUSES).optional(),
+}).refine((data) => Object.keys(data).length > 0, {
+    message: "At least one field must be provided",
+});
 
 export const cropIdParamSchema = z.object({
     id: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid crop id"),

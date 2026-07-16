@@ -7,11 +7,16 @@ import {
   RowActions,
   StatusPill,
 } from "@/components/public";
-import { DeleteConfirmModal, CropModal } from "@/components/modal";
+import {
+  DeleteConfirmModal,
+  CropModal,
+  ReviewConfirmModal,
+  CropDrawer,
+} from "@/components/modal";
 import { Button } from "@/components/ui";
 
-import { useFarmers } from "@/hooks/useFarmers";
-import { useCrops, useDeleteCrop } from "@/hooks/useCrops";
+import { useCrops, useDeleteCrop, useDistributeCrop } from "@/hooks/useCrops";
+import { usePermissions } from "@/constants/permissions";
 
 const CROP_STATUS_OPTIONS = [
   { value: "planted", label: "Planted" },
@@ -28,6 +33,8 @@ const blankForm = {
 };
 
 export function CropsPage() {
+  const capabilities = usePermissions("crops");
+
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
@@ -44,20 +51,12 @@ export function CropsPage() {
   const rows = data?.crops ?? [];
   const pagination = data?.pagination;
 
-  // Fetch all farmers to resolve assignedFarmer -> display name,
-  // since the crop endpoints don't populate that field.
-  const { data: farmersData } = useFarmers({ all: true });
-  const farmerNameById = useMemo(() => {
-    const map = {};
-    (farmersData?.farmers ?? []).forEach((f) => {
-      map[f._id] = f.fullName;
-    });
-    return map;
-  }, [farmersData]);
-
   const [modal, setModal] = useState(null);
+  const [viewRow, setViewRow] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
+  const [confirmDistribute, setConfirmDistribute] = useState(null);
+  const [distributeError, setDistributeError] = useState(null);
 
   const { mutate: deleteCropMutate, isPending: isDeleting } = useDeleteCrop({
     onSuccess: () => {
@@ -71,6 +70,21 @@ export function CropsPage() {
     },
   });
 
+  const { mutate: distributeCropMutate, isPending: isDistributing } =
+    useDistributeCrop({
+      onSuccess: () => {
+        setConfirmDistribute(null);
+        setDistributeError(null);
+      },
+      onError: (err) => {
+        setDistributeError(
+          err?.response?.data?.message ||
+            err.message ||
+            "Failed to distribute crop",
+        );
+      },
+    });
+
   const openAdd = () => setModal({ mode: "add", data: { ...blankForm } });
   const openEdit = (row) =>
     setModal({
@@ -79,18 +93,27 @@ export function CropsPage() {
         id: row._id,
         name: row.name,
         kilo: row.kilo,
-        assignedFarmer: row.assignedFarmer,
+        assignedFarmer: row.assignedFarmer?._id ?? row.assignedFarmer ?? "",
         association: row.association?._id ?? row.association ?? "",
         status: row.status,
       },
     });
+  const openView = (row) => setViewRow(row);
   const askDelete = (row) => {
     setDeleteError(null);
     setConfirmDelete(row);
   };
+  const askDistribute = (row) => {
+    setDistributeError(null);
+    setConfirmDistribute(row);
+  };
   const confirmRemove = () => {
     if (!confirmDelete) return;
     deleteCropMutate(confirmDelete._id);
+  };
+  const confirmDistributeAction = () => {
+    if (!confirmDistribute) return;
+    distributeCropMutate(confirmDistribute._id);
   };
 
   return (
@@ -99,9 +122,11 @@ export function CropsPage() {
         title="Crops"
         subtitle="Crop batches, yield weight, and farmer assignment."
         action={
-          <Button variant="accent" onClick={openAdd}>
-            <Plus className="h-4 w-4" /> Add Crop
-          </Button>
+          capabilities.add && (
+            <Button variant="accent" onClick={openAdd}>
+              <Plus className="h-4 w-4" /> Add Crop
+            </Button>
+          )
         }
       />
 
@@ -169,7 +194,16 @@ export function CropsPage() {
           {
             key: "assignedFarmer",
             header: "Assigned Farmer",
-            cell: (r) => farmerNameById[r.assignedFarmer] || "—",
+            cell: (r) => r.assignedFarmer?.fullName || "—",
+          },
+          {
+            key: "isDistributed",
+            header: "Distributed",
+            cell: (r) => (
+              <StatusPill tone={r.isDistributed ? "success" : "neutral"}>
+                {r.isDistributed ? "Yes" : "No"}
+              </StatusPill>
+            ),
           },
           {
             key: "actions",
@@ -177,8 +211,22 @@ export function CropsPage() {
             align: "right",
             cell: (r) => (
               <RowActions
-                onEdit={() => openEdit(r)}
-                onDelete={() => askDelete(r)}
+                onView={() => openView(r)}
+                onEdit={
+                  capabilities.edit && !r.isDistributed
+                    ? () => openEdit(r)
+                    : undefined
+                }
+                onDelete={
+                  capabilities.delete && !r.isDistributed
+                    ? () => askDelete(r)
+                    : undefined
+                }
+                onRelease={
+                  capabilities.distribute && !r.isDistributed
+                    ? () => askDistribute(r)
+                    : undefined
+                }
               />
             ),
           },
@@ -193,6 +241,15 @@ export function CropsPage() {
           onSave={() => setModal(null)}
         />
       )}
+
+      {viewRow && (
+        <CropDrawer
+          row={viewRow}
+          farmerName={viewRow.assignedFarmer?.fullName}
+          onClose={() => setViewRow(null)}
+        />
+      )}
+
       {confirmDelete && (
         <DeleteConfirmModal
           id={confirmDelete._id}
@@ -202,6 +259,21 @@ export function CropsPage() {
           onCancel={() => setConfirmDelete(null)}
           onConfirm={confirmRemove}
         />
+      )}
+
+      {confirmDistribute && (
+        <ReviewConfirmModal
+          row={{ title: confirmDistribute.name }}
+          action="release"
+          onCancel={() => setConfirmDistribute(null)}
+          onConfirm={confirmDistributeAction}
+        />
+      )}
+
+      {distributeError && (
+        <div className="fixed bottom-4 right-4 z-50 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600 shadow-lg">
+          {distributeError}
+        </div>
       )}
     </div>
   );

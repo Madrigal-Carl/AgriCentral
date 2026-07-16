@@ -28,6 +28,10 @@ const cropSchema = new mongoose.Schema(
             enum: ["planted", "not_planted"],
             default: "not_planted",
         },
+        isDistributed: {
+            type: Boolean,
+            default: false,
+        },
         deletedAt: {
             type: Date,
             default: null,
