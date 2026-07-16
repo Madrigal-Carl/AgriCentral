@@ -4,6 +4,7 @@ import {
     updateEquipmentHandler,
     deleteEquipmentHandler,
     getEquipmentsHandler,
+    getAvailableEquipmentsHandler,
 } from "../controllers/equipment.controller.js";
 import {
     validateCreateEquipment,
@@ -16,6 +17,7 @@ import { authenticated, scopeByAssociationId } from "../middlewares/auth.middlew
 const router = express.Router();
 
 router.get("/", authenticated, scopeByAssociationId, validateGetEquipmentsQuery, getEquipmentsHandler);
+router.get("/available", authenticated, getAvailableEquipmentsHandler);
 router.post("/", authenticated, validateCreateEquipment, createEquipmentHandler);
 router.patch("/:id", authenticated, validateEquipmentIdParam, validateUpdateEquipment, updateEquipmentHandler);
 router.delete("/:id", authenticated, validateEquipmentIdParam, deleteEquipmentHandler);

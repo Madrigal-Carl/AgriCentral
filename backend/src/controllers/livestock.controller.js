@@ -3,6 +3,7 @@ import {
     updateLivestock,
     deleteLivestock,
     getLivestocks,
+    getAvailableLivestocks,
 } from "../services/livestock.service.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
@@ -40,5 +41,14 @@ export const getLivestocksHandler = asyncHandler(async (req, res) => {
         message: "Livestock fetched successfully",
         livestocks,
         pagination,
+    });
+});
+
+export const getAvailableLivestocksHandler = asyncHandler(async (req, res) => {
+    const livestocks = await getAvailableLivestocks();
+
+    return res.status(200).json({
+        message: "Available livestock fetched successfully",
+        livestocks,
     });
 });

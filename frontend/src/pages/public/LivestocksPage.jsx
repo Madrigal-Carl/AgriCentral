@@ -128,6 +128,7 @@ export function LivestocksPage() {
         weight: row.weight,
         farmer: row.assignedFarmer?._id,
         associationId: row.association?._id ?? row.association,
+        reservedBy: row.reservedBy || null,
       },
     });
   };
@@ -236,13 +237,20 @@ export function LivestocksPage() {
             key: "propertyNumber",
             header: "Property Number",
             cell: (r) => (
-              <div>
-                <div className="font-semibold text-foreground">
-                  {r.propertyNumber}
+              <div className="flex items-center gap-6">
+                <div>
+                  <div className="font-semibold text-foreground">
+                    {r.propertyNumber}
+                  </div>
+                  <div className="text-xs text-secondary">
+                    {r.animal} · {r.breed}
+                  </div>
                 </div>
-                <div className="text-xs text-secondary">
-                  {r.animal} · {r.breed}
-                </div>
+                {r.reservedBy && (
+                  <StatusPill tone={statusTone.reserved} className="mt-1">
+                    Reserved
+                  </StatusPill>
+                )}
               </div>
             ),
           },

@@ -3,6 +3,7 @@ import {
     updateEquipment,
     deleteEquipment,
     getEquipments,
+    getAvailableEquipments,
 } from "../services/equipment.service.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
@@ -40,5 +41,14 @@ export const getEquipmentsHandler = asyncHandler(async (req, res) => {
         message: "Equipment fetched successfully",
         equipments,
         pagination,
+    });
+});
+
+export const getAvailableEquipmentsHandler = asyncHandler(async (req, res) => {
+    const equipments = await getAvailableEquipments();
+
+    return res.status(200).json({
+        message: "Available equipment fetched successfully",
+        equipments,
     });
 });

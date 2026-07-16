@@ -215,24 +215,22 @@ export function UsersPage() {
             key: "role",
             header: "Role",
             cell: (r) => (
-              <div className="flex flex-wrap items-center gap-1.5">
-                <StatusPill tone={roleTone[r.role]}>
-                  {roleLabel[r.role]}
-                </StatusPill>
-              </div>
+              <StatusPill tone={roleTone[r.role]}>
+                {roleLabel[r.role]}
+              </StatusPill>
             ),
           },
           {
             key: "status",
             header: "Status",
             cell: (r) => (
-              <div className="flex flex-wrap items-center gap-1.5">
+              <>
                 {!r.isVerified ? (
                   <StatusPill tone="warning">Pending</StatusPill>
                 ) : (
                   <StatusPill tone="success">Active</StatusPill>
                 )}
-              </div>
+              </>
             ),
           },
           {

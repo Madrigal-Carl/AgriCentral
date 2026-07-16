@@ -43,7 +43,11 @@ export const loginUser = async ({ email, password }) => {
   }
 
   if (!user.isVerified) {
-    throw new Error("Please verify your email first");
+    throw new Error("Please verify your account first");
+  }
+
+  if (user.role === "far" && !user.association) {
+    throw new Error("No association assigned to this account. Please contact your admin.");
   }
 
   const accessToken = generateAccessToken(user._id);

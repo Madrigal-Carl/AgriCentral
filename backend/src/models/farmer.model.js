@@ -18,7 +18,10 @@ const attachmentSchema = new mongoose.Schema(
             default: "image",
         },
     },
-    { _id: false },
+    {
+        _id: false,
+        timestamps: true,
+    },
 );
 
 const farmerSchema = new mongoose.Schema(

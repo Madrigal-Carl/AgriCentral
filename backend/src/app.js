@@ -15,6 +15,7 @@ import associationRoutes from "./routes/association.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import equipmentRoutes from "./routes/equipment.routes.js";
 import livestockRoutes from "./routes/livestock.routes.js";
+import requestRoutes from "./routes/request.routes.js";
 
 const app = express();
 
@@ -54,6 +55,7 @@ app.use("/api/associations", associationRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/equipments", equipmentRoutes);
 app.use("/api/livestocks", livestockRoutes);
+app.use("/api/requests", requestRoutes);
 
 app.use(errorHandler);
 

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
     getLivestocks,
+    getAvailableLivestocks,
     createLivestock,
     updateLivestock,
     deleteLivestock,
@@ -13,6 +14,7 @@ export const livestockKeys = {
     list: (filters) => [...livestockKeys.lists(), filters],
     details: () => [...livestockKeys.all, "detail"],
     detail: (id) => [...livestockKeys.details(), id],
+    available: () => [...livestockKeys.all, "available"],
 };
 
 /* ---------------- Queries ---------------- */
@@ -21,6 +23,14 @@ export function useLivestocks(filters = {}, options = {}) {
         queryKey: livestockKeys.list(filters),
         queryFn: () => getLivestocks(filters),
         keepPreviousData: true,
+        ...options,
+    });
+}
+
+export function useAvailableLivestocks(options = {}) {
+    return useQuery({
+        queryKey: livestockKeys.available(),
+        queryFn: () => getAvailableLivestocks(),
         ...options,
     });
 }

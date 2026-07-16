@@ -31,7 +31,7 @@ export const createEquipmentSchema = z
 
 export const updateEquipmentSchema = z
     .object({
-        associationId: objectId("Invalid association id").optional(),
+        associationId: objectId("Invalid association id").nullable().optional(),
         propertyNumber: z
             .string()
             .trim()

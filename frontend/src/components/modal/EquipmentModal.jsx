@@ -31,9 +31,14 @@ export function EquipmentModal({ mode, initial, onClose, onSave }) {
   });
 
   const { data: associationsData } = useAssociations({ all: true });
-  const associationOptions = (associationsData?.associations ?? []).map(
-    (a) => ({ value: a._id, label: a.name }),
-  );
+
+  const associationOptions = [
+    { value: "", label: "No association (return equipment)" },
+    ...(associationsData?.associations ?? []).map((a) => ({
+      value: a._id,
+      label: a.name,
+    })),
+  ];
 
   const { mutateAsync: createMutateAsync, isPending: isCreating } =
     useCreateEquipment({
@@ -59,16 +64,27 @@ export function EquipmentModal({ mode, initial, onClose, onSave }) {
     // This modal never touches assignment/status — it mirrors whatever
     // the record already had so those refine rules on the backend
     // (status <-> assignedFarmer) stay satisfied.
-    const derivedStatus = initial.farmer ? "assigned" : "available";
+    const clearingAssociation = isEdit && !values.associationId;
+    const derivedStatus = clearingAssociation
+      ? "available"
+      : initial.farmer
+        ? "assigned"
+        : "available";
 
     const payload = {
       propertyNumber: values.propertyNumber,
       name: values.name,
       condition: values.condition,
       status: derivedStatus,
-      ...(values.associationId ? { associationId: values.associationId } : {}),
       ...(isEdit
-        ? { assignedFarmer: initial.farmer || null }
+        ? { associationId: values.associationId || null }
+        : values.associationId
+          ? { associationId: values.associationId }
+          : {}),
+      ...(isEdit
+        ? {
+            assignedFarmer: clearingAssociation ? null : initial.farmer || null,
+          }
         : initial.farmer
           ? { assignedFarmer: initial.farmer }
           : {}),
@@ -156,20 +172,22 @@ export function EquipmentModal({ mode, initial, onClose, onSave }) {
             )}
           />
         </Field>
-        <Field label="Association" error={errors.associationId?.message}>
-          <Controller
-            name="associationId"
-            control={control}
-            render={({ field }) => (
-              <FullSelect
-                value={field.value}
-                onChange={field.onChange}
-                options={associationOptions}
-                defaultValue=""
-              />
-            )}
-          />
-        </Field>
+        {!initial.reservedBy && (
+          <Field label="Association" error={errors.associationId?.message}>
+            <Controller
+              name="associationId"
+              control={control}
+              render={({ field }) => (
+                <FullSelect
+                  value={field.value}
+                  onChange={field.onChange}
+                  options={associationOptions}
+                  defaultValue=""
+                />
+              )}
+            />
+          </Field>
+        )}
       </form>
     </ModalShell>
   );

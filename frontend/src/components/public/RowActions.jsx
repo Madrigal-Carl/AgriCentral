@@ -1,7 +1,21 @@
 import { IconButton } from "@/components/ui";
-import { Eye, Pencil, Trash2, Check, X as XIcon } from "lucide-react";
+import {
+  Eye,
+  Pencil,
+  Trash2,
+  Check,
+  X as XIcon,
+  PackageCheck,
+} from "lucide-react";
 
-export function RowActions({ onView, onEdit, onDelete, onApprove, onDeny }) {
+export function RowActions({
+  onView,
+  onEdit,
+  onDelete,
+  onApprove,
+  onDeny,
+  onRelease,
+}) {
   const isReview = Boolean(onApprove || onDeny);
 
   if (isReview) {
@@ -24,6 +38,14 @@ export function RowActions({ onView, onEdit, onDelete, onApprove, onDeny }) {
             onClick={onDeny}
           />
         )}
+        {onRelease && (
+          <IconButton
+            icon={PackageCheck}
+            label="Release"
+            tone="success"
+            onClick={onRelease}
+          />
+        )}
       </div>
     );
   }
@@ -32,6 +54,14 @@ export function RowActions({ onView, onEdit, onDelete, onApprove, onDeny }) {
     <div className="flex items-center justify-end gap-1">
       {onView && <IconButton icon={Eye} label="View" onClick={onView} />}
       {onEdit && <IconButton icon={Pencil} label="Edit" onClick={onEdit} />}
+      {onRelease && (
+        <IconButton
+          icon={PackageCheck}
+          label="Release"
+          tone="success"
+          onClick={onRelease}
+        />
+      )}
       {onDelete && (
         <IconButton
           icon={Trash2}

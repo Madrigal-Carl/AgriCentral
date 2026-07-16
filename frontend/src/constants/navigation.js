@@ -335,6 +335,17 @@ export const headNavSections = [
         ],
     },
     {
+        label: "Resources",
+        items: [
+            {
+                to: "/head/equipments",
+                label: "Equipment",
+                icon: Tractor,
+            },
+            { to: "/head/livestocks", label: "Livestock", icon: Beef },
+        ],
+    },
+    {
         label: "Mapping",
         items: [
             {
@@ -377,6 +388,8 @@ export const headBreadcrumbs = {
         group: "Management",
         label: "Farm",
     },
+    "/head/equipments": { group: "Resources", label: "Equipment" },
+    "/head/livestocks": { group: "Resources", label: "Livestock" },
     "/head/farm-maps": {
         group: "Mapping",
         label: "Farm Map",

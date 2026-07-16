@@ -487,6 +487,7 @@ export const statusTone = {
     active: "success",
     inactive: "neutral",
     assigned: "success",
+    reserved: "warning",
     available: "neutral",
     pending: "warning",
     approved: "info",

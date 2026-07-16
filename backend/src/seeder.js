@@ -9,6 +9,7 @@ import { wipeFarms, seedFarms } from "./seeders/farm.seeder.js";
 import { wipeLivestocks, seedLivestocks } from "./seeders/livestock.seeder.js";
 import { wipeEquipments, seedEquipments } from "./seeders/equipment.seeder.js";
 import { wipeLogs, seedLogs } from "./seeders/log.seeder.js";
+import { wipeRequests, seedRequests } from "./seeders/request.seeder.js";
 
 // Order matters: each entry is listed after every seeder whose output it
 // depends on, so foreign keys always point at documents that already
@@ -22,6 +23,7 @@ import { wipeLogs, seedLogs } from "./seeders/log.seeder.js";
 //   Livestock    -> needs Farmers
 //   Equipment    -> needs Farmers
 //   Logs         -> needs Farmers, Farms, Livestock, Equipment
+//   Requests     -> wipe-only for now; seeding logic comes later
 //
 // To add a new model seeder later: create seeders/xxx.seeder.js exporting
 // wipeXxx()/seedXxx(context), import it above, and add one entry below in
@@ -35,6 +37,7 @@ const SEEDERS = [
     { name: "Livestock", wipe: wipeLivestocks, seed: seedLivestocks },
     { name: "Equipment", wipe: wipeEquipments, seed: seedEquipments },
     { name: "Logs", wipe: wipeLogs, seed: seedLogs },
+    { name: "Requests", wipe: wipeRequests, seed: seedRequests },
 ];
 
 async function runSeeders() {
@@ -47,8 +50,6 @@ async function runSeeders() {
     await mongoose.connect(mongoUri);
     console.log("Connected to MongoDB\n");
 
-    // Wipe everything first, in REVERSE dependency order (children before
-    // parents) so nothing is left dangling mid-wipe.
     console.log("Wiping existing data...");
     for (const seeder of [...SEEDERS].reverse()) {
         console.log(`- ${seeder.name}`);
@@ -56,9 +57,6 @@ async function runSeeders() {
     }
     console.log("");
 
-    // Seed everything in FORWARD dependency order, threading each
-    // seeder's output (e.g. created associations/farmers) into the
-    // context so later seeders can reference real, already-created FKs.
     console.log("Seeding fresh data...");
     let context = {};
     for (const seeder of SEEDERS) {

@@ -113,6 +113,8 @@ export default function AppRouter() {
           <Route path="/head" element={<DashboardLayout />}>
             <Route path="overview" element={<OverviewPage />} />
             <Route path="farms" element={<FarmsPage />} />
+            <Route path="equipments" element={<EquipmentsPage />} />
+            <Route path="livestocks" element={<LivestocksPage />} />
             <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="requests" element={<RequestsPage />} />
             <Route path="reports" element={<ReportsPage />} />

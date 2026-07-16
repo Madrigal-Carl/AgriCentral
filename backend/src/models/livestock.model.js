@@ -71,6 +71,11 @@ const livestockSchema = new mongoose.Schema(
             type: Date,
             default: null,
         },
+        reservedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Request",
+            default: null,
+        },
     },
     {
         timestamps: true,

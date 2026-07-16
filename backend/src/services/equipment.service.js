@@ -114,6 +114,10 @@ export const updateEquipment = async (id, data) => {
         delete update.assignedFarmer;
         unset.assignedFarmer = "";
     }
+    if (update.association === null) {
+        delete update.association;
+        unset.association = "";
+    }
 
     const equipment = await Equipment.findOneAndUpdate(
         { _id: id, deletedAt: null },
@@ -148,7 +152,7 @@ export const updateEquipment = async (id, data) => {
                 entityType: "equipment",
                 entityId: equipment._id,
                 association: previousEquipment?.association,
-                message: `${equipment.name} (${equipment.propertyNumber}) has been removed from its association.`,
+                message: `${equipment.name} (${equipment.propertyNumber}) has been returned and removed from its association.`,
             });
         }
     }
@@ -272,6 +276,19 @@ const attachHistory = async (equipments, associationId) => {
             history: logsByEquipmentId.get(key) ?? [],
         };
     });
+};
+
+export const getAvailableEquipments = async () => {
+    const equipments = await Equipment.find({
+        deletedAt: null,
+        association: null,
+        assignedFarmer: null,
+        status: "available",
+    })
+        .select("propertyNumber name condition status")
+        .sort({ propertyNumber: 1 });
+
+    return equipments;
 };
 
 export const getEquipments = async ({

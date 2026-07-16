@@ -19,3 +19,8 @@ export async function deleteLivestock(id) {
     const response = await api.delete(`/livestocks/${id}`);
     return response.data;
 }
+
+export async function getAvailableLivestocks() {
+    const response = await api.get("/livestocks/available");
+    return response.data;
+}

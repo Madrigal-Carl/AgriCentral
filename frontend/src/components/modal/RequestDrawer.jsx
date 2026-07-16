@@ -1,16 +1,21 @@
 import { X, Info, Package, FileText, Calendar } from "lucide-react";
 import { DefList, Section } from "@/components/drawer";
 import { StatusPill } from "@/components/public";
+import { typeLabel, typeTone, sevTone, sevLabel } from "@/constants/data";
 import {
-  typeLabel,
-  typeTone,
-  sevTone,
-  sevLabel,
+  getDisplayStatus,
   statusTone,
-} from "@/constants/data";
+  statusLabel,
+  releaseStatusTone,
+  releaseStatusLabel,
+} from "@/utils/request";
 import { fmtDate } from "@/utils/format";
 
 export function RequestDrawer({ row, onClose }) {
+  const displayStatus = getDisplayStatus(row);
+  const entities = row.entities ?? [];
+  const history = row.history ?? [];
+
   return (
     <div className="fixed inset-0 z-50" onClick={onClose}>
       <div className="absolute inset-0 bg-foreground-40" />
@@ -21,20 +26,22 @@ export function RequestDrawer({ row, onClose }) {
         <div className="border-b border-border px-6 py-5">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <div className="label-eyebrow mb-1">Request · {row.id}</div>
+              <div className="label-eyebrow mb-1">Request · {row._id}</div>
               <h2 className="font-display text-xl tracking-tight text-foreground truncate">
                 {row.title}
               </h2>
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <StatusPill tone={typeTone[row.type]}>
-                  {typeLabel[row.type]}
-                </StatusPill>
                 <StatusPill tone={sevTone[row.severity]}>
                   {sevLabel[row.severity]}
                 </StatusPill>
-                <StatusPill tone={statusTone[row.status]}>
-                  {row.status}
+                <StatusPill tone={statusTone[displayStatus]}>
+                  {statusLabel[displayStatus]}
                 </StatusPill>
+                {displayStatus === "approved" && (
+                  <StatusPill tone={releaseStatusTone[row.releaseStatus]}>
+                    {releaseStatusLabel[row.releaseStatus]}
+                  </StatusPill>
+                )}
               </div>
             </div>
             <button
@@ -51,36 +58,42 @@ export function RequestDrawer({ row, onClose }) {
           <Section icon={Info} title="Basic Information">
             <DefList
               items={[
-                ["Association", "Boac, Marinduque"],
+                ["Association", row.association?.name ?? "Unaffiliated"],
                 ["Title", row.title],
-                ["Type", typeLabel[row.type]],
+                ["Type", typeLabel[row.entityType]],
                 ["Severity", sevLabel[row.severity]],
-                ["Status", row.status],
-                ["Date", fmtDate(row.date)],
+                ["Status", statusLabel[displayStatus]],
+                ["Submitted", fmtDate(row.createdAt)],
               ]}
             />
           </Section>
 
-          <Section icon={Package} title={`Requested ${typeLabel[row.type]}`}>
-            {row.itemLabel ? (
-              <div className="flex items-center justify-between gap-3 border border-border bg-muted-30 p-3">
-                <div className="min-w-0">
-                  <div className="font-semibold text-foreground truncate">
-                    {row.itemLabel}
+          <Section
+            icon={Package}
+            title={`Requested ${typeLabel[row.entityType]} (${entities.length})`}
+          >
+            {entities.length ? (
+              <div className="space-y-2">
+                {entities.map((e) => (
+                  <div
+                    key={e._id}
+                    className="flex items-center justify-between gap-3 border border-border bg-muted-30 p-3"
+                  >
+                    <div className="min-w-0">
+                      <div className="font-semibold text-foreground truncate">
+                        {e.propertyNumber}
+                      </div>
+                      <div className="text-xs text-secondary">
+                        {row.entityType === "livestock" ? e.animal : e.name}
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-xs text-secondary">
-                    {typeLabel[row.type]}
-                  </div>
-                </div>
-                <div className="shrink-0 text-right">
-                  <div className="label-eyebrow">Quantity</div>
-                  <div className="font-display text-xl text-foreground">
-                    {row.quantity}
-                  </div>
-                </div>
+                ))}
               </div>
             ) : (
-              <div className="text-sm text-secondary">No item selected.</div>
+              <div className="text-sm text-secondary">
+                No items resolved for this request.
+              </div>
             )}
           </Section>
 
@@ -90,27 +103,26 @@ export function RequestDrawer({ row, onClose }) {
             </p>
           </Section>
 
-          <Section icon={Calendar} title="Timeline">
-            <ol className="relative ml-2 border-l border-border">
-              <li className="relative pl-5 pb-4">
-                <span className="absolute -left-[5px] top-1.5 h-2.5 w-2.5 bg-accent" />
-                <div className="font-semibold text-sm text-foreground">
-                  Request submitted
-                </div>
-                <div className="text-xs text-secondary">
-                  {fmtDate(row.date)}
-                </div>
-              </li>
-              <li className="relative pl-5">
-                <span className="absolute -left-[5px] top-1.5 h-2.5 w-2.5 bg-accent" />
-                <div className="font-semibold text-sm text-foreground">
-                  Current status
-                </div>
-                <div className="text-xs text-secondary capitalize">
-                  {row.status}
-                </div>
-              </li>
-            </ol>
+          <Section icon={Calendar} title="Activity Timeline">
+            {history.length ? (
+              <ol className="relative ml-2 border-l border-border">
+                {history.map((entry, i) => (
+                  <li key={i} className="relative pl-5 pb-4 last:pb-0">
+                    <span className="absolute -left-[5px] top-1.5 h-2.5 w-2.5 bg-accent" />
+                    <div className="text-sm text-foreground">
+                      {entry.message}
+                    </div>
+                    <div className="text-xs text-secondary">
+                      {fmtDate(entry.date)}
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <div className="text-sm text-secondary">
+                No activity recorded yet.
+              </div>
+            )}
           </Section>
         </div>
       </aside>

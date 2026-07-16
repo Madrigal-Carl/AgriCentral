@@ -4,7 +4,6 @@ import User from "../models/user.model.js";
 // Shared across every seeded account, per your instructions.
 const SHARED_PASSWORD = "Pass@123";
 const SHARED_IS_VERIFIED = true;
-const SHARED_ASSOCIATION = null;
 
 // One account per role, following the "Juan {Role}" naming pattern.
 const USERS_TO_SEED = [
@@ -25,20 +24,32 @@ export const wipeUsers = async () => {
     console.log(`  Wiped ${result.deletedCount} user(s).`);
 };
 
-// No foreign-key dependencies — every seeded user has association: null,
-// per your instructions.
-export const seedUsers = async () => {
+// Depends on Associations having already been seeded (see dbSeeder.js
+// ordering) so the "far" user can be assigned a real association id
+// instead of null. Every other role keeps association: null, per your
+// original instructions — only "far" needs one, since requests are
+// scoped by the requester's own association.
+export const seedUsers = async ({ associations = [] } = {}) => {
     const hashedPassword = await bcrypt.hash(SHARED_PASSWORD, SALT_ROUNDS);
     const users = [];
 
+    const randomAssociationId = () => {
+        if (associations.length === 0) return null;
+        const pick = associations[Math.floor(Math.random() * associations.length)];
+        return pick._id;
+    };
+
     for (const userData of USERS_TO_SEED) {
+        const association =
+            userData.role === "far" ? randomAssociationId() : null;
+
         const user = await User.create({
             fullname: userData.fullname,
             email: userData.email,
             password: hashedPassword,
             isVerified: SHARED_IS_VERIFIED,
             role: userData.role,
-            association: SHARED_ASSOCIATION,
+            association,
         });
 
         users.push(user);

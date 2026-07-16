@@ -36,9 +36,14 @@ export function LivestockModal({ mode, initial, onClose, onSave }) {
   });
 
   const { data: associationsData } = useAssociations({ all: true });
-  const associationOptions = (associationsData?.associations ?? []).map(
-    (a) => ({ value: a._id, label: a.name }),
-  );
+
+  const associationOptions = [
+    { value: "", label: "No association (return livestock)" },
+    ...(associationsData?.associations ?? []).map((a) => ({
+      value: a._id,
+      label: a.name,
+    })),
+  ];
 
   const { mutateAsync: createMutateAsync, isPending: isCreating } =
     useCreateLivestock({
@@ -64,12 +69,13 @@ export function LivestockModal({ mode, initial, onClose, onSave }) {
     // This modal never touches assignment/status — it mirrors whatever
     // the record already had so those refine rules on the backend
     // (status <-> assignedFarmer) stay satisfied.
-    const derivedStatus = initial.farmer ? "assigned" : "available";
+    const clearingAssociation = isEdit && !values.associationId;
+    const derivedStatus = clearingAssociation
+      ? "available"
+      : initial.farmer
+        ? "assigned"
+        : "available";
 
-    // Form field names (health/dob) follow the UI copy; the backend
-    // model/schema uses condition/birthDate — translate only here, at
-    // the payload boundary, so this is the single source of truth for
-    // the name mapping.
     const payload = {
       propertyNumber: values.propertyNumber,
       animal: values.animal,
@@ -80,9 +86,15 @@ export function LivestockModal({ mode, initial, onClose, onSave }) {
       color: values.color,
       weight: values.weight,
       status: derivedStatus,
-      ...(values.associationId ? { associationId: values.associationId } : {}),
       ...(isEdit
-        ? { assignedFarmer: initial.farmer || null }
+        ? { associationId: values.associationId || null }
+        : values.associationId
+          ? { associationId: values.associationId }
+          : {}),
+      ...(isEdit
+        ? {
+            assignedFarmer: clearingAssociation ? null : initial.farmer || null,
+          }
         : initial.farmer
           ? { assignedFarmer: initial.farmer }
           : {}),
@@ -212,20 +224,22 @@ export function LivestockModal({ mode, initial, onClose, onSave }) {
             placeholder="0.0"
           />
         </Field>
-        <Field label="Association" error={errors.associationId?.message} full>
-          <Controller
-            name="associationId"
-            control={control}
-            render={({ field }) => (
-              <FullSelect
-                value={field.value}
-                onChange={field.onChange}
-                options={associationOptions}
-                defaultValue=""
-              />
-            )}
-          />
-        </Field>
+        {!initial.reservedBy && (
+          <Field label="Association" error={errors.associationId?.message} full>
+            <Controller
+              name="associationId"
+              control={control}
+              render={({ field }) => (
+                <FullSelect
+                  value={field.value}
+                  onChange={field.onChange}
+                  options={associationOptions}
+                  defaultValue=""
+                />
+              )}
+            />
+          </Field>
+        )}
       </form>
     </ModalShell>
   );

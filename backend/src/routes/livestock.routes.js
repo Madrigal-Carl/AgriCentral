@@ -4,6 +4,7 @@ import {
     updateLivestockHandler,
     deleteLivestockHandler,
     getLivestocksHandler,
+    getAvailableLivestocksHandler,
 } from "../controllers/livestock.controller.js";
 import {
     validateCreateLivestock,
@@ -16,6 +17,7 @@ import { authenticated, scopeByAssociationId } from "../middlewares/auth.middlew
 const router = express.Router();
 
 router.get("/", authenticated, scopeByAssociationId, validateGetLivestocksQuery, getLivestocksHandler);
+router.get("/available", authenticated, getAvailableLivestocksHandler);
 router.post("/", authenticated, validateCreateLivestock, createLivestockHandler);
 router.patch("/:id", authenticated, validateLivestockIdParam, validateUpdateLivestock, updateLivestockHandler);
 router.delete("/:id", authenticated, validateLivestockIdParam, deleteLivestockHandler);

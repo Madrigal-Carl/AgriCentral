@@ -1,32 +1,13 @@
-import { useState, useEffect, useMemo, useRef } from "react";
-import {
-  Plus,
-  X,
-  Calendar,
-  Info,
-  AlertTriangle,
-  FileText,
-  Package,
-  Search,
-  ChevronDown,
-} from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus } from "lucide-react";
 import {
   PageHeader,
   DataTable,
   RowActions,
   StatusPill,
 } from "@/components/public";
-import { Button, Select } from "@/components/ui";
-import {
-  EQUIPMENTS,
-  LIVESTOCKS,
-  typeLabel,
-  typeTone,
-  sevTone,
-  sevLabel,
-  statusTone,
-  REQUEST_STATUS_OPTIONS,
-} from "@/constants/data";
+import { Button } from "@/components/ui";
+import { typeLabel, typeTone, sevTone, sevLabel } from "@/constants/data";
 import { usePermissions } from "@/constants/permissions";
 import {
   DeleteConfirmModal,
@@ -34,84 +15,77 @@ import {
   RequestModal,
   ReviewConfirmModal,
 } from "@/components/modal";
-import { fmtDate } from "@/utils/format";
-
-const INITIAL = [
-  {
-    id: "RQ-001",
-    title: "Additional tractor for north plot",
-    type: "equipment",
-    itemId: "EQ-001",
-    itemLabel: "EQ-001 · Tractor T-204",
-    quantity: 2,
-    severity: "high",
-    status: "pending",
-    date: "2025-06-19",
-    details:
-      "Need additional tractor units to support expanded acreage this season.",
-  },
-  {
-    id: "RQ-002",
-    title: "More dairy cows",
-    type: "livestock",
-    itemId: "LS-001",
-    itemLabel: "LS-001 · Cow #A-204",
-    quantity: 5,
-    severity: "medium",
-    status: "approved",
-    date: "2025-06-12",
-    details: "Expanding the dairy herd to meet rising milk demand.",
-  },
-  {
-    id: "RQ-003",
-    title: "Sprayer replacement",
-    type: "equipment",
-    itemId: "EQ-004",
-    itemLabel: "EQ-004 · Sprayer S-31",
-    quantity: 1,
-    severity: "critical",
-    status: "fulfilled",
-    date: "2025-05-28",
-    details: "Existing sprayer is no longer reliable; replacement received.",
-  },
-];
-
-const blankForm = {
-  id: "",
-  title: "",
-  type: "equipment",
-  itemId: "",
-  itemLabel: "",
-  quantity: 1,
-  severity: "medium",
-  status: "pending",
-  date: "",
-  details: "",
-};
+import {
+  getCurrentStage,
+  getDisplayStatus,
+  isFullyApproved,
+  statusTone,
+  statusLabel,
+  releaseStatusTone,
+  releaseStatusLabel,
+  REQUEST_STATUS_OPTIONS,
+} from "@/utils/request";
+import {
+  useUpdateRequestApproval,
+  useReleaseRequest,
+  useDeleteRequest,
+  useRequests,
+} from "@/hooks/useRequests";
+import useAuth from "@/hooks/useAuth";
 
 export function RequestsPage() {
   const can = usePermissions("requests");
+  const { role } = useAuth();
 
-  const [rows, setRows] = useState(INITIAL);
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const [page, setPage] = useState(1);
+  const limit = 10;
+
   const [modal, setModal] = useState(null);
   const [drawer, setDrawer] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
-  const [reviewRow, setReviewRow] = useState(null); // { row, action: "approve" | "deny" }
+  const [reviewRow, setReviewRow] = useState(null); // { row, action: "approve" | "deny" | "release" }
+
+  // Debounce search input -> search query param
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchInput), 400);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  // Reset to page 1 whenever filters change
+  useEffect(() => {
+    setPage(1);
+  }, [search, status]);
+
+  const { data, isLoading } = useRequests({
+    page,
+    limit,
+    search: search || undefined,
+    status: status || undefined,
+  });
+
+  const rows = data?.requests ?? [];
+  const pagination = data?.pagination;
+
+  const { mutate: submitApproval } = useUpdateRequestApproval({
+    onSuccess: () => setReviewRow(null),
+  });
+  const { mutate: submitRelease, isPending: isReleasing } = useReleaseRequest({
+    onSuccess: () => setReviewRow(null),
+  });
+  const { mutate: removeRequest } = useDeleteRequest({
+    onSuccess: () => setConfirmDelete(null),
+  });
 
   const openAdd = () => {
     if (!can.add) return;
-    setModal({
-      mode: "add",
-      data: {
-        ...blankForm,
-        id: `RQ-${String(rows.length + 1).padStart(3, "0")}`,
-        date: new Date().toISOString().slice(0, 10),
-      },
-    });
+    setModal({ mode: "add", data: null });
   };
   const openEdit = (row) => {
     if (!can.edit) return;
-    setModal({ mode: "edit", data: { ...row } });
+    setModal({ mode: "edit", data: row });
   };
   const openView = (row) => setDrawer(row);
   const askDelete = (row) => {
@@ -119,38 +93,32 @@ export function RequestsPage() {
     setConfirmDelete(row);
   };
   const confirmRemove = () => {
-    if (!confirmDelete || !can.delete) return;
-    setRows((r) => r.filter((x) => x.id !== confirmDelete.id));
-    setConfirmDelete(null);
+    if (!confirmDelete) return;
+    removeRequest(confirmDelete._id);
   };
 
-  const askApprove = (row) => {
-    if (!can.review) return;
-    setReviewRow({ row, action: "approve" });
-  };
-  const askDeny = (row) => {
-    if (!can.review) return;
-    setReviewRow({ row, action: "deny" });
-  };
-  const confirmReview = () => {
-    if (!reviewRow || !can.review) return;
-    const nextStatus = reviewRow.action === "approve" ? "approved" : "rejected";
-    setRows((r) =>
-      r.map((x) =>
-        x.id === reviewRow.row.id ? { ...x, status: nextStatus } : x,
-      ),
-    );
-    setReviewRow(null);
-  };
+  const askApprove = (row) => setReviewRow({ row, action: "approve" });
+  const askDeny = (row) => setReviewRow({ row, action: "deny" });
+  const askRelease = (row) => setReviewRow({ row, action: "release" });
 
-  const handleSave = (data) => {
-    if (!can.add && !can.edit) return;
-    setRows((r) => {
-      const exists = r.some((x) => x.id === data.id);
-      if (exists)
-        return r.map((x) => (x.id === data.id ? { ...x, ...data } : x));
-      return [...r, { ...data }];
+  const confirmReview = (remarks) => {
+    if (!reviewRow) return;
+
+    if (reviewRow.action === "release") {
+      submitRelease(reviewRow.row._id);
+      return;
+    }
+
+    submitApproval({
+      id: reviewRow.row._id,
+      status: reviewRow.action === "approve" ? "approved" : "denied",
+      ...(remarks ? { remarks } : {}),
     });
+  };
+
+  // RequestModal owns its own create/update mutations internally (mirrors
+  // FarmerModal), so this just closes the modal once it reports success.
+  const handleSave = () => {
     setModal(null);
   };
 
@@ -168,41 +136,51 @@ export function RequestsPage() {
         }
       />
       <DataTable
-        searchPlaceholder="Search request…"
+        loading={isLoading}
         data={rows}
+        search={searchInput}
+        onSearchChange={setSearchInput}
+        searchPlaceholder="Search request…"
         filters={[
           {
             key: "status",
             label: "Status",
             options: REQUEST_STATUS_OPTIONS,
-            predicate: (r, v) => r.status === v,
+            value: status,
+            onChange: setStatus,
           },
         ]}
+        pagination={
+          pagination
+            ? {
+                page: pagination.page,
+                limit: pagination.limit,
+                total: pagination.total,
+                onPageChange: setPage,
+              }
+            : undefined
+        }
         columns={[
           {
             key: "title",
             header: "Title",
             cell: (r) => (
-              <div>
-                <div className="font-semibold text-foreground">{r.title}</div>
-                <div className="text-xs text-secondary">{r.id}</div>
-              </div>
+              <div className="font-semibold text-foreground">{r.title}</div>
             ),
           },
           {
             key: "type",
             header: "Type",
             cell: (r) => (
-              <StatusPill tone={typeTone[r.type]}>
-                {typeLabel[r.type]}
+              <StatusPill tone={typeTone[r.entityType]}>
+                {typeLabel[r.entityType]}
               </StatusPill>
             ),
           },
-          { key: "item", header: "Item", cell: (r) => r.itemLabel || "—" },
           {
             key: "quantity",
-            header: "Qty",
-            cell: (r) => r.quantity,
+            header: "Quantity",
+            cell: (r) => r.entities?.length ?? r.entityIds?.length ?? 0,
           },
           {
             key: "severity",
@@ -216,28 +194,55 @@ export function RequestsPage() {
           {
             key: "status",
             header: "Status",
-            cell: (r) => (
-              <StatusPill tone={statusTone[r.status]}>{r.status}</StatusPill>
-            ),
-          },
-          {
-            key: "date",
-            header: "Date",
-            cell: (r) => fmtDate(r.date),
+            cell: (r) => {
+              const displayStatus = getDisplayStatus(r);
+              return (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <StatusPill tone={statusTone[displayStatus]}>
+                    {statusLabel[displayStatus]}
+                  </StatusPill>
+                  {displayStatus === "approved" && (
+                    <StatusPill tone={releaseStatusTone[r.releaseStatus]}>
+                      {releaseStatusLabel[r.releaseStatus]}
+                    </StatusPill>
+                  )}
+                </div>
+              );
+            },
           },
           {
             key: "actions",
             header: "",
             align: "right",
-            cell: (r) => (
-              <RowActions
-                onView={() => openView(r)}
-                onEdit={can.edit ? () => openEdit(r) : undefined}
-                onDelete={can.delete ? () => askDelete(r) : undefined}
-                onApprove={can.review ? () => askApprove(r) : undefined}
-                onDeny={can.review ? () => askDeny(r) : undefined}
-              />
-            ),
+            cell: (r) => {
+              const currentStage = getCurrentStage(r);
+              const canReviewThis =
+                can.review && currentStage && role === currentStage;
+              const coordinatorReviewed =
+                r.approvalStatus?.coordinator?.status === "approved" ||
+                r.approvalStatus?.coordinator?.status === "denied";
+              const canEditThis = can.edit && !coordinatorReviewed;
+
+              const canReleaseThis =
+                role === "coordinator" &&
+                isFullyApproved(r) &&
+                r.releaseStatus === "pending";
+
+              return (
+                <RowActions
+                  onView={() => openView(r)}
+                  onEdit={canEditThis ? () => openEdit(r) : undefined}
+                  onDelete={can.delete ? () => askDelete(r) : undefined}
+                  onApprove={canReviewThis ? () => askApprove(r) : undefined}
+                  onDeny={canReviewThis ? () => askDeny(r) : undefined}
+                  onRelease={
+                    canReleaseThis && !isReleasing
+                      ? () => askRelease(r)
+                      : undefined
+                  }
+                />
+              );
+            },
           },
         ]}
       />
@@ -253,20 +258,23 @@ export function RequestsPage() {
       {drawer && <RequestDrawer row={drawer} onClose={() => setDrawer(null)} />}
       {confirmDelete && can.delete && (
         <DeleteConfirmModal
-          id={confirmDelete.id}
+          id={confirmDelete._id}
           title={confirmDelete.title}
           onCancel={() => setConfirmDelete(null)}
           onConfirm={confirmRemove}
         />
       )}
-      {reviewRow && can.review && (
-        <ReviewConfirmModal
-          row={reviewRow.row}
-          action={reviewRow.action}
-          onCancel={() => setReviewRow(null)}
-          onConfirm={confirmReview}
-        />
-      )}
+      {reviewRow &&
+        (reviewRow.action === "release"
+          ? role === "coordinator"
+          : can.review) && (
+          <ReviewConfirmModal
+            row={reviewRow.row}
+            action={reviewRow.action}
+            onCancel={() => setReviewRow(null)}
+            onConfirm={confirmReview}
+          />
+        )}
     </div>
   );
 }

@@ -103,6 +103,10 @@ export const updateLivestock = async (id, data) => {
         ? await Livestock.findOne({ _id: id, deletedAt: null }).select("assignedFarmer condition animal propertyNumber association")
         : null;
 
+    if (livestockData.association === null && livestockData.assignedFarmer === undefined) {
+        livestockData.assignedFarmer = null;
+    }
+
     if (livestockData.assignedFarmer !== undefined && livestockData.status === undefined) {
         livestockData.status = livestockData.assignedFarmer ? "assigned" : "available";
     }
@@ -112,6 +116,10 @@ export const updateLivestock = async (id, data) => {
     if (update.assignedFarmer === null) {
         delete update.assignedFarmer;
         unset.assignedFarmer = "";
+    }
+    if (update.association === null) {
+        delete update.association;
+        unset.association = "";
     }
 
     const livestock = await Livestock.findOneAndUpdate(
@@ -147,7 +155,7 @@ export const updateLivestock = async (id, data) => {
                 entityType: "livestock",
                 entityId: livestock._id,
                 association: previousLivestock?.association,
-                message: `${livestock.animal} (${livestock.propertyNumber}) has been removed from its association.`,
+                message: `${livestock.animal} (${livestock.propertyNumber}) has been returned and removed from its association.`,
             });
         }
     }
@@ -271,6 +279,19 @@ const attachHistory = async (livestocks, associationId) => {
             history: logsByLivestockId.get(key) ?? [],
         };
     });
+};
+
+export const getAvailableLivestocks = async () => {
+    const livestocks = await Livestock.find({
+        deletedAt: null,
+        association: null,
+        assignedFarmer: null,
+        status: "available",
+    })
+        .select("propertyNumber animal breed condition status")
+        .sort({ propertyNumber: 1 });
+
+    return livestocks;
 };
 
 export const getLivestocks = async ({

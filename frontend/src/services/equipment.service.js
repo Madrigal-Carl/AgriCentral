@@ -19,3 +19,8 @@ export async function deleteEquipment(id) {
     const response = await api.delete(`/equipments/${id}`);
     return response.data;
 }
+
+export async function getAvailableEquipments() {
+    const response = await api.get("/equipments/available");
+    return response.data;
+}

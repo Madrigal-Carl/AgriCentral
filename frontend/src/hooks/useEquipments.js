@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
     getEquipments,
+    getAvailableEquipments,
     createEquipment,
     updateEquipment,
     deleteEquipment,
@@ -13,6 +14,7 @@ export const equipmentKeys = {
     list: (filters) => [...equipmentKeys.lists(), filters],
     details: () => [...equipmentKeys.all, "detail"],
     detail: (id) => [...equipmentKeys.details(), id],
+    available: () => [...equipmentKeys.all, "available"],
 };
 
 /* ---------------- Queries ---------------- */
@@ -21,6 +23,14 @@ export function useEquipments(filters = {}, options = {}) {
         queryKey: equipmentKeys.list(filters),
         queryFn: () => getEquipments(filters),
         keepPreviousData: true,
+        ...options,
+    });
+}
+
+export function useAvailableEquipments(options = {}) {
+    return useQuery({
+        queryKey: equipmentKeys.available(),
+        queryFn: () => getAvailableEquipments(),
         ...options,
     });
 }
