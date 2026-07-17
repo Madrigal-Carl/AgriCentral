@@ -8,6 +8,7 @@ import { wipeCrops, seedCrops } from "./seeders/crop.seeder.js";
 import { wipeFarms, seedFarms } from "./seeders/farm.seeder.js";
 import { wipeLivestocks, seedLivestocks } from "./seeders/livestock.seeder.js";
 import { wipeEquipments, seedEquipments } from "./seeders/equipment.seeder.js";
+import { wipeReports, seedReports } from "./seeders/report.seeder.js";
 import { wipeLogs, seedLogs } from "./seeders/log.seeder.js";
 import { wipeRequests, seedRequests } from "./seeders/request.seeder.js";
 
@@ -22,6 +23,8 @@ import { wipeRequests, seedRequests } from "./seeders/request.seeder.js";
 //   Farms        -> needs Associations, Farmers, Crops
 //   Livestock    -> needs Farmers
 //   Equipment    -> needs Farmers
+//   Reports      -> wipe-only for now; needs Farmers, Farms, Crops,
+//                   Livestock, Equipment once seeding logic is added
 //   Logs         -> needs Farmers, Farms, Livestock, Equipment
 //   Requests     -> wipe-only for now; seeding logic comes later
 //
@@ -36,6 +39,7 @@ const SEEDERS = [
     { name: "Farms", wipe: wipeFarms, seed: seedFarms },
     { name: "Livestock", wipe: wipeLivestocks, seed: seedLivestocks },
     { name: "Equipment", wipe: wipeEquipments, seed: seedEquipments },
+    { name: "Reports", wipe: wipeReports, seed: seedReports },
     { name: "Logs", wipe: wipeLogs, seed: seedLogs },
     { name: "Requests", wipe: wipeRequests, seed: seedRequests },
 ];
