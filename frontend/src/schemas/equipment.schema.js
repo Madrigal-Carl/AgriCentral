@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const CONDITIONS = ["good", "excellent", "damaged", "maintenance"];
+const CONDITIONS = ["good", "excellent", "unusable", "damaged", "maintenance"];
 const objectId = (message) => z.string().regex(/^[0-9a-fA-F]{24}$/, message);
 
 export const equipmentFormSchema = z.object({

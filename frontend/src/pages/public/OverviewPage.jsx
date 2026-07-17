@@ -6,12 +6,15 @@ const STATUS_TONES = {
   healthy: "bg-accent",
   pregnant: "bg-[#a855f7]",
   sick: "bg-[#f59e0b]",
+  injured: "bg-[#ef4444]",
   deceased: "bg-[#94a3b8]",
 };
+
 const STATUS_HEX = {
   healthy: "#00e676",
   pregnant: "#a855f7",
   sick: "#f59e0b",
+  injured: "#ef4444",
   deceased: "#94a3b8",
 };
 

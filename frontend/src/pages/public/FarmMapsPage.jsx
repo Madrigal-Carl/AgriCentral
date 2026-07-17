@@ -27,7 +27,7 @@ const TONE_COLOR = {
 
 // The farm list API (filterActiveCrops in farm.service.js) only ever
 // returns crop entries with one of these two statuses — harvested/withered/
-// destroyed crops are stripped off the farm before it reaches the client.
+// damaged crops are stripped off the farm before it reaches the client.
 // So these are the only statuses that can ever actually match here.
 const ACTIVE_CROP_STATUSES = ["planted", "growing"];
 

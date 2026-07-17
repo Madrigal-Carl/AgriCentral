@@ -30,7 +30,8 @@ const resolveAssociationId = async (associationId, authenticatedUserId) => {
 const logCropStatusChanges = async ({ farm, changes, cropIdToName }) => {
     for (const { cropId, fromStatus, toStatus } of changes) {
         const cropName = cropIdToName.get(cropId) ?? "A crop";
-        const message = fromStatus
+
+        const farmMessage = fromStatus
             ? `${cropName} on ${farm.tag} changed status from ${humanize(fromStatus)} to ${humanize(toStatus)}.`
             : `${cropName} was ${humanize(toStatus).toLowerCase()} on ${farm.tag}.`;
 
@@ -38,7 +39,18 @@ const logCropStatusChanges = async ({ farm, changes, cropIdToName }) => {
             entityType: "farm",
             entityId: farm._id,
             association: farm.association,
-            message,
+            message: farmMessage,
+        });
+
+        const cropMessage = fromStatus
+            ? `Status changed from ${humanize(fromStatus)} to ${humanize(toStatus)} on farm ${farm.tag}.`
+            : `${humanize(toStatus)} on farm ${farm.tag}.`;
+
+        await createLog({
+            entityType: "crop",
+            entityId: cropId,
+            association: farm.association,
+            message: cropMessage,
         });
     }
 };

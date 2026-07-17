@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const CONDITIONS = ["good", "excellent", "damaged", "maintenance"];
+const CONDITIONS = ["good", "excellent", "damaged", "unusable", "maintenance"];
 const STATUSES = ["assigned", "available"];
 
 const objectId = (message) =>

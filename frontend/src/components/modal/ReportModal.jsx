@@ -54,20 +54,6 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
               options={SEVERITY_OPTIONS}
             />
           </Field>
-          <Field label="Reported By">
-            <TextInput
-              value={form.reportedBy}
-              onChange={(v) => set("reportedBy", v)}
-              placeholder="Name"
-            />
-          </Field>
-          <Field label="Date">
-            <TextInput
-              type="date"
-              value={form.date}
-              onChange={(v) => set("date", v)}
-            />
-          </Field>
           <Field label="Details" full>
             <textarea
               value={form.details}

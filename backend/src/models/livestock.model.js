@@ -51,6 +51,7 @@ const livestockSchema = new mongoose.Schema(
                 "healthy",
                 "pregnant",
                 "sick",
+                "injured",
                 "deceased",
             ],
             default: "healthy",

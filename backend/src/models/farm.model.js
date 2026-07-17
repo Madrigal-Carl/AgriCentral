@@ -14,7 +14,7 @@ const farmCropSchema = new mongoose.Schema(
                 "growing",
                 "withered",
                 "harvested",
-                "destroyed",
+                "damaged",
             ],
             default: "planted",
         },

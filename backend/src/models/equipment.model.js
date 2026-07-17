@@ -24,6 +24,7 @@ const equipmentSchema = new mongoose.Schema(
                 "excellent",
                 "damaged",
                 "maintenance",
+                "unusable",
             ],
             default: "good",
         },

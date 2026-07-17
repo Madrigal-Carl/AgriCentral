@@ -536,7 +536,7 @@ export const CROP_STATUS_OPTIONS = [
     { value: "growing", label: "Growing" },
     { value: "harvested", label: "Harvested" },
     { value: "withered", label: "Withered" },
-    { value: "destroyed", label: "Destroyed" },
+    { value: "damaged", label: "Damaged" },
 ];
 
 export const condTone = {
@@ -544,6 +544,7 @@ export const condTone = {
     good: "info",
     maintenance: "warning",
     damaged: "danger",
+    unusable: "neutral",
 };
 
 export const condLabel = {
@@ -551,6 +552,7 @@ export const condLabel = {
     good: "Good",
     maintenance: "Maintenance",
     damaged: "Damaged",
+    unusable: "Unusable",
 };
 
 export const EQUIPMENT_CATALOG = [
@@ -571,6 +573,7 @@ export const EQUIPMENT_CONDITION_OPTIONS = [
     { value: "good", label: "Good" },
     { value: "maintenance", label: "Maintenance" },
     { value: "damaged", label: "Damaged" },
+    { value: "unusable", label: "Unusable" },
 ];
 
 export const STATUS_OPTIONS = [
@@ -589,6 +592,7 @@ export const LIVESTOCK_HEALTH_OPTIONS = [
     { value: "healthy", label: "Healthy" },
     { value: "pregnant", label: "Pregnant" },
     { value: "sick", label: "Sick" },
+    { value: "injured", label: "Injured" },
     { value: "deceased", label: "Deceased" },
 ];
 

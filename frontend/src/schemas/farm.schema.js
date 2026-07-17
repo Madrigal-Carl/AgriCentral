@@ -5,7 +5,7 @@ export const CROP_STATUSES = [
     "growing",
     "withered",
     "harvested",
-    "destroyed",
+    "damaged",
 ];
 
 export const FARMER_CLASSIFICATIONS = [

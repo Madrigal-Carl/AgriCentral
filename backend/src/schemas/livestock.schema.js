@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const CONDITIONS = ["healthy", "pregnant", "sick", "deceased"];
+const CONDITIONS = ["healthy", "pregnant", "sick", "injured", "deceased"];
 const STATUSES = ["assigned", "available"];
 const GENDERS = ["male", "female"];
 
