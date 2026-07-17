@@ -192,11 +192,6 @@ export function ReportsPage() {
             },
           },
           {
-            key: "date",
-            header: "Date",
-            cell: (r) => fmtDate(r.createdAt),
-          },
-          {
             key: "actions",
             header: "",
             align: "right",
