@@ -70,7 +70,7 @@ export function RequestDrawer({ row, onClose }) {
 
           <Section
             icon={Package}
-            title={`Requested ${typeLabel[row.entityType]} (${entities.length})`}
+            title={`Requested ${typeLabel[row.entityType]}`}
           >
             {entities.length ? (
               <div className="space-y-2">

@@ -114,12 +114,14 @@ export const scopeByAssociationId = (req, res, next) => {
   const query = { ...req.query };
 
   if (req.user?.role === "far") {
+    // far users are pinned to their own association and cannot override
+    // this via query params, regardless of what they pass in.
     query.associationId = req.user.association
       ? String(req.user.association)
       : "000000000000000000000000";
-  } else {
-    delete query.associationId;
   }
+  // Every other role (admin, aew, coordinator, etc.) is left free to pass
+  // associationId as an optional filter, or omit it to see everything.
 
   Object.defineProperty(req, "query", {
     value: query,
@@ -146,6 +148,48 @@ export const scopeByApprovalStage = (req, res, next) => {
   if (stageRoles.includes(req.user?.role)) {
     query.stage = req.user.role;
   } else {
+    delete query.stage;
+  }
+
+  Object.defineProperty(req, "query", {
+    value: query,
+    writable: true,
+    configurable: true,
+    enumerable: true,
+  });
+
+  next();
+};
+
+// Reports don't use the request flow's stage-chain (coordinator ->
+// governor -> head). Instead, "stage" here means "who submitted the
+// report":
+//   far         -> pinned to their own association AND to far-submitted
+//                  reports only (an aew report can share that same
+//                  association, so association alone can't isolate
+//                  far's own report -- the stage="far" filter does that).
+//   aew         -> sees every far-submitted report (any association, any
+//                  status, reviewable or already decided) plus every
+//                  aew-submitted report. No association restriction.
+//   coordinator -> sees only aew-submitted reports, across every
+//                  association. No association restriction either.
+export const scopeReportsByRole = (req, res, next) => {
+  const query = { ...req.query };
+  const role = req.user?.role;
+
+  if (role === "far") {
+    query.associationId = req.user.association
+      ? String(req.user.association)
+      : "000000000000000000000000";
+    query.stage = "far";
+  } else if (role === "aew") {
+    delete query.associationId;
+    delete query.stage;
+  } else if (role === "coordinator") {
+    delete query.associationId;
+    query.stage = "aew";
+  } else {
+    delete query.associationId;
     delete query.stage;
   }
 

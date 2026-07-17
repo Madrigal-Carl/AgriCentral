@@ -1,133 +1,112 @@
-import { useState, useEffect, useRef } from "react";
-import {
-  Plus,
-  X,
-  Calendar,
-  Info,
-  AlertTriangle,
-  FileText,
-  User,
-  ImagePlus,
-} from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus } from "lucide-react";
 import {
   PageHeader,
   DataTable,
   RowActions,
   StatusPill,
 } from "@/components/public";
-import { Button, Select } from "@/components/ui";
-import {
-  REPORTS,
-  typeTone,
-  typeLabel,
-  sevTone,
-  sevLabel,
-} from "@/constants/data";
-import useAuth from "@/hooks/useAuth";
+import { Button } from "@/components/ui";
+import { typeLabel, typeTone, sevTone, sevLabel } from "@/constants/data";
 import { usePermissions } from "@/constants/permissions";
 import {
-  ReportDrawer,
-  ReviewConfirmModal,
   DeleteConfirmModal,
+  ReportDrawer,
   ReportModal,
+  ReviewConfirmModal,
 } from "@/components/modal";
+import {
+  getReviewerRole,
+  getReportStatus,
+  statusTone,
+  statusLabel,
+  REPORT_STATUS_OPTIONS,
+} from "@/utils/report";
+import {
+  useReports,
+  useUpdateReportApproval,
+  useDeleteReport,
+} from "@/hooks/useReports";
+import useAuth from "@/hooks/useAuth";
 import { fmtDate } from "@/utils/format";
 
-const STATUS_OPTIONS = [
-  { value: "open", label: "Open" },
-  { value: "in_review", label: "In Review" },
-  { value: "resolved", label: "Resolved" },
-];
-
-const blankForm = {
-  id: "",
-  title: "",
-  type: "crop",
-  reportedBy: "",
-  severity: "medium",
-  status: "open",
-  date: "",
-  details: "",
-  files: [],
-};
-
-// Reports are only reviewable (approve/deny) by a specific designated
-// reviewer role, depending on who filed the report:
-//   - reports filed by "far"  -> reviewable only by "aew"
-//   - reports filed by "aew"  -> reviewable only by "coordinator", "governor", "head"
-// Any other role (including the report's own role) cannot review it.
-const REVIEWERS_BY_REPORT_ROLE = {
-  far: "aew",
-  aew: ["coordinator", "governor", "head"],
-};
-
 export function ReportsPage() {
+  const can = usePermissions("reports");
   const { role } = useAuth();
-  const canManage = usePermissions("reports"); // { view, add, edit, delete, review }
 
-  const [rows, setRows] = useState(REPORTS);
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const [page, setPage] = useState(1);
+  const limit = 10;
+
   const [modal, setModal] = useState(null);
   const [drawer, setDrawer] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [reviewRow, setReviewRow] = useState(null); // { row, action: "approve" | "deny" }
 
-  // A report belongs to the current user's role if its `role` field
-  // matches their own role. Own-role reports get edit/delete, gated by
-  // permissions.js (far and aew have edit/delete; others don't).
-  const isOwnReport = (row) => row.role === role;
-  const canEditOwn = (row) => isOwnReport(row) && canManage.edit;
-  const canDeleteOwn = (row) => isOwnReport(row) && canManage.delete;
+  // Debounce search input -> search query param
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchInput), 400);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
-  const canAdd = canManage.add;
+  // Reset to page 1 whenever filters change
+  useEffect(() => {
+    setPage(1);
+  }, [search, status]);
 
-  // Reviewing requires both the blanket "review" capability for the role
-  // AND being the designated reviewer for this specific report's role.
-  const canReview = (row) => {
-    if (!canManage.review) return false;
-    const reportRole = row.role;
-    const allowedReviewers = REVIEWERS_BY_REPORT_ROLE[reportRole] ?? [];
-    return allowedReviewers.includes(role);
+  const { data, isLoading } = useReports({
+    page,
+    limit,
+    search: search || undefined,
+    status: status || undefined,
+  });
+
+  const rows = data?.reports ?? [];
+  const pagination = data?.pagination;
+
+  const { mutate: submitApproval } = useUpdateReportApproval({
+    onSuccess: () => setReviewRow(null),
+  });
+  const { mutate: removeReport } = useDeleteReport({
+    onSuccess: () => setConfirmDelete(null),
+  });
+
+  const openAdd = () => {
+    if (!can.add) return;
+    setModal({ mode: "add", data: null });
   };
-
-  const openAdd = () =>
-    setModal({
-      mode: "add",
-      data: {
-        ...blankForm,
-        id: `RP-${String(rows.length + 1).padStart(3, "0")}`,
-        date: new Date().toISOString().slice(0, 10),
-        role: role,
-      },
-    });
-  const openEdit = (row) => setModal({ mode: "edit", data: { ...row } });
+  const openEdit = (row) => {
+    if (!can.edit) return;
+    setModal({ mode: "edit", data: row });
+  };
   const openView = (row) => setDrawer(row);
-  const askDelete = (row) => setConfirmDelete(row);
+  const askDelete = (row) => {
+    if (!can.delete) return;
+    setConfirmDelete(row);
+  };
   const confirmRemove = () => {
     if (!confirmDelete) return;
-    setRows((r) => r.filter((x) => x.id !== confirmDelete.id));
-    setConfirmDelete(null);
+    removeReport(confirmDelete._id);
   };
 
   const askApprove = (row) => setReviewRow({ row, action: "approve" });
   const askDeny = (row) => setReviewRow({ row, action: "deny" });
-  const confirmReview = () => {
+
+  const confirmReview = (remarks) => {
     if (!reviewRow) return;
-    const nextStatus = reviewRow.action === "approve" ? "resolved" : "open";
-    setRows((r) =>
-      r.map((x) =>
-        x.id === reviewRow.row.id ? { ...x, status: nextStatus } : x,
-      ),
-    );
-    setReviewRow(null);
+
+    submitApproval({
+      id: reviewRow.row._id,
+      status: reviewRow.action === "approve" ? "approved" : "denied",
+      ...(remarks ? { remarks } : {}),
+    });
   };
 
-  const handleSave = (data) => {
-    setRows((r) => {
-      const exists = r.some((x) => x.id === data.id);
-      if (exists)
-        return r.map((x) => (x.id === data.id ? { ...x, ...data } : x));
-      return [...r, { ...data }];
-    });
+  // ReportModal owns its own create/update mutations internally (mirrors
+  // RequestModal), so this just closes the modal once it reports success.
+  const handleSave = () => {
     setModal(null);
   };
 
@@ -137,7 +116,7 @@ export function ReportsPage() {
         title="Reports"
         subtitle="Field reports across crops, equipment, and livestock."
         action={
-          canAdd ? (
+          can.add ? (
             <Button variant="accent" onClick={openAdd}>
               <Plus className="h-4 w-4" /> Add Report
             </Button>
@@ -145,40 +124,51 @@ export function ReportsPage() {
         }
       />
       <DataTable
-        searchPlaceholder="Search report…"
+        loading={isLoading}
         data={rows}
+        search={searchInput}
+        onSearchChange={setSearchInput}
+        searchPlaceholder="Search report…"
         filters={[
           {
             key: "status",
             label: "Status",
-            options: STATUS_OPTIONS,
-            predicate: (r, v) => r.status === v,
+            options: REPORT_STATUS_OPTIONS,
+            value: status,
+            onChange: setStatus,
           },
         ]}
+        pagination={
+          pagination
+            ? {
+                page: pagination.page,
+                limit: pagination.limit,
+                total: pagination.total,
+                onPageChange: setPage,
+              }
+            : undefined
+        }
         columns={[
           {
             key: "title",
             header: "Title",
             cell: (r) => (
-              <div>
-                <div className="font-semibold text-foreground">{r.title}</div>
-                <div className="text-xs text-secondary">{r.id}</div>
-              </div>
+              <div className="font-semibold text-foreground">{r.title}</div>
             ),
           },
           {
             key: "type",
             header: "Type",
             cell: (r) => (
-              <StatusPill tone={typeTone[r.type]}>
-                {typeLabel[r.type]}
+              <StatusPill tone={typeTone[r.entityType]}>
+                {typeLabel[r.entityType] ?? r.entityType}
               </StatusPill>
             ),
           },
           {
-            key: "reportedBy",
-            header: "Reported By",
-            cell: (r) => r.reportedBy || "—",
+            key: "quantity",
+            header: "Items",
+            cell: (r) => r.items?.length ?? r.itemIds?.length ?? 0,
           },
           {
             key: "severity",
@@ -190,42 +180,54 @@ export function ReportsPage() {
             ),
           },
           {
+            key: "status",
+            header: "Status",
+            cell: (r) => {
+              const displayStatus = getReportStatus(r);
+              return (
+                <StatusPill tone={statusTone[displayStatus]}>
+                  {statusLabel[displayStatus]}
+                </StatusPill>
+              );
+            },
+          },
+          {
             key: "date",
             header: "Date",
-            cell: (r) => fmtDate(r.date),
+            cell: (r) => fmtDate(r.createdAt),
           },
           {
             key: "actions",
             header: "",
             align: "right",
             cell: (r) => {
-              if (isOwnReport(r)) {
-                return (
-                  <RowActions
-                    onView={() => openView(r)}
-                    onEdit={canEditOwn(r) ? () => openEdit(r) : undefined}
-                    onDelete={canDeleteOwn(r) ? () => askDelete(r) : undefined}
-                  />
-                );
-              }
-              if (canReview(r)) {
-                return (
-                  <RowActions
-                    onView={() => openView(r)}
-                    onApprove={() => askApprove(r)}
-                    onDeny={() => askDeny(r)}
-                  />
-                );
-              }
-              // Not the owner and not the designated reviewer for this
-              // report's role -> view only.
-              return <RowActions onView={() => openView(r)} />;
+              const reviewerRole = getReviewerRole(r);
+              const reportStatus = getReportStatus(r);
+
+              const canReviewThis =
+                can.review &&
+                reviewerRole &&
+                role === reviewerRole &&
+                reportStatus === "pending";
+
+              const canEditThis = can.edit && reportStatus === "pending";
+              const canDeleteThis = can.delete;
+
+              return (
+                <RowActions
+                  onView={() => openView(r)}
+                  onEdit={canEditThis ? () => openEdit(r) : undefined}
+                  onDelete={canDeleteThis ? () => askDelete(r) : undefined}
+                  onApprove={canReviewThis ? () => askApprove(r) : undefined}
+                  onDeny={canReviewThis ? () => askDeny(r) : undefined}
+                />
+              );
             },
           },
         ]}
       />
 
-      {modal && (
+      {modal && (can.add || can.edit) && (
         <ReportModal
           mode={modal.mode}
           initial={modal.data}
@@ -234,15 +236,15 @@ export function ReportsPage() {
         />
       )}
       {drawer && <ReportDrawer row={drawer} onClose={() => setDrawer(null)} />}
-      {confirmDelete && (
+      {confirmDelete && can.delete && (
         <DeleteConfirmModal
-          id={confirmDelete.id}
+          id={confirmDelete._id}
           title={confirmDelete.title}
           onCancel={() => setConfirmDelete(null)}
           onConfirm={confirmRemove}
         />
       )}
-      {reviewRow && (
+      {reviewRow && can.review && (
         <ReviewConfirmModal
           row={reviewRow.row}
           action={reviewRow.action}

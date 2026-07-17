@@ -39,8 +39,8 @@ const PERMISSIONS = {
         far: { view: true, add: true, edit: true, delete: true, review: false },
         aew: { view: true, add: true, edit: true, delete: true, review: true },
         coordinator: { view: true, add: false, edit: false, delete: false, review: true },
-        head: { view: true, add: false, edit: false, delete: false, review: true },
-        governor: { view: true, add: false, edit: false, delete: false, review: true },
+        head: { view: true, add: false, edit: false, delete: false, review: false },
+        governor: { view: true, add: false, edit: false, delete: false, review: false },
         admin: { view: true, add: false, edit: false, delete: false, review: false },
     },
     crops: {

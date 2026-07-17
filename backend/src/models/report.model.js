@@ -1,5 +1,29 @@
 import mongoose from "mongoose";
 
+const attachmentSchema = new mongoose.Schema(
+    {
+        url: {
+            type: String,
+            required: true,
+            trim: true,
+        },
+        publicId: {
+            type: String,
+            required: true,
+            trim: true,
+        },
+        resourceType: {
+            type: String,
+            enum: ["image", "raw", "video"],
+            default: "image",
+        },
+    },
+    {
+        _id: false,
+        timestamps: true,
+    }
+);
+
 const approvalSchema = new mongoose.Schema(
     {
         status: {
@@ -27,12 +51,11 @@ const approvalSchema = new mongoose.Schema(
     }
 );
 
-const requestSchema = new mongoose.Schema(
+const reportSchema = new mongoose.Schema(
     {
         association: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Association",
-            required: true,
         },
         title: {
             type: String,
@@ -76,22 +99,13 @@ const requestSchema = new mongoose.Schema(
             minlength: 10,
             maxlength: 1000,
         },
+        attachments: [attachmentSchema],
         approvalStatus: {
             aew: {
                 type: approvalSchema,
-                default: () => ({}),
             },
             coordinator: {
                 type: approvalSchema,
-                default: () => ({}),
-            },
-            governor: {
-                type: approvalSchema,
-                default: () => ({}),
-            },
-            head: {
-                type: approvalSchema,
-                default: () => ({}),
             },
         },
         deletedAt: {
@@ -104,14 +118,10 @@ const requestSchema = new mongoose.Schema(
     }
 );
 
-requestSchema.pre("validate", function (next) {
+reportSchema.pre("validate", function () {
     if (this.entityType === "farm" && !this.parentId) {
-        return next(
-            new Error("parentId (farm) is required for farm reports")
-        );
+        throw new Error("parentId (farm) is required for farm reports");
     }
-
-    next();
 });
 
-export default mongoose.model("Request", requestSchema);
+export default mongoose.model("Report", reportSchema);

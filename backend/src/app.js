@@ -16,6 +16,7 @@ import userRoutes from "./routes/user.routes.js";
 import equipmentRoutes from "./routes/equipment.routes.js";
 import livestockRoutes from "./routes/livestock.routes.js";
 import requestRoutes from "./routes/request.routes.js";
+import reportRoutes from "./routes/report.routes.js";
 
 const app = express();
 
@@ -56,6 +57,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/equipments", equipmentRoutes);
 app.use("/api/livestocks", livestockRoutes);
 app.use("/api/requests", requestRoutes);
+app.use("/api/reports", reportRoutes);
 
 app.use(errorHandler);
 
