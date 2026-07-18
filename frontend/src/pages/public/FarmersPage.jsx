@@ -193,6 +193,15 @@ export function FarmersPage() {
             ),
           },
           {
+            key: "association",
+            header: "Association",
+            cell: (r) => (
+              <span className="text-sm text-foreground">
+                {r.association?.name || "—"}
+              </span>
+            ),
+          },
+          {
             key: "farms",
             header: "Farms",
             cell: (r) => (r.farms || []).length,
