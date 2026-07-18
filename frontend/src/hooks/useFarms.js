@@ -5,7 +5,7 @@ import {
     updateFarm,
     deleteFarm,
 } from "@/services/farm.service";
-import { cropKeys } from "./useCrops";
+import { farmerKeys } from "./useFarmers";
 
 /* ---------------- Query Keys ---------------- */
 export const farmKeys = {
@@ -15,12 +15,11 @@ export const farmKeys = {
 };
 
 /* ---------------- Queries ---------------- */
-// filters: { search?, crop?, userId?, all?, page?, limit? } — passed straight through as query params.
 export function useFarms(filters = {}, options = {}) {
     return useQuery({
         queryKey: farmKeys.list(filters),
         queryFn: () => getFarms(filters),
-        keepPreviousData: true, // avoids a flash of empty state when paginating/filtering
+        keepPreviousData: true,
         ...options,
     });
 }
@@ -33,6 +32,9 @@ export function useCreateFarm(options = {}) {
         mutationFn: (data) => createFarm(data),
         onSuccess: (data, variables, context) => {
             queryClient.invalidateQueries({ queryKey: farmKeys.lists() });
+            (variables.assignedFarmers ?? []).forEach((a) => {
+                queryClient.invalidateQueries({ queryKey: farmerKeys.crops(a.farmer) });
+            });
             options.onSuccess?.(data, variables, context);
         },
         onError: options.onError,
@@ -46,7 +48,9 @@ export function useUpdateFarm(options = {}) {
         mutationFn: ({ id, ...data }) => updateFarm(id, data),
         onSuccess: (data, variables, context) => {
             queryClient.invalidateQueries({ queryKey: farmKeys.lists() });
-            queryClient.invalidateQueries({ queryKey: cropKeys.byFarm(variables.id) });
+            (variables.assignedFarmers ?? []).forEach((a) => {
+                queryClient.invalidateQueries({ queryKey: farmerKeys.crops(a.farmer) });
+            });
             options.onSuccess?.(data, variables, context);
         },
         onError: options.onError,

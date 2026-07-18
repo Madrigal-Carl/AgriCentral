@@ -28,11 +28,13 @@ export function FarmerDrawer({ row, onClose }) {
 
   const capitalize = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 
+  const farmItems = (row.farms || []).map((f) => `${f.tag} · ${f.address}`);
   const livestockItems = (row.livestock || []).map(
-    (l) => `${l.tag} · ${l.animal} (${l.breed}) — ${capitalize(l.condition)}`,
+    (l) =>
+      `${l.propertyNumber} · ${l.animal} (${l.breed}) — ${capitalize(l.condition)}`,
   );
   const equipmentItems = (row.equipment || []).map(
-    (e) => `${e.tag} · ${e.name} — ${capitalize(e.condition)}`,
+    (e) => `${e.propertyNumber} · ${e.name} — ${capitalize(e.condition)}`,
   );
 
   return (
@@ -92,10 +94,7 @@ export function FarmerDrawer({ row, onClose }) {
           </Section>
 
           <Section icon={Wheat} title="Assigned Farms">
-            <ItemList
-              items={(row.farms || []).map((f) => f.tag)}
-              empty="No farms assigned."
-            />
+            <ItemList items={farmItems} empty="No farms assigned." />
           </Section>
 
           <Section icon={Beef} title="Assigned Livestock">

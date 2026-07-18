@@ -202,24 +202,27 @@ const attachRelatedRecords = async (farmers, associationId) => {
 
     if (!farmerIds.length) return [];
 
+    // assignedFarmers is an array of { farmer, classification } subdocuments
+    // (see farm.model.js), not an array of bare farmer ids — the query and
+    // the grouping below both need to reach into the nested "farmer" field.
     const farms = await Farm.find({
-        assignedFarmers: { $in: farmerIds },
+        "assignedFarmers.farmer": { $in: farmerIds },
         deletedAt: null,
-    }).select("tag assignedFarmers");
+    }).select("tag address assignedFarmers");
 
     const farmsByFarmerId = new Map();
     for (const farm of farms) {
-        for (const farmerId of farm.assignedFarmers) {
-            const key = farmerId.toString();
+        for (const assignment of farm.assignedFarmers) {
+            const key = assignment.farmer.toString();
             if (!farmsByFarmerId.has(key)) farmsByFarmerId.set(key, []);
-            farmsByFarmerId.get(key).push({ id: farm._id, tag: farm.tag });
+            farmsByFarmerId.get(key).push({ id: farm._id, tag: farm.tag, address: farm.address });
         }
     }
 
     const livestocks = await Livestock.find({
         assignedFarmer: { $in: farmerIds },
         deletedAt: null,
-    }).select("tag animal breed condition status assignedFarmer");
+    }).select("propertyNumber animal breed condition status assignedFarmer");
 
     const livestockByFarmerId = new Map();
     for (const livestock of livestocks) {
@@ -227,7 +230,7 @@ const attachRelatedRecords = async (farmers, associationId) => {
         if (!livestockByFarmerId.has(key)) livestockByFarmerId.set(key, []);
         livestockByFarmerId.get(key).push({
             id: livestock._id,
-            tag: livestock.tag,
+            propertyNumber: livestock.propertyNumber,
             animal: livestock.animal,
             breed: livestock.breed,
             condition: livestock.condition,
@@ -238,7 +241,7 @@ const attachRelatedRecords = async (farmers, associationId) => {
     const equipments = await Equipment.find({
         assignedFarmer: { $in: farmerIds },
         deletedAt: null,
-    }).select("tag name condition status assignedFarmer");
+    }).select("propertyNumber name condition status assignedFarmer");
 
     const equipmentByFarmerId = new Map();
     for (const equipment of equipments) {
@@ -246,7 +249,7 @@ const attachRelatedRecords = async (farmers, associationId) => {
         if (!equipmentByFarmerId.has(key)) equipmentByFarmerId.set(key, []);
         equipmentByFarmerId.get(key).push({
             id: equipment._id,
-            tag: equipment.tag,
+            propertyNumber: equipment.propertyNumber,
             name: equipment.name,
             condition: equipment.condition,
             status: equipment.status,

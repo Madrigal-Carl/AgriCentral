@@ -1,21 +1,31 @@
 import { Activity, Info, MapPin, Scale, Users, Wheat, X } from "lucide-react";
-import { CROP_STATUS_LABEL, CROP_STATUS_TONE } from "@/constants/data";
+import {
+  CROP_STATUS_LABEL,
+  CROP_STATUS_TONE,
+  FARMER_CLASSIFICATION_LABEL,
+} from "@/constants/data";
 import { fmtDate } from "@/utils/format";
 import { LocationMap } from "@/components/ui";
 import { StatusPill } from "@/components/public";
-import { DefList, ItemList, Section } from "@/components/drawer";
+import { DefList, Section } from "@/components/drawer";
 
 export function FarmDrawer({ row, onClose }) {
   const crops = row.crops || [];
   const farmers = row.assignedFarmers || [];
 
-  // crops.crop and assignedFarmers come back populated ({_id, name} /
+  // crops.crop and assignedFarmers.farmer come back populated ({_id, name} /
   // {_id, fullName}) from the API, but fall back to the raw id/string just
   // in case a caller ever passes an unpopulated row.
   const cropLabel = (c) =>
     typeof c.crop === "string" ? c.crop : (c.crop?.name ?? "Unknown crop");
-  const farmerLabel = (f) =>
-    typeof f === "string" ? f : (f.fullName ?? "Unknown farmer");
+
+  const farmerLabel = (f) => {
+    if (typeof f === "string") return f;
+    const farmer = f.farmer; // populated Farmer doc, or raw id/string if unpopulated
+    if (!farmer) return "Unknown farmer";
+    if (typeof farmer === "string") return farmer; // unpopulated ObjectId
+    return farmer.fullName ?? "Unknown farmer";
+  };
 
   const totalYield = crops.reduce((sum, c) => sum + (c.yield || 0), 0);
 
@@ -86,10 +96,28 @@ export function FarmDrawer({ row, onClose }) {
           </Section>
 
           <Section icon={Users} title="Assigned Farmers">
-            <ItemList
-              items={farmers.map(farmerLabel)}
-              empty="No farmers assigned."
-            />
+            {farmers.length === 0 ? (
+              <div className="text-sm text-secondary">No farmers assigned.</div>
+            ) : (
+              <ul className="space-y-2">
+                {farmers.map((f, i) => (
+                  <li
+                    key={f.farmer?._id || f.farmer || i}
+                    className="flex items-center justify-between border border-border bg-muted-30 px-3 py-2 text-sm"
+                  >
+                    <span className="font-medium text-foreground">
+                      {farmerLabel(f)}
+                    </span>
+                    {f.classification && (
+                      <StatusPill tone="neutral">
+                        {FARMER_CLASSIFICATION_LABEL[f.classification] ??
+                          f.classification}
+                      </StatusPill>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
           </Section>
 
           <Section icon={Wheat} title="Crop Information">

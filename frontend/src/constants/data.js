@@ -728,3 +728,13 @@ export const positionLabel = {
     director: "Director",
     member: "Member",
 };
+
+export const FARMER_CLASSIFICATION_LABEL = {
+    owner: "Owner",
+    tenant: "Tenant",
+    lessee: "Lessee",
+    caretaker: "Caretaker",
+    farm_worker: "Farm Worker",
+    co_owner: "Co-Owner",
+    beneficiary: "Beneficiary",
+};

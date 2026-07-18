@@ -23,6 +23,13 @@ import {
   FARMER_CLASSIFICATION_OPTIONS,
 } from "@/schemas/farm.schema";
 
+// The modal is for managing a farm's *active* crop assignment (what's
+// currently planted there), not for viewing harvest history — that lives
+// in the FarmDrawer instead. The backend no longer filters crops by
+// status (see farm.service.js), so it's on the modal to only surface
+// crops that are still actionable here.
+const EDITABLE_CROP_STATUSES = ["planted", "growing"];
+
 export function FarmModal({
   mode,
   initial,
@@ -54,6 +61,17 @@ export function FarmModal({
     (a) => ({ value: a._id, label: a.name }),
   );
 
+  // Only planted/growing crops belong in the editable form — harvested/
+  // withered/damaged crops are history, not something this modal should
+  // let you reassign or re-status.
+  const editableInitialCrops = useMemo(
+    () =>
+      (initial?.crops ?? []).filter((c) =>
+        EDITABLE_CROP_STATUSES.includes(c.status),
+      ),
+    [initial],
+  );
+
   // The farm object returned by the backend has assignedFarmers[].farmer/
   // crops.crop/association populated (full objects), but the form + Select
   // components work with plain id strings. Normalize before handing to
@@ -68,7 +86,7 @@ export function FarmModal({
         farmer: typeof a.farmer === "string" ? a.farmer : a.farmer._id,
         classification: a.classification ?? "farm_worker",
       })),
-      crops: (initial.crops ?? []).map((c) => ({
+      crops: editableInitialCrops.map((c) => ({
         ...c,
         crop: typeof c.crop === "string" ? c.crop : c.crop._id,
       })),
@@ -79,7 +97,24 @@ export function FarmModal({
             ? initial.association
             : initial.association._id,
     };
-  }, [initial]);
+  }, [initial, editableInitialCrops]);
+
+  // Names/kilo of crops already on this farm, captured from the populated
+  // initial data *before* normalizedInitial strips them to bare ids. Needed
+  // because getCropsByFarmerId only returns a farmer's *available* (not yet
+  // planted) crops — once a crop is saved onto this farm its status flips
+  // to "planted" and it drops out of that farmer-scoped query, so
+  // cropOptions alone can't be relied on to label crops already assigned
+  // here. Scoped to editableInitialCrops so it stays consistent with what
+  // the form actually manages.
+  const initialCropLabelById = useMemo(() => {
+    const map = new Map();
+    editableInitialCrops.forEach((c) => {
+      if (typeof c.crop === "string" || !c.crop) return; // unpopulated, no name to grab
+      map.set(c.crop._id, `${c.crop.name} (${c.crop.kilo} kg)`);
+    });
+    return map;
+  }, [editableInitialCrops]);
 
   const {
     register,
@@ -141,15 +176,25 @@ export function FarmModal({
     return map;
   }, [allCrops]);
 
-  // allCrops is already the union of the currently assigned farmers' own
-  // crops (each per-farmer query is scoped server-side), so no extra
-  // filtering by assignedFarmerIds is needed here.
+  // allCrops is the union of the currently assigned farmers' *available*
+  // crops (each per-farmer query is scoped server-side). That excludes any
+  // crop that's already planted on this farm, so we backfill those from
+  // initialCropLabelById to keep already-selected crops from losing their
+  // label/option entry once they're no longer "available".
   const cropOptions = useMemo(() => {
-    return allCrops.map((c) => ({
+    const fromQuery = allCrops.map((c) => ({
       value: c._id,
       label: `${c.name} (${c.kilo} kg)`,
     }));
-  }, [allCrops]);
+
+    const selectedIds = new Set(crops.map((c) => c.crop));
+    const known = new Set(fromQuery.map((o) => o.value));
+    const missing = [...selectedIds]
+      .filter((id) => !known.has(id) && initialCropLabelById.has(id))
+      .map((id) => ({ value: id, label: initialCropLabelById.get(id) }));
+
+    return [...fromQuery, ...missing];
+  }, [allCrops, crops, initialCropLabelById]);
 
   // Keep track of the previous assignedFarmer ids so we only react to
   // actual removals (avoids stripping crops on unrelated re-renders).
@@ -181,7 +226,7 @@ export function FarmModal({
 
   // Bridges MultiSelect (plain id array) with the form's {farmer,
   // classification}[] shape — preserves each farmer's existing
-  // classification, defaults new ones to "owner".
+  // classification, defaults new ones to "farm_worker".
   const onAssignedFarmersChange = (nextIds) => {
     const existing = new Map(assignedFarmers.map((a) => [a.farmer, a]));
     setValue(
@@ -334,79 +379,84 @@ export function FarmModal({
                 </div>
               )}
 
-              <Field label="Crops" full error={errors.crops?.message}>
-                <Controller
-                  name="crops"
-                  control={control}
-                  render={({ field }) => {
-                    const cropIds = field.value.map((c) => c.crop);
-                    const onCropsChange = (nextIds) => {
-                      const existing = new Map(
-                        field.value.map((c) => [c.crop, c]),
-                      );
-                      field.onChange(
-                        nextIds.map((id) => ({
-                          crop: id,
-                          status: existing.get(id)?.status ?? "planted",
-                          yield: existing.get(id)?.yield ?? 0,
-                        })),
-                      );
-                    };
-                    return (
-                      <MultiSelect
-                        values={cropIds}
-                        onChange={onCropsChange}
-                        options={cropOptions}
-                        placeholder={
-                          assignedFarmerIds.length === 0
-                            ? "Select a farmer first…"
-                            : cropsLoading
-                              ? "Loading crops…"
-                              : "Select crops…"
-                        }
-                        searchPlaceholder="Search crop…"
-                      />
-                    );
-                  }}
-                />
-              </Field>
-
-              {crops.length > 0 && (
-                <div className="sm:col-span-2 space-y-2">
-                  {crops.map((c) => {
-                    const label =
-                      cropOptions.find((o) => o.value === c.crop)?.label ??
-                      c.crop;
-                    return (
-                      <div
-                        key={c.crop}
-                        className="flex flex-col gap-2 bg-surface border border-border px-3 py-2"
-                      >
-                        <div className="flex items-center justify-between gap-3 w-full">
-                          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                            <Wheat className="h-4 w-4 text-accent" />
-                            {label}
-                          </div>
-                          <FullSelect
-                            value={c.status}
-                            onChange={(v) => setCropStatus(c.crop, v)}
-                            options={CROP_STATUS_OPTIONS}
-                          />
-                        </div>
-                        {c.status === "harvested" && (
-                          <TextInput
-                            type="number"
-                            value={c.yield ?? 0}
-                            onChange={(e) =>
-                              setCropYield(c.crop, e.target.value)
+              {isEdit && (
+                <>
+                  <Field label="Crops" full error={errors.crops?.message}>
+                    <Controller
+                      name="crops"
+                      control={control}
+                      render={({ field }) => {
+                        const cropIds = field.value.map((c) => c.crop);
+                        const onCropsChange = (nextIds) => {
+                          const existing = new Map(
+                            field.value.map((c) => [c.crop, c]),
+                          );
+                          field.onChange(
+                            nextIds.map((id) => ({
+                              crop: id,
+                              status: existing.get(id)?.status ?? "planted",
+                              yield: existing.get(id)?.yield ?? 0,
+                            })),
+                          );
+                        };
+                        return (
+                          <MultiSelect
+                            values={cropIds}
+                            onChange={onCropsChange}
+                            options={cropOptions}
+                            placeholder={
+                              assignedFarmerIds.length === 0
+                                ? "Select a farmer first…"
+                                : cropsLoading
+                                  ? "Loading crops…"
+                                  : "Select crops…"
                             }
-                            placeholder="Yield (kg)"
+                            searchPlaceholder="Search crop…"
                           />
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                        );
+                      }}
+                    />
+                  </Field>
+
+                  {crops.length > 0 && (
+                    <div className="sm:col-span-2 space-y-2">
+                      {crops.map((c) => {
+                        const label =
+                          cropOptions.find((o) => o.value === c.crop)?.label ??
+                          initialCropLabelById.get(c.crop) ??
+                          c.crop;
+                        return (
+                          <div
+                            key={c.crop}
+                            className="flex flex-col gap-2 bg-surface border border-border px-3 py-2"
+                          >
+                            <div className="flex items-center justify-between gap-3 w-full">
+                              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                                <Wheat className="h-4 w-4 text-accent" />
+                                {label}
+                              </div>
+                              <FullSelect
+                                value={c.status}
+                                onChange={(v) => setCropStatus(c.crop, v)}
+                                options={CROP_STATUS_OPTIONS}
+                              />
+                            </div>
+                            {c.status === "harvested" && (
+                              <TextInput
+                                type="number"
+                                value={c.yield ?? 0}
+                                onChange={(e) =>
+                                  setCropYield(c.crop, e.target.value)
+                                }
+                                placeholder="Yield (kg)"
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
               )}
             </>
           ) : (

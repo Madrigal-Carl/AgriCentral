@@ -10,7 +10,7 @@ const FARMERS_TO_SEED = [
         gender: "male",
         birthDate: "1985-04-12",
         address: "Brgy. San Isidro, Nueva Ecija",
-        position: "president",
+        position: "member",
     },
     {
         lastName: "Reyes",
@@ -21,7 +21,7 @@ const FARMERS_TO_SEED = [
         gender: "female",
         birthDate: "1990-08-23",
         address: "Brgy. San Isidro, Nueva Ecija",
-        position: "secretary",
+        position: "member",
     },
     {
         lastName: "Santos",
@@ -31,7 +31,7 @@ const FARMERS_TO_SEED = [
         gender: "male",
         birthDate: "1978-01-30",
         address: "Brgy. Mabuhay, Bulacan",
-        position: "president",
+        position: "member",
     },
     {
         lastName: "Garcia",

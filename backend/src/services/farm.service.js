@@ -8,15 +8,16 @@ const CROP_POPULATE = { path: "crops.crop" };
 const FARMER_POPULATE = { path: "assignedFarmers.farmer", select: "firstName lastName emailAddress" };
 const ASSOCIATION_POPULATE = { path: "association", select: "name" };
 
-const ACTIVE_CROP_STATUSES = ["planted", "growing"];
-
-function filterActiveCrops(farm) {
+// Converts a Mongoose farm document to a plain object. Previously this also
+// filtered out crops whose status wasn't "planted"/"growing", which
+// unintentionally hid harvested crops (and their yield) from every farm
+// response, including the read paths that feed the Farm drawer and edit
+// modal. Harvested crops are meant to remain visible — e.g. the drawer's
+// "Total yield" card and per-crop yield display both depend on them being
+// present — so this no longer filters by status at all.
+function toFarmObject(farm) {
     if (!farm) return farm;
-    const farmObj = typeof farm.toObject === "function" ? farm.toObject() : farm;
-    farmObj.crops = (farmObj.crops ?? []).filter((c) =>
-        ACTIVE_CROP_STATUSES.includes(c.status)
-    );
-    return farmObj;
+    return typeof farm.toObject === "function" ? farm.toObject() : farm;
 }
 
 const resolveAssociationId = async (associationId, authenticatedUserId) => {
@@ -137,6 +138,13 @@ export const createFarm = async (data, authenticatedUserId) => {
         association: resolvedAssociationId || undefined,
     });
 
+    await createLog({
+        entityType: "farm",
+        entityId: farm._id,
+        association: farm.association,
+        message: `Farm ${farm.tag} was created at ${farm.address}.`,
+    });
+
     if (farmData.crops?.length) {
         const cropIds = farmData.crops.map((c) => c.crop);
         await Crop.updateMany(
@@ -170,7 +178,7 @@ export const createFarm = async (data, authenticatedUserId) => {
     }
 
     const populated = await farm.populate([FARMER_POPULATE, CROP_POPULATE, ASSOCIATION_POPULATE]);
-    return filterActiveCrops(populated);
+    return toFarmObject(populated);
 };
 
 export const updateFarm = async (id, data) => {
@@ -281,7 +289,7 @@ export const updateFarm = async (id, data) => {
         }
     }
 
-    return filterActiveCrops(farm);
+    return toFarmObject(farm);
 };
 
 export const deleteFarm = async (id) => {
@@ -373,7 +381,7 @@ export const getFarms = async ({ search, crop, associationId, all, page, limit, 
             .populate([FARMER_POPULATE, CROP_POPULATE, ASSOCIATION_POPULATE]);
 
         return {
-            farms: await attachFarmHistory(farms.map(filterActiveCrops), associationId),
+            farms: await attachFarmHistory(farms.map(toFarmObject), associationId),
             pagination: null,
         };
     }
@@ -390,7 +398,7 @@ export const getFarms = async ({ search, crop, associationId, all, page, limit, 
     ]);
 
     return {
-        farms: await attachFarmHistory(farms.map(filterActiveCrops), associationId),
+        farms: await attachFarmHistory(farms.map(toFarmObject), associationId),
         pagination: {
             page,
             limit,
