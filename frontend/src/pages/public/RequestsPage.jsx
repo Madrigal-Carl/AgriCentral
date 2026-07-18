@@ -222,6 +222,7 @@ export function RequestsPage() {
                 r.approvalStatus?.coordinator?.status === "approved" ||
                 r.approvalStatus?.coordinator?.status === "denied";
               const canEditThis = can.edit && !coordinatorReviewed;
+              const canDeleteThis = can.delete && !coordinatorReviewed;
 
               const canReleaseThis =
                 role === "coordinator" &&
@@ -232,7 +233,7 @@ export function RequestsPage() {
                 <RowActions
                   onView={() => openView(r)}
                   onEdit={canEditThis ? () => openEdit(r) : undefined}
-                  onDelete={can.delete ? () => askDelete(r) : undefined}
+                  onDelete={canDeleteThis ? () => askDelete(r) : undefined}
                   onApprove={canReviewThis ? () => askApprove(r) : undefined}
                   onDeny={canReviewThis ? () => askDeny(r) : undefined}
                   onRelease={

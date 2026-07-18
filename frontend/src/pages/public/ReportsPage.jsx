@@ -206,7 +206,7 @@ export function ReportsPage() {
                 reportStatus === "pending";
 
               const canEditThis = can.edit && reportStatus === "pending";
-              const canDeleteThis = can.delete;
+              const canDeleteThis = can.delete && reportStatus === "pending";
 
               return (
                 <RowActions
