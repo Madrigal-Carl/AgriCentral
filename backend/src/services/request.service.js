@@ -82,8 +82,12 @@ async function attachHistory(requests, associationId) {
 const resolveAssociationId = async (authenticatedUserId) => {
     if (!authenticatedUserId) return undefined;
 
-    const user = await User.findById(authenticatedUserId).select("association");
-    return user?.association ?? undefined;
+    const association = await Association.findOne({
+        user: authenticatedUserId,
+        deletedAt: null,
+    }).select("_id");
+
+    return association?._id ?? undefined;
 };
 
 export const createRequest = async (data, authenticatedUserId) => {

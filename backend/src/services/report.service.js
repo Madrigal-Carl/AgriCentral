@@ -79,16 +79,21 @@ async function attachHistory(reports, associationId) {
     });
 }
 
+const resolveFarAssociationId = async (userId) => {
+    const association = await Association.findOne({
+        user: userId,
+        deletedAt: null,
+    }).select("_id");
+    return association ? String(association._id) : undefined;
+};
+
 export const createReport = async (data, actingUser) => {
     const { associationId, ...reportData } = data;
     const role = actingUser?.role;
 
-    // far always reports under their own association; aew must supply one.
     const resolvedAssociationId =
         role === "far"
-            ? actingUser.association
-                ? String(actingUser.association)
-                : undefined
+            ? await resolveFarAssociationId(actingUser._id)
             : associationId;
 
     const EntityModel = ENTITY_MODELS[reportData.entityType];

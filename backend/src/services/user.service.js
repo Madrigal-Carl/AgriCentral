@@ -6,21 +6,23 @@ import { EMAIL_JOBS } from "../queues/email.jobs.js";
 
 const SALT_ROUNDS = 10;
 
-// Only "far" users can hold an association, and an association can only
-// be held by one far user at a time. userId is excluded from the conflict
-// check so a user keeping their own current association doesn't trip it.
 const resolveAssociation = async (role, associationId, userId) => {
     if (role !== "far" || !associationId) {
         return null;
     }
 
-    const conflict = await User.findOne({
-        _id: { $ne: userId ?? null },
-        role: "far",
-        association: associationId,
-    }).select("_id");
+    const association = await Association.findOne({
+        _id: associationId,
+        deletedAt: null,
+    }).select("_id user");
 
-    if (conflict) {
+    if (!association) {
+        const err = new Error("Association not found");
+        err.statusCode = 404;
+        throw err;
+    }
+
+    if (association.user && String(association.user) !== String(userId ?? "")) {
         const err = new Error("This association is already assigned to another user");
         err.statusCode = 409;
         throw err;
@@ -40,13 +42,16 @@ export const createUser = async (data) => {
 
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
     const role = rest.role ?? "far";
-    const resolvedAssociation = await resolveAssociation(role, association, null);
+    const resolvedAssociationId = await resolveAssociation(role, association, null);
 
     const user = await User.create({
         ...rest,
         password: hashedPassword,
-        association: resolvedAssociation,
     });
+
+    if (resolvedAssociationId) {
+        await Association.findByIdAndUpdate(resolvedAssociationId, { $set: { user: user._id } });
+    }
 
     return user;
 };
@@ -65,8 +70,6 @@ export const updateUser = async (id, data) => {
         }
     }
 
-    // Fetch the current state once — used both for the association/role
-    // fallback below and to detect the isVerified false->true transition.
     const existingUser = await User.findById(id).select("role isVerified email fullname");
 
     if (!existingUser) {
@@ -81,14 +84,13 @@ export const updateUser = async (id, data) => {
         updateData.password = await bcrypt.hash(password, SALT_ROUNDS);
     }
 
-    // Only touch association when the caller actually sent it, or the
-    // role changed (e.g. switching away from "far" should clear it).
     const touchesAssociation =
         Object.prototype.hasOwnProperty.call(data, "association") || rest.role;
 
+    let resolvedAssociationId;
     if (touchesAssociation) {
         const role = rest.role ?? existingUser.role;
-        updateData.association = await resolveAssociation(role, association, id);
+        resolvedAssociationId = await resolveAssociation(role, association, id);
     }
 
     const user = await User.findByIdAndUpdate(
@@ -101,6 +103,20 @@ export const updateUser = async (id, data) => {
         const notFoundError = new Error("User not found");
         notFoundError.statusCode = 404;
         throw notFoundError;
+    }
+
+    if (touchesAssociation) {
+        await Association.updateMany(
+            {
+                user: id,
+                ...(resolvedAssociationId ? { _id: { $ne: resolvedAssociationId } } : {}),
+            },
+            { $unset: { user: "" } },
+        );
+
+        if (resolvedAssociationId) {
+            await Association.findByIdAndUpdate(resolvedAssociationId, { $set: { user: id } });
+        }
     }
 
     const resolvedRole = rest.role ?? existingUser.role;
@@ -129,6 +145,8 @@ export const deleteUser = async (id) => {
         throw notFoundError;
     }
 
+    await Association.updateMany({ user: id }, { $unset: { user: "" } });
+
     return user;
 };
 
@@ -145,11 +163,9 @@ export const getUsers = async ({ role, search, all, page, limit }) => {
     }
 
     if (all) {
-        const users = await User.find(filter)
-            .sort({ createdAt: -1 })
-            .populate("association", "name");
+        const users = await User.find(filter).sort({ createdAt: -1 });
         return {
-            users: users.map(formatUser),
+            users: await attachAssociations(users),
             pagination: null,
         };
     }
@@ -157,16 +173,12 @@ export const getUsers = async ({ role, search, all, page, limit }) => {
     const skip = (page - 1) * limit;
 
     const [users, total] = await Promise.all([
-        User.find(filter)
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit)
-            .populate("association", "name"),
+        User.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
         User.countDocuments(filter),
     ]);
 
     return {
-        users: users.map(formatUser),
+        users: await attachAssociations(users),
         pagination: {
             page,
             limit,
@@ -176,8 +188,31 @@ export const getUsers = async ({ role, search, all, page, limit }) => {
     };
 };
 
-// Flattens the populated association into association/associationName,
-// matching the shape the frontend already expects.
+const attachAssociations = async (users) => {
+    const userIds = users.map((u) => u._id);
+
+    const associations = await Association.find({
+        user: { $in: userIds },
+        deletedAt: null,
+    }).select("_id name user");
+
+    const associationByUserId = new Map();
+    for (const a of associations) {
+        associationByUserId.set(a.user.toString(), a);
+    }
+
+    return users.map((u) => {
+        const obj = u.toObject();
+        const key = obj._id.toString();
+        const association = associationByUserId.get(key);
+        return {
+            ...obj,
+            association: association?._id ?? null,
+            associationName: association?.name ?? null,
+        };
+    });
+};
+
 function formatUser(u) {
     const obj = u.toObject();
     const { association, ...rest } = obj;

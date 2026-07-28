@@ -38,7 +38,7 @@ export const updateAssociation = async (id, data) => {
 export const deleteAssociation = async (id) => {
     const association = await Association.findOneAndUpdate(
         { _id: id, deletedAt: null },
-        { $set: { deletedAt: new Date() } },
+        { $set: { deletedAt: new Date() }, $unset: { user: "" } },
         { returnDocument: "after" }
     );
 
@@ -48,14 +48,6 @@ export const deleteAssociation = async (id) => {
         throw notFoundError;
     }
 
-    // Detach any far user still pointing at the deleted association.
-    await User.updateMany(
-        { association: association._id },
-        { $set: { association: null } },
-    );
-
-    // Same for farmers — leaving them pointed at a deleted association
-    // would break attachMembers' lookups and any association-scoped views.
     await Farmer.updateMany(
         { association: association._id },
         { $set: { association: null } },
@@ -95,18 +87,23 @@ export const restoreAssociation = async (id) => {
 const attachMembers = async (associations) => {
     const associationIds = associations.map((a) => a._id);
 
-    // FAR user per association, for the "far" display field.
-    const farUsers = await User.find({
-        role: "far",
-        association: { $in: associationIds },
-    }).select("_id fullname association");
+    const userIds = associations
+        .map((a) => a.user)
+        .filter(Boolean)
+        .map((u) => u.toString());
 
-    const farUserByAssociationId = new Map();
+    // FAR user for each association, keyed by user id — the association
+    // now points at its user directly, so we just resolve those ids.
+    const farUsers = await User.find({
+        _id: { $in: userIds },
+        role: "far",
+    }).select("_id fullname");
+
+    const farUserById = new Map();
     for (const u of farUsers) {
-        farUserByAssociationId.set(u.association.toString(), u);
+        farUserById.set(u._id.toString(), u);
     }
 
-    // Farmers directly linked to the association.
     const farmers = await Farmer.find({
         association: { $in: associationIds },
     }).select("firstName lastName position association");
@@ -125,10 +122,9 @@ const attachMembers = async (associations) => {
     return associations.map((a) => {
         const obj = typeof a.toObject === "function" ? a.toObject() : a;
         const key = obj._id.toString();
-        const farUser = farUserByAssociationId.get(key);
+        const farUser = obj.user ? farUserById.get(obj.user.toString()) : null;
         const farmerMembers = membersByAssociationId.get(key) ?? [];
 
-        // The FAR user is a member of the association too, not just the farmers.
         const members = farUser
             ? [
                 {
@@ -182,21 +178,13 @@ export const getAssociations = async ({ search, all, page, limit, includeDeleted
     };
 };
 
-// Associations with no far user currently pointing at them — i.e. free to
-// be linked. includeId keeps the current selection visible in edit mode
-// even though it's technically claimed (by the user being edited).
 export const getAvailableAssociations = async ({ includeId } = {}) => {
     const validIncludeId = mongoose.isValidObjectId(includeId) ? includeId : null;
-
-    const claimedIds = await User.find({
-        role: "far",
-        association: { $ne: null },
-    }).distinct("association");
 
     const filter = {
         deletedAt: null,
         $or: [
-            { _id: { $nin: claimedIds } },
+            { user: null },
             ...(validIncludeId ? [{ _id: validIncludeId }] : []),
         ],
     };

@@ -2,6 +2,7 @@ import Farm from "../models/farm.model.js";
 import Crop from "../models/crop.model.js";
 import Farmer from "../models/farmer.model.js";
 import User from "../models/user.model.js";
+import Association from "../models/association.model.js";
 import { createLog, getLogsForEntities, humanize } from "./log.service.js";
 
 const CROP_POPULATE = { path: "crops.crop" };
@@ -24,8 +25,12 @@ const resolveAssociationId = async (associationId, authenticatedUserId) => {
     if (associationId) return associationId;
     if (!authenticatedUserId) return undefined;
 
-    const user = await User.findById(authenticatedUserId).select("association");
-    return user?.association ?? undefined;
+    const association = await Association.findOne({
+        user: authenticatedUserId,
+        deletedAt: null,
+    }).select("_id");
+
+    return association?._id ?? undefined;
 };
 
 const logCropStatusChanges = async ({ farm, changes, cropIdToName }) => {

@@ -29,11 +29,6 @@ const userSchema = new mongoose.Schema(
             enum: ["far", "aew", "coordinator", "governor", "head", "admin"],
             default: "far",
         },
-        association: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "Association",
-            default: null,
-        },
     },
     {
         timestamps: true,
