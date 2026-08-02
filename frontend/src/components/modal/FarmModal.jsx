@@ -489,19 +489,17 @@ export function FarmModal({
                       return (
                         <div
                           key={c.crop}
-                          className="flex flex-col gap-2 bg-surface border border-border px-3 py-2"
+                          className="flex items-center gap-3 w-full bg-surface border border-border px-3 py-2"
                         >
-                          <div className="flex items-center justify-between gap-3 w-full">
-                            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                              <Wheat className="h-4 w-4 text-accent" />
-                              {label}
-                            </div>
-                            <FullSelect
-                              value={c.status}
-                              onChange={(v) => setCropStatus(c.crop, v)}
-                              options={CROP_STATUS_OPTIONS}
-                            />
+                          <div className="flex items-center gap-2 text-sm font-medium text-foreground flex-1 min-w-0">
+                            <Wheat className="h-4 w-4 shrink-0 text-accent" />
+                            <span className="truncate">{label}</span>
                           </div>
+                          <FullSelect
+                            value={c.status}
+                            onChange={(v) => setCropStatus(c.crop, v)}
+                            options={CROP_STATUS_OPTIONS}
+                          />
                           <TextInput
                             type="number"
                             min={0}
@@ -512,9 +510,10 @@ export function FarmModal({
                             }
                             placeholder={
                               available != null
-                                ? `${statusLabel} quantity (max ${available})`
-                                : `${statusLabel} quantity`
+                                ? `Max ${available}`
+                                : "Quantity"
                             }
+                            className="w-28 shrink-0"
                           />
                         </div>
                       );
