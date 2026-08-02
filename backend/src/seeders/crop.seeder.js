@@ -1,10 +1,10 @@
 import Crop from "../models/crop.model.js";
 
 const CROPS_TO_SEED = [
-    { name: "Rice", kilo: 1200, status: "planted" },
-    { name: "Corn", kilo: 800, status: "not_planted" },
-    { name: "Sugarcane", kilo: 500, status: "planted" },
-    { name: "Peanut", kilo: 300, status: "not_planted" },
+    { name: "Rice", quantity: 1200, status: "not_planted" },
+    { name: "Corn", quantity: 800, status: "not_planted" },
+    { name: "Sugarcane", quantity: 500, status: "not_planted" },
+    { name: "Peanut", quantity: 300, status: "not_planted" },
 ];
 
 export const wipeCrops = async () => {

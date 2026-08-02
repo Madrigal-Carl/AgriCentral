@@ -99,7 +99,7 @@ export function FarmModal({
     };
   }, [initial, editableInitialCrops]);
 
-  // Names/kilo of crops already on this farm, captured from the populated
+  // Names/quantity of crops already on this farm, captured from the populated
   // initial data *before* normalizedInitial strips them to bare ids. Needed
   // because getCropsByFarmerId only returns a farmer's *available* (not yet
   // planted) crops — once a crop is saved onto this farm its status flips
@@ -111,7 +111,7 @@ export function FarmModal({
     const map = new Map();
     editableInitialCrops.forEach((c) => {
       if (typeof c.crop === "string" || !c.crop) return; // unpopulated, no name to grab
-      map.set(c.crop._id, `${c.crop.name} (${c.crop.kilo} kg)`);
+      map.set(c.crop._id, `${c.crop.quantity} ${c.crop.name}`);
     });
     return map;
   }, [editableInitialCrops]);
@@ -184,7 +184,7 @@ export function FarmModal({
   const cropOptions = useMemo(() => {
     const fromQuery = allCrops.map((c) => ({
       value: c._id,
-      label: `${c.name} (${c.kilo} kg)`,
+      label: `${c.quantity} ${c.name}`,
     }));
 
     const selectedIds = new Set(crops.map((c) => c.crop));
@@ -379,85 +379,83 @@ export function FarmModal({
                 </div>
               )}
 
-              {isEdit && (
-                <>
-                  <Field label="Crops" full error={errors.crops?.message}>
-                    <Controller
-                      name="crops"
-                      control={control}
-                      render={({ field }) => {
-                        const cropIds = field.value.map((c) => c.crop);
-                        const onCropsChange = (nextIds) => {
-                          const existing = new Map(
-                            field.value.map((c) => [c.crop, c]),
-                          );
-                          field.onChange(
-                            nextIds.map((id) => ({
-                              crop: id,
-                              status: existing.get(id)?.status ?? "planted",
-                              yield: existing.get(id)?.yield ?? 0,
-                            })),
-                          );
-                        };
-                        return (
-                          <MultiSelect
-                            values={cropIds}
-                            onChange={onCropsChange}
-                            options={cropOptions}
-                            placeholder={
-                              assignedFarmerIds.length === 0
-                                ? "Select a farmer first…"
-                                : cropsLoading
-                                  ? "Loading crops…"
-                                  : "Select crops…"
-                            }
-                            searchPlaceholder="Search crop…"
-                          />
+              <>
+                <Field label="Crops" full error={errors.crops?.message}>
+                  <Controller
+                    name="crops"
+                    control={control}
+                    render={({ field }) => {
+                      const cropIds = field.value.map((c) => c.crop);
+                      const onCropsChange = (nextIds) => {
+                        const existing = new Map(
+                          field.value.map((c) => [c.crop, c]),
                         );
-                      }}
-                    />
-                  </Field>
+                        field.onChange(
+                          nextIds.map((id) => ({
+                            crop: id,
+                            status: existing.get(id)?.status ?? "planted",
+                            yield: existing.get(id)?.yield ?? 0,
+                          })),
+                        );
+                      };
+                      return (
+                        <MultiSelect
+                          values={cropIds}
+                          onChange={onCropsChange}
+                          options={cropOptions}
+                          placeholder={
+                            assignedFarmerIds.length === 0
+                              ? "Select a farmer first…"
+                              : cropsLoading
+                                ? "Loading crops…"
+                                : "Select crops…"
+                          }
+                          searchPlaceholder="Search crop…"
+                        />
+                      );
+                    }}
+                  />
+                </Field>
 
-                  {crops.length > 0 && (
-                    <div className="sm:col-span-2 space-y-2">
-                      {crops.map((c) => {
-                        const label =
-                          cropOptions.find((o) => o.value === c.crop)?.label ??
-                          initialCropLabelById.get(c.crop) ??
-                          c.crop;
-                        return (
-                          <div
-                            key={c.crop}
-                            className="flex flex-col gap-2 bg-surface border border-border px-3 py-2"
-                          >
-                            <div className="flex items-center justify-between gap-3 w-full">
-                              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                                <Wheat className="h-4 w-4 text-accent" />
-                                {label}
-                              </div>
-                              <FullSelect
-                                value={c.status}
-                                onChange={(v) => setCropStatus(c.crop, v)}
-                                options={CROP_STATUS_OPTIONS}
-                              />
+                {crops.length > 0 && (
+                  <div className="sm:col-span-2 space-y-2">
+                    {crops.map((c) => {
+                      const label =
+                        cropOptions.find((o) => o.value === c.crop)?.label ??
+                        initialCropLabelById.get(c.crop) ??
+                        c.crop;
+                      return (
+                        <div
+                          key={c.crop}
+                          className="flex flex-col gap-2 bg-surface border border-border px-3 py-2"
+                        >
+                          <div className="flex items-center justify-between gap-3 w-full">
+                            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                              <Wheat className="h-4 w-4 text-accent" />
+                              {label}
                             </div>
-                            {c.status === "harvested" && (
-                              <TextInput
-                                type="number"
-                                value={c.yield ?? 0}
-                                onChange={(e) =>
-                                  setCropYield(c.crop, e.target.value)
-                                }
-                                placeholder="Yield (kg)"
-                              />
-                            )}
+                            <FullSelect
+                              value={c.status}
+                              onChange={(v) => setCropStatus(c.crop, v)}
+                              options={CROP_STATUS_OPTIONS}
+                            />
                           </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </>
-              )}
+                          {c.status === "harvested" && (
+                            <TextInput
+                              type="number"
+                              value={c.yield ?? 0}
+                              onChange={(e) =>
+                                setCropYield(c.crop, e.target.value)
+                              }
+                              placeholder="Yield (quantity)"
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
             </>
           ) : (
             <Field label="Association" full error={errors.association?.message}>

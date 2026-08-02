@@ -45,7 +45,7 @@ export function CropDrawer({ row, farmerName, onClose }) {
               items={[
                 ["Association", row.association?.name || "—"],
                 ["Crop Name", row.name || "—"],
-                ["Kilogram", `${(row.kilo || 0).toLocaleString()} kg`],
+                ["Quantity", `${(row.quantity || 0).toLocaleString()}`],
                 [
                   "Status",
                   row.status === "planted" ? "Planted" : "Not Planted",

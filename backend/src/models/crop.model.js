@@ -13,7 +13,7 @@ const cropSchema = new mongoose.Schema(
             minlength: 2,
             maxlength: 100,
         },
-        kilo: {
+        quantity: {
             type: Number,
             required: true,
             min: 0,

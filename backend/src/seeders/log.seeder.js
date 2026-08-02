@@ -61,7 +61,7 @@ export const seedLogs = async ({ farmers = [], farms = [], livestocks = [], equi
             entityType: "crop",
             entityId: crop._id,
             association: crop.association,
-            message: `${crop.name} (${crop.kilo} kg) has been assigned to ${farmer.getFullName()}${associationName ? ` in ${associationName}` : ""
+            message: `${crop.quantity} ${crop.name} has been assigned to ${farmer.getFullName()}${associationName ? ` in ${associationName}` : ""
                 }.`,
         });
     }

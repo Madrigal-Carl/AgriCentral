@@ -47,7 +47,7 @@ export const createCrop = async (data, authenticatedUserId) => {
             entityType: "crop",
             entityId: crop._id,
             association: crop.association,
-            message: `${crop.name} (${crop.kilo} kg) has been assigned to ${farmer.getFullName()}${associationName ? ` in ${associationName}` : ""
+            message: `${crop.quantity} ${crop.name} has been assigned to ${farmer.getFullName()}${associationName ? ` in ${associationName}` : ""
                 }.`,
         });
 
@@ -55,7 +55,7 @@ export const createCrop = async (data, authenticatedUserId) => {
             entityType: "farmer",
             entityId: farmer._id,
             association: crop.association,
-            message: `${farmer.getFullName()} received a new crop batch: ${crop.name} (${crop.kilo} kg).`,
+            message: `${farmer.getFullName()} received a new crop batch: ${crop.quantity} ${crop.name}.`,
         });
     }
 
@@ -112,7 +112,7 @@ export const updateCrop = async (id, data) => {
             entityType: "farmer",
             entityId: crop.assignedFarmer._id,
             association: crop.association?._id ?? crop.association,
-            message: `${farmerName} received a reassigned crop batch: ${crop.name} (${crop.kilo} kg).`,
+            message: `${farmerName} received a reassigned crop batch: ${crop.quantity} ${crop.name}.`,
         });
     } else if (associationChanged) {
         // Association changed on its own (farmer unchanged) — still worth a crop-level note.
@@ -183,14 +183,14 @@ export const distributeCrop = async (id) => {
             entityType: "crop",
             entityId: crop._id,
             association: crop.association?._id ?? crop.association,
-            message: `${crop.name} (${crop.kilo} kg) has been distributed to ${farmerName}.`,
+            message: `${crop.quantity} ${crop.name} has been distributed to ${farmerName}.`,
         });
 
         await createLog({
             entityType: "farmer",
             entityId: crop.assignedFarmer._id,
             association: crop.association?._id ?? crop.association,
-            message: `${farmerName} has received the distributed crop batch: ${crop.name} (${crop.kilo} kg).`,
+            message: `${farmerName} has received the distributed crop batch: ${crop.quantity} ${crop.name}.`,
         });
     }
 

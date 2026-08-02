@@ -18,7 +18,7 @@ const ENTITY_MODELS = {
 };
 
 const ENTITY_SELECT = {
-    farm: "name kilo",
+    farm: "name quantity",
     livestock: "propertyNumber animal",
     equipment: "propertyNumber name",
 };

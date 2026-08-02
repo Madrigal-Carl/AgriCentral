@@ -21,9 +21,9 @@ export const createCropSchema = z.object({
         .trim()
         .min(2, "Crop name must be at least 2 characters")
         .max(100, "Crop name must not exceed 100 characters"),
-    kilo: z.coerce
-        .number({ invalid_type_error: "Kilo must be a number" })
-        .min(0, "Kilo cannot be negative")
+    quantity: z.coerce
+        .number({ invalid_type_error: "Quantity must be a number" })
+        .min(0, "Quantity cannot be negative")
         .optional()
         .default(0),
     assignedFarmer: requiredObjectId("Invalid farmer id", "Assigned farmer is required"),
@@ -38,9 +38,9 @@ export const updateCropSchema = z.object({
         .min(2, "Crop name must be at least 2 characters")
         .max(100, "Crop name must not exceed 100 characters")
         .optional(),
-    kilo: z.coerce
-        .number({ invalid_type_error: "Kilo must be a number" })
-        .min(0, "Kilo cannot be negative")
+    quantity: z.coerce
+        .number({ invalid_type_error: "Quantity must be a number" })
+        .min(0, "Quantity cannot be negative")
         .optional(),
     assignedFarmer: requiredObjectId("Invalid farmer id", "Assigned farmer is required").optional(),
     status: z.enum(STATUSES).optional(),

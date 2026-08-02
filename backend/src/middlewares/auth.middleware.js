@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
+import Association from "../models/association.model.js";
 
 import { generateAccessToken } from "../utils/generateToken.js";
 
@@ -110,27 +111,36 @@ export const excludeRoles = (...blockedRoles) => {
   };
 };
 
-export const scopeByAssociationId = (req, res, next) => {
-  const query = { ...req.query };
+export const scopeByAssociationId = async (req, res, next) => {
+  try {
+    const query = { ...req.query };
 
-  if (req.user?.role === "far") {
-    // far users are pinned to their own association and cannot override
-    // this via query params, regardless of what they pass in.
-    query.associationId = req.user.association
-      ? String(req.user.association)
-      : "000000000000000000000000";
+    if (req.user?.role === "far") {
+      // far users are pinned to their own association and cannot override
+      // this via query params, regardless of what they pass in.
+      const association = await Association.findOne({
+        user: req.user._id,
+        deletedAt: null,
+      }).select("_id");
+
+      query.associationId = association
+        ? String(association._id)
+        : "000000000000000000000000";
+    }
+    // Every other role (admin, aew, coordinator, etc.) is left free to pass
+    // associationId as an optional filter, or omit it to see everything.
+
+    Object.defineProperty(req, "query", {
+      value: query,
+      writable: true,
+      configurable: true,
+      enumerable: true,
+    });
+
+    next();
+  } catch (err) {
+    next(err);
   }
-  // Every other role (admin, aew, coordinator, etc.) is left free to pass
-  // associationId as an optional filter, or omit it to see everything.
-
-  Object.defineProperty(req, "query", {
-    value: query,
-    writable: true,
-    configurable: true,
-    enumerable: true,
-  });
-
-  next();
 };
 
 // Restricts list visibility for stage-reviewer roles: a coordinator sees

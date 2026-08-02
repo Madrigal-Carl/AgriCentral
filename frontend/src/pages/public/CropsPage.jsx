@@ -26,7 +26,7 @@ const CROP_STATUS_OPTIONS = [
 const blankForm = {
   id: "",
   name: "",
-  kilo: "",
+  quantity: "",
   assignedFarmer: "",
   association: "",
   status: "not_planted",
@@ -92,7 +92,7 @@ export function CropsPage() {
       data: {
         id: row._id,
         name: row.name,
-        kilo: row.kilo,
+        quantity: row.quantity,
         assignedFarmer: row.assignedFarmer?._id ?? row.assignedFarmer ?? "",
         association: row.association?._id ?? row.association ?? "",
         status: row.status,
@@ -178,9 +178,9 @@ export function CropsPage() {
             ),
           },
           {
-            key: "kilo",
-            header: "Kilogram",
-            cell: (r) => `${(r.kilo || 0).toLocaleString()} kg`,
+            key: "quantity",
+            header: "Quantity",
+            cell: (r) => `${(r.quantity || 0).toLocaleString()}`,
           },
           {
             key: "status",

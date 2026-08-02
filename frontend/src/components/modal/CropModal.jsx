@@ -71,7 +71,7 @@ export function CropModal({ mode, initial, onClose, onSave }) {
 
     const payload = {
       name: values.name,
-      kilo: values.kilo,
+      quantity: values.quantity,
       status: initial.status,
       ...(values.assignedFarmer
         ? { assignedFarmer: values.assignedFarmer }
@@ -136,13 +136,13 @@ export function CropModal({ mode, initial, onClose, onSave }) {
             <Field label="Crop Name" error={errors.name?.message}>
               <TextInput {...register("name")} placeholder="Maize" />
             </Field>
-            <Field label="Kilogram" error={errors.kilo?.message}>
+            <Field label="Quantity" error={errors.quantity?.message}>
               <TextInput
                 type="number"
                 step="0.01"
                 inputMode="decimal"
-                {...register("kilo", { valueAsNumber: true })}
-                error={errors.kilo?.message}
+                {...register("quantity", { valueAsNumber: true })}
+                error={errors.quantity?.message}
                 placeholder="e.g. 1200.5"
               />
             </Field>

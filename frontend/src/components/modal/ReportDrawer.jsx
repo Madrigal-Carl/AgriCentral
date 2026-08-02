@@ -18,7 +18,7 @@ function fileNameFromUrl(url) {
 }
 
 // Item shapes vary by entityType (see ENTITY_SELECT in report.service.js):
-//   farm/crop  -> { name, kilo }
+//   farm/crop  -> { name, quantity }
 //   livestock  -> { animal, propertyNumber }
 //   equipment  -> { name, propertyNumber }
 function itemLabel(entityType, item) {
@@ -29,7 +29,7 @@ function itemLabel(entityType, item) {
     return `${item.name} (${item.propertyNumber})`;
   }
   // farm reports are actually about crops
-  return `${item.name ?? "Crop"} (${item.kilo ?? 0}kg)`;
+  return `${item.quantity} ${item.name}`;
 }
 
 // approvalStatus only ever has one of these two subdocs, and which one

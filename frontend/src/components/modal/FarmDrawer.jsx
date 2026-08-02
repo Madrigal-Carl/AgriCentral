@@ -87,9 +87,11 @@ export function FarmDrawer({ row, onClose }) {
                 <Scale className="h-4 w-4" />
               </div>
               <div>
-                <div className="text-xs text-secondary">Total yield</div>
+                <div className="text-xs text-secondary">
+                  Total yielded quantity
+                </div>
                 <div className="font-display text-xl tracking-tight text-foreground">
-                  {totalYield.toLocaleString()} kg
+                  {totalYield.toLocaleString()}
                 </div>
               </div>
             </div>
@@ -136,7 +138,7 @@ export function FarmDrawer({ row, onClose }) {
                     <div className="flex items-center gap-2">
                       {c.status === "harvested" && (
                         <span className="text-xs text-secondary">
-                          {(c.yield || 0).toLocaleString()} kg
+                          {(c.yield || 0).toLocaleString()} quantity
                         </span>
                       )}
                       <StatusPill tone={CROP_STATUS_TONE[c.status]}>

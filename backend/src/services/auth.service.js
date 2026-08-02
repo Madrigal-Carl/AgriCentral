@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
+import Association from "../models/association.model.js";
 
 import {
   generateAccessToken,
@@ -32,22 +33,29 @@ export const registerUser = async ({ fullname, email, password }) => {
 export const loginUser = async ({ email, password }) => {
   const user = await User.findOne({ email }).select("+password");
 
-  if (!user) {
-    throw new Error("Email is not registered");
+  if (!user || !user.password) {
+    throw new Error("Invalid email or password");
   }
 
   const isPasswordValid = await bcrypt.compare(password, user.password);
 
   if (!isPasswordValid) {
-    throw new Error("Password is incorrect");
+    throw new Error("Invalid email or password");
   }
 
   if (!user.isVerified) {
     throw new Error("Please verify your account first");
   }
 
-  if (user.role === "far" && !user.association) {
-    throw new Error("No association assigned to this account. Please contact your admin.");
+  if (user.role === "far") {
+    const association = await Association.findOne({
+      user: user._id,
+      deletedAt: null,
+    });
+
+    if (!association) {
+      throw new Error("No association assigned to this account. Please contact your admin.");
+    }
   }
 
   const accessToken = generateAccessToken(user._id);
