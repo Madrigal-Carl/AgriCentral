@@ -72,7 +72,6 @@ export function CropModal({ mode, initial, onClose, onSave }) {
     const payload = {
       name: values.name,
       quantity: values.quantity,
-      status: initial.status,
       ...(values.assignedFarmer
         ? { assignedFarmer: values.assignedFarmer }
         : {}),

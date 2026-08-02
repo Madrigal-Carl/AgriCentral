@@ -23,12 +23,46 @@ import {
   FARMER_CLASSIFICATION_OPTIONS,
 } from "@/schemas/farm.schema";
 
-// The modal is for managing a farm's *active* crop assignment (what's
-// currently planted there), not for viewing harvest history — that lives
-// in the FarmDrawer instead. The backend no longer filters crops by
-// status (see farm.service.js), so it's on the modal to only surface
-// crops that are still actionable here.
-const EDITABLE_CROP_STATUSES = ["planted", "growing"];
+const inferCropStage = (quantities) => {
+  const q = quantities ?? {};
+  return q.growing != null ? "growing" : "planted";
+};
+
+const getAvailableQuantity = (quantities, status) => {
+  const q = quantities ?? {};
+  if (status === "planted") return null;
+
+  if (status === "growing") {
+    const claimedFromPlanted =
+      (q.withered ?? 0) + (q.harvested ?? 0) + (q.damaged ?? 0);
+    return Math.max((q.planted ?? 0) - claimedFromPlanted, 0);
+  }
+
+  const pool = q.growing ?? q.planted ?? 0;
+  const claimedByOthers = ["withered", "harvested", "damaged"]
+    .filter((s) => s !== status)
+    .reduce((sum, s) => sum + (q[s] ?? 0), 0);
+
+  return Math.max(pool - claimedByOthers, 0);
+};
+
+const getRemainingQuantity = (quantities) => {
+  const q = quantities ?? {};
+  const pool = q.growing ?? q.planted ?? 0;
+  const claimed = (q.withered ?? 0) + (q.harvested ?? 0) + (q.damaged ?? 0);
+  return Math.max(pool - claimed, 0);
+};
+
+const blankForm = {
+  id: "",
+  address: "",
+  size: "",
+  latitude: "",
+  longitude: "",
+  assignedFarmers: [],
+  association: "",
+  crops: [],
+};
 
 export function FarmModal({
   mode,
@@ -61,13 +95,15 @@ export function FarmModal({
     (a) => ({ value: a._id, label: a.name }),
   );
 
-  // Only planted/growing crops belong in the editable form — harvested/
-  // withered/damaged crops are history, not something this modal should
-  // let you reassign or re-status.
+  // A crop stays editable here as long as it still has unclaimed
+  // planted/growing stock (see getRemainingQuantity). Only once
+  // withered+harvested+damaged have fully consumed the growing (or
+  // planted) pool does it drop out, since at that point there's nothing
+  // left to manage.
   const editableInitialCrops = useMemo(
     () =>
-      (initial?.crops ?? []).filter((c) =>
-        EDITABLE_CROP_STATUSES.includes(c.status),
+      (initial?.crops ?? []).filter(
+        (c) => getRemainingQuantity(c.quantities) > 0,
       ),
     [initial],
   );
@@ -77,7 +113,8 @@ export function FarmModal({
   // components work with plain id strings. Normalize before handing to
   // useForm so all downstream comparisons (.includes(id), Map lookups,
   // etc.) work. assignedFarmers keeps its {farmer, classification} shape —
-  // just unwraps the farmer object down to its id.
+  // just unwraps the farmer object down to its id. `status` per crop is
+  // freshly inferred here since the backend no longer sends one.
   const normalizedInitial = useMemo(() => {
     if (!initial) return initial;
     return {
@@ -87,8 +124,9 @@ export function FarmModal({
         classification: a.classification ?? "farm_worker",
       })),
       crops: editableInitialCrops.map((c) => ({
-        ...c,
         crop: typeof c.crop === "string" ? c.crop : c.crop._id,
+        quantities: c.quantities ?? {},
+        status: inferCropStage(c.quantities),
       })),
       association:
         initial.association == null
@@ -102,11 +140,10 @@ export function FarmModal({
   // Names/quantity of crops already on this farm, captured from the populated
   // initial data *before* normalizedInitial strips them to bare ids. Needed
   // because getCropsByFarmerId only returns a farmer's *available* (not yet
-  // planted) crops — once a crop is saved onto this farm its status flips
-  // to "planted" and it drops out of that farmer-scoped query, so
-  // cropOptions alone can't be relied on to label crops already assigned
-  // here. Scoped to editableInitialCrops so it stays consistent with what
-  // the form actually manages.
+  // planted) crops — once a crop is saved onto this farm it drops out of
+  // that farmer-scoped query, so cropOptions alone can't be relied on to
+  // label crops already assigned here. Scoped to editableInitialCrops so it
+  // stays consistent with what the form actually manages.
   const initialCropLabelById = useMemo(() => {
     const map = new Map();
     editableInitialCrops.forEach((c) => {
@@ -249,6 +286,8 @@ export function FarmModal({
     );
   };
 
+  // Purely local — moves the quantity selector to a different slot; never
+  // persisted, so this doesn't touch `quantities` at all.
   const setCropStatus = (cropId, status) => {
     setValue(
       "crops",
@@ -256,10 +295,19 @@ export function FarmModal({
       { shouldValidate: true },
     );
   };
-  const setCropYield = (cropId, yieldValue) => {
+
+  // Only the field for the currently-selected slot is editable at a time —
+  // this always writes into quantities[status], never a different slot, so
+  // a crop's history in the other slots is left untouched.
+  const setCropQuantity = (cropId, status, rawValue) => {
+    const value = rawValue === "" ? null : Number(rawValue);
     setValue(
       "crops",
-      crops.map((c) => (c.crop === cropId ? { ...c, yield: yieldValue } : c)),
+      crops.map((c) =>
+        c.crop === cropId
+          ? { ...c, quantities: { ...c.quantities, [status]: value } }
+          : c,
+      ),
       { shouldValidate: true },
     );
   };
@@ -391,11 +439,16 @@ export function FarmModal({
                           field.value.map((c) => [c.crop, c]),
                         );
                         field.onChange(
-                          nextIds.map((id) => ({
-                            crop: id,
-                            status: existing.get(id)?.status ?? "planted",
-                            yield: existing.get(id)?.yield ?? 0,
-                          })),
+                          nextIds.map((id) => {
+                            const prior = existing.get(id);
+                            return {
+                              crop: id,
+                              status:
+                                prior?.status ??
+                                inferCropStage(prior?.quantities),
+                              quantities: prior?.quantities ?? {},
+                            };
+                          }),
                         );
                       };
                       return (
@@ -424,6 +477,15 @@ export function FarmModal({
                         cropOptions.find((o) => o.value === c.crop)?.label ??
                         initialCropLabelById.get(c.crop) ??
                         c.crop;
+                      const statusLabel =
+                        CROP_STATUS_OPTIONS.find((o) => o.value === c.status)
+                          ?.label ?? c.status;
+                      const available = getAvailableQuantity(
+                        c.quantities,
+                        c.status,
+                      );
+                      const currentQuantity = c.quantities?.[c.status] ?? "";
+
                       return (
                         <div
                           key={c.crop}
@@ -440,16 +502,20 @@ export function FarmModal({
                               options={CROP_STATUS_OPTIONS}
                             />
                           </div>
-                          {c.status === "harvested" && (
-                            <TextInput
-                              type="number"
-                              value={c.yield ?? 0}
-                              onChange={(e) =>
-                                setCropYield(c.crop, e.target.value)
-                              }
-                              placeholder="Yield (quantity)"
-                            />
-                          )}
+                          <TextInput
+                            type="number"
+                            min={0}
+                            max={available ?? undefined}
+                            value={currentQuantity}
+                            onChange={(e) =>
+                              setCropQuantity(c.crop, c.status, e.target.value)
+                            }
+                            placeholder={
+                              available != null
+                                ? `${statusLabel} quantity (max ${available})`
+                                : `${statusLabel} quantity`
+                            }
+                          />
                         </div>
                       );
                     })}

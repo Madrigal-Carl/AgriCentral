@@ -18,32 +18,24 @@ import { Button } from "@/components/ui";
 import { useCrops, useDeleteCrop, useDistributeCrop } from "@/hooks/useCrops";
 import { usePermissions } from "@/constants/permissions";
 
-const CROP_STATUS_OPTIONS = [
-  { value: "planted", label: "Planted" },
-  { value: "not_planted", label: "Not Planted" },
-];
-
 const blankForm = {
   id: "",
   name: "",
   quantity: "",
   assignedFarmer: "",
   association: "",
-  status: "not_planted",
 };
 
 export function CropsPage() {
   const capabilities = usePermissions("crops");
 
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
   const limit = 10;
 
   const filters = {
     page,
     limit,
-    ...(status ? { status } : {}),
     ...(search ? { search } : {}),
   };
 
@@ -95,7 +87,6 @@ export function CropsPage() {
         quantity: row.quantity,
         assignedFarmer: row.assignedFarmer?._id ?? row.assignedFarmer ?? "",
         association: row.association?._id ?? row.association ?? "",
-        status: row.status,
       },
     });
   const openView = (row) => setViewRow(row);
@@ -147,18 +138,6 @@ export function CropsPage() {
         }}
         loading={isLoading}
         data={rows}
-        filters={[
-          {
-            key: "status",
-            label: "Status",
-            options: CROP_STATUS_OPTIONS,
-            value: status,
-            onChange: (v) => {
-              setPage(1);
-              setStatus(v);
-            },
-          },
-        ]}
         pagination={
           pagination
             ? {
@@ -183,13 +162,9 @@ export function CropsPage() {
             cell: (r) => `${(r.quantity || 0).toLocaleString()}`,
           },
           {
-            key: "status",
-            header: "Status",
-            cell: (r) => (
-              <StatusPill tone={r.status === "planted" ? "success" : "neutral"}>
-                {r.status === "planted" ? "Planted" : "Not Planted"}
-              </StatusPill>
-            ),
+            key: "unplanted",
+            header: "Unplanted",
+            cell: (r) => `${(r.unplanted || 0).toLocaleString()}`,
           },
           {
             key: "assignedFarmer",

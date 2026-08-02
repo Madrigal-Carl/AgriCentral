@@ -219,7 +219,7 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
       const farm = (farmsData?.farms ?? []).find((f) => f._id === farmValue);
       return (farm?.crops ?? []).map((c) => ({
         value: c.crop?._id ?? c.crop,
-        label: `${c.crop.quantity} ${c.crop.name}`,
+        label: `${c.crop.name}`,
       }));
     }
     return [];

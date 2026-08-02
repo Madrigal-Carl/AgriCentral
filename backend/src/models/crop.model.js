@@ -19,14 +19,15 @@ const cropSchema = new mongoose.Schema(
             min: 0,
             default: 0,
         },
+        unplanted: {
+            type: Number,
+            required: true,
+            min: 0,
+            default: 0,
+        },
         assignedFarmer: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Farmer",
-        },
-        status: {
-            type: String,
-            enum: ["planted", "not_planted"],
-            default: "not_planted",
         },
         isDistributed: {
             type: Boolean,

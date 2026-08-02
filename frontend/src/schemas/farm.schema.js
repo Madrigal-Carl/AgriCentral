@@ -28,10 +28,28 @@ export const FARMER_CLASSIFICATION_OPTIONS = [
     { value: "beneficiary", label: "Beneficiary" },
 ];
 
+const cropQuantityFieldSchema = z
+    .union([z.null(), z.coerce.number().min(0, "Cannot be negative")])
+    .optional()
+    .default(null);
+
+// No `status` key here. The form still carries a local `status` value per
+// crop row (purely to drive which quantity input is shown/editable), but
+// since it's not declared in this schema, zod's default "strip" behavior
+// removes it from the parsed values react-hook-form hands to onSubmit —
+// it never reaches the API payload.
 const farmCropSchema = z.object({
     crop: z.string().min(1, "Invalid crop"),
-    status: z.enum(CROP_STATUSES).optional().default("planted"),
-    yield: z.coerce.number().min(0, "Yield cannot be negative").optional().default(0),
+    quantities: z
+        .object({
+            planted: cropQuantityFieldSchema,
+            growing: cropQuantityFieldSchema,
+            withered: cropQuantityFieldSchema,
+            harvested: cropQuantityFieldSchema,
+            damaged: cropQuantityFieldSchema,
+        })
+        .optional()
+        .default({}),
 });
 
 const farmFarmerSchema = z.object({

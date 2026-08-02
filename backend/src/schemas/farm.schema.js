@@ -1,13 +1,5 @@
 import { z } from "zod";
 
-const CROP_STATUSES = [
-    "planted",
-    "growing",
-    "withered",
-    "harvested",
-    "damaged",
-];
-
 const FARMER_CLASSIFICATIONS = [
     "owner",
     "tenant",
@@ -26,10 +18,22 @@ const emptyToUndefined = (val) => (val === "" || val === null ? undefined : val)
 const optionalObjectId = (label) =>
     z.preprocess(emptyToUndefined, objectId(label).optional());
 
+const cropQuantityField = z.preprocess(
+    (val) => (val === "" || val === undefined ? null : val),
+    z.union([z.null(), z.coerce.number().min(0)])
+).optional().default(null);
+
+const cropQuantitiesSchema = z.object({
+    planted: cropQuantityField,
+    growing: cropQuantityField,
+    withered: cropQuantityField,
+    harvested: cropQuantityField,
+    damaged: cropQuantityField,
+});
+
 const farmCropSchema = z.object({
     crop: objectId("crop id"),
-    status: z.enum(CROP_STATUSES).optional().default("planted"),
-    yield: z.coerce.number().min(0).optional().default(0),
+    quantities: cropQuantitiesSchema.optional().default({}),
 });
 
 const farmFarmerSchema = z.object({

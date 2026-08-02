@@ -295,7 +295,7 @@ export const getCropsByFarmerId = async (farmerId) => {
         assignedFarmer: farmerId,
         deletedAt: null,
         isDistributed: true,
-        status: "not_planted",
+        unplanted: { $gt: 0 },
     })
         .populate("association", "name")
         .sort({ createdAt: -1 });

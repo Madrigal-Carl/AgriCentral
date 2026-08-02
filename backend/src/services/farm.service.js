@@ -9,13 +9,6 @@ const CROP_POPULATE = { path: "crops.crop" };
 const FARMER_POPULATE = { path: "assignedFarmers.farmer", select: "firstName lastName emailAddress" };
 const ASSOCIATION_POPULATE = { path: "association", select: "name" };
 
-// Converts a Mongoose farm document to a plain object. Previously this also
-// filtered out crops whose status wasn't "planted"/"growing", which
-// unintentionally hid harvested crops (and their yield) from every farm
-// response, including the read paths that feed the Farm drawer and edit
-// modal. Harvested crops are meant to remain visible — e.g. the drawer's
-// "Total yield" card and per-crop yield display both depend on them being
-// present — so this no longer filters by status at all.
 function toFarmObject(farm) {
     if (!farm) return farm;
     return typeof farm.toObject === "function" ? farm.toObject() : farm;
@@ -33,31 +26,73 @@ const resolveAssociationId = async (associationId, authenticatedUserId) => {
     return association?._id ?? undefined;
 };
 
-const logCropStatusChanges = async ({ farm, changes, cropIdToName }) => {
-    for (const { cropId, fromStatus, toStatus } of changes) {
-        const cropName = cropIdToName.get(cropId) ?? "A crop";
+const validateCropQuantities = async (crops, previousPlantedByCropId = new Map()) => {
+    if (!crops?.length) return;
 
-        const farmMessage = fromStatus
-            ? `${cropName} on ${farm.tag} changed status from ${humanize(fromStatus)} to ${humanize(toStatus)}.`
-            : `${cropName} was ${humanize(toStatus).toLowerCase()} on ${farm.tag}.`;
+    const cropIds = crops.map((c) => c.crop);
+    const cropDocs = await Crop.find({ _id: { $in: cropIds } }).select("name unplanted");
+    const cropById = new Map(cropDocs.map((c) => [c._id.toString(), c]));
 
-        await createLog({
-            entityType: "farm",
-            entityId: farm._id,
-            association: farm.association,
-            message: farmMessage,
+    for (const entry of crops) {
+        const cropId = entry.crop.toString();
+        const cropDoc = cropById.get(cropId);
+
+        if (!cropDoc) {
+            const notFoundError = new Error(`Crop ${cropId} not found`);
+            notFoundError.statusCode = 404;
+            throw notFoundError;
+        }
+
+        const rawQuantities = entry.quantities ?? {};
+        const planted = rawQuantities.planted ?? 0;
+        const growing = rawQuantities.growing ?? 0;
+        const withered = rawQuantities.withered ?? 0;
+        const harvested = rawQuantities.harvested ?? 0;
+        const damaged = rawQuantities.damaged ?? 0;
+
+        const previouslyPlanted = previousPlantedByCropId.get(cropId) ?? 0;
+        const availableForThisEntry = cropDoc.unplanted + previouslyPlanted;
+
+        if (planted > availableForThisEntry) {
+            const validationError = new Error(
+                `Planted quantity for ${cropDoc.name} (${planted}) cannot exceed available unplanted stock (${availableForThisEntry})`
+            );
+            validationError.statusCode = 400;
+            throw validationError;
+        }
+
+        const dependentStatuses = [
+            ["growing", growing],
+            ["withered", withered],
+            ["harvested", harvested],
+            ["damaged", damaged],
+        ];
+
+        for (const [statusName, value] of dependentStatuses) {
+            if (value > planted) {
+                const validationError = new Error(
+                    `${humanize(statusName)} quantity for ${cropDoc.name} (${value}) cannot exceed planted quantity (${planted})`
+                );
+                validationError.statusCode = 400;
+                throw validationError;
+            }
+        }
+    }
+};
+
+const applyCropPlantingDeltas = async (plantedDeltaByCropId) => {
+    const ops = [];
+    for (const [cropId, delta] of plantedDeltaByCropId) {
+        if (!delta) continue;
+        ops.push({
+            updateOne: {
+                filter: { _id: cropId },
+                update: { $inc: { unplanted: -delta } },
+            },
         });
-
-        const cropMessage = fromStatus
-            ? `Status changed from ${humanize(fromStatus)} to ${humanize(toStatus)} on farm ${farm.tag}.`
-            : `${humanize(toStatus)} on farm ${farm.tag}.`;
-
-        await createLog({
-            entityType: "crop",
-            entityId: cropId,
-            association: farm.association,
-            message: cropMessage,
-        });
+    }
+    if (ops.length) {
+        await Crop.bulkWrite(ops);
     }
 };
 
@@ -133,6 +168,10 @@ const logFarmerAssignmentChanges = async ({ farm, changes }) => {
 export const createFarm = async (data, authenticatedUserId) => {
     const { associationId, ...farmData } = data;
 
+    if (farmData.crops?.length) {
+        await validateCropQuantities(farmData.crops);
+    }
+
     const resolvedAssociationId = await resolveAssociationId(
         associationId,
         authenticatedUserId,
@@ -151,24 +190,21 @@ export const createFarm = async (data, authenticatedUserId) => {
     });
 
     if (farmData.crops?.length) {
-        const cropIds = farmData.crops.map((c) => c.crop);
-        await Crop.updateMany(
-            { _id: { $in: cropIds } },
-            { $set: { status: "planted" } }
-        );
-
-        const crops = await Crop.find({ _id: { $in: cropIds } }).select("name");
-        const cropIdToName = new Map(crops.map((c) => [c._id.toString(), c.name]));
-
-        await logCropStatusChanges({
-            farm,
-            changes: farmData.crops.map((c) => ({
-                cropId: c.crop.toString(),
-                fromStatus: null,
-                toStatus: c.status ?? "planted",
-            })),
-            cropIdToName,
-        });
+        const plantedDeltaByCropId = new Map();
+        for (const c of farmData.crops) {
+            const planted = c.quantities?.planted ?? 0;
+            if (planted) {
+                const cropId = c.crop.toString();
+                plantedDeltaByCropId.set(cropId, (plantedDeltaByCropId.get(cropId) ?? 0) + planted);
+            }
+        }
+        if (plantedDeltaByCropId.size) {
+            await applyCropPlantingDeltas(plantedDeltaByCropId);
+        }
+        // Per-crop status-transition logging was removed along with the
+        // `status` field — quantities can now span multiple stages at
+        // once, so there's no single "from -> to" transition to narrate
+        // per entry anymore.
     }
 
     if (farmData.assignedFarmers?.length) {
@@ -194,8 +230,24 @@ export const updateFarm = async (id, data) => {
 
     const needsPrevious = farmData.crops || farmData.assignedFarmers;
     const previousFarm = needsPrevious
-        ? await Farm.findOne({ _id: id, deletedAt: null }).select("crops.crop crops.status assignedFarmers tag")
+        ? await Farm.findOne({ _id: id, deletedAt: null }).select(
+            "crops.crop crops.quantities assignedFarmers tag"
+        )
         : null;
+
+    // Only `planted` is needed here — it's the one quantity that reconciles
+    // against Crop.unplanted stock. There's no `status` to carry forward
+    // anymore.
+    const previousPlantedByCropId = new Map(
+        (previousFarm?.crops ?? []).map((c) => [
+            c.crop.toString(),
+            c.quantities?.planted ?? 0,
+        ]),
+    );
+
+    if (farmData.crops?.length) {
+        await validateCropQuantities(farmData.crops, previousPlantedByCropId);
+    }
 
     const farm = await Farm.findOneAndUpdate(
         { _id: id, deletedAt: null },
@@ -212,49 +264,34 @@ export const updateFarm = async (id, data) => {
     if (farmData.crops) {
         const newCrops = farmData.crops.map((c) => ({
             cropId: c.crop.toString(),
-            status: c.status ?? "planted",
+            planted: c.quantities?.planted ?? 0,
         }));
-        const previousCropsById = new Map(
-            (previousFarm?.crops ?? []).map((c) => [c.crop.toString(), c.status]),
-        );
 
-        const addedCropIds = newCrops
-            .filter((c) => !previousCropsById.has(c.cropId))
-            .map((c) => c.cropId);
-        const removedCropIds = [...previousCropsById.keys()].filter(
+        const removedCropIds = [...previousPlantedByCropId.keys()].filter(
             (cid) => !newCrops.some((c) => c.cropId === cid),
         );
 
-        if (addedCropIds.length) {
-            await Crop.updateMany(
-                { _id: { $in: addedCropIds } },
-                { $set: { status: "planted" } }
-            );
-        }
-
-        if (removedCropIds.length) {
-            await Crop.updateMany(
-                { _id: { $in: removedCropIds } },
-                { $set: { status: "not_planted" } }
-            );
-        }
-
-        const changes = [];
+        // Reconcile each crop's `unplanted` stock against the change in
+        // planted quantity — derived here, never set directly: an entry
+        // that plants more draws from unplanted; one that plants less
+        // (or is dropped from the farm entirely) gives it back.
+        const plantedDeltaByCropId = new Map();
         for (const c of newCrops) {
-            const prevStatus = previousCropsById.get(c.cropId);
-            if (prevStatus === undefined) {
-                changes.push({ cropId: c.cropId, fromStatus: null, toStatus: c.status });
-            } else if (prevStatus !== c.status) {
-                changes.push({ cropId: c.cropId, fromStatus: prevStatus, toStatus: c.status });
+            const previousPlanted = previousPlantedByCropId.get(c.cropId) ?? 0;
+            const delta = c.planted - previousPlanted;
+            if (delta !== 0) {
+                plantedDeltaByCropId.set(c.cropId, (plantedDeltaByCropId.get(c.cropId) ?? 0) + delta);
+            }
+        }
+        for (const cropId of removedCropIds) {
+            const previousPlanted = previousPlantedByCropId.get(cropId) ?? 0;
+            if (previousPlanted) {
+                plantedDeltaByCropId.set(cropId, (plantedDeltaByCropId.get(cropId) ?? 0) - previousPlanted);
             }
         }
 
-        if (changes.length) {
-            const allRelevantCropIds = changes.map((c) => c.cropId);
-            const crops = await Crop.find({ _id: { $in: allRelevantCropIds } }).select("name");
-            const cropIdToName = new Map(crops.map((c) => [c._id.toString(), c.name]));
-
-            await logCropStatusChanges({ farm, changes, cropIdToName });
+        if (plantedDeltaByCropId.size) {
+            await applyCropPlantingDeltas(plantedDeltaByCropId);
         }
     }
 
@@ -310,13 +347,20 @@ export const deleteFarm = async (id) => {
         throw notFoundError;
     }
 
-    // Crops attached to a deleted farm are orphaned — free them back up.
+    // Crops attached to a deleted farm are orphaned — free their planted
+    // quantity back into each crop's unplanted stock.
     if (farm.crops?.length) {
-        const cropIds = farm.crops.map((c) => c.crop);
-        await Crop.updateMany(
-            { _id: { $in: cropIds } },
-            { $set: { status: "not_planted" } }
-        );
+        const plantedDeltaByCropId = new Map();
+        for (const c of farm.crops) {
+            const planted = c.quantities?.planted ?? 0;
+            if (planted) {
+                const cropId = c.crop.toString();
+                plantedDeltaByCropId.set(cropId, (plantedDeltaByCropId.get(cropId) ?? 0) - planted);
+            }
+        }
+        if (plantedDeltaByCropId.size) {
+            await applyCropPlantingDeltas(plantedDeltaByCropId);
+        }
     }
 
     return farm;

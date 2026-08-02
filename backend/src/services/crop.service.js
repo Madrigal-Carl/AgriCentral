@@ -36,6 +36,7 @@ export const createCrop = async (data, authenticatedUserId) => {
     const crop = await Crop.create({
         ...cropData,
         association: resolvedAssociationId || undefined,
+        unplanted: cropData.quantity ?? 0,
     });
 
     // assignedFarmer is required at creation, so this always fires.
@@ -71,10 +72,35 @@ export const updateCrop = async (id, data) => {
     }
 
     const needsPrevious =
-        cropData.assignedFarmer !== undefined || cropData.association !== undefined;
+        cropData.assignedFarmer !== undefined ||
+        cropData.association !== undefined ||
+        cropData.quantity !== undefined;
     const previousCrop = needsPrevious
-        ? await Crop.findOne({ _id: id, deletedAt: null }).select("assignedFarmer association name")
+        ? await Crop.findOne({ _id: id, deletedAt: null }).select(
+            "assignedFarmer association name quantity unplanted"
+        )
         : null;
+
+    if (needsPrevious && !previousCrop) {
+        const notFoundError = new Error("Crop not found");
+        notFoundError.statusCode = 404;
+        throw notFoundError;
+    }
+
+    if (cropData.quantity !== undefined) {
+        const plantedSoFar = previousCrop.quantity - previousCrop.unplanted;
+        const newUnplanted = cropData.quantity - plantedSoFar;
+
+        if (newUnplanted < 0) {
+            const validationError = new Error(
+                `Quantity cannot be reduced below the amount already planted (${plantedSoFar})`
+            );
+            validationError.statusCode = 400;
+            throw validationError;
+        }
+
+        cropData.unplanted = newUnplanted;
+    }
 
     const crop = await Crop.findOneAndUpdate(
         { _id: id, deletedAt: null },
@@ -214,9 +240,8 @@ const attachHistory = async (crops, associationId) => {
     });
 };
 
-export const getCrops = async ({ status, search, associationId, all, page, limit, includeDeleted = false }) => {
+export const getCrops = async ({ search, associationId, all, page, limit, includeDeleted = false }) => {
     const filter = includeDeleted ? {} : { deletedAt: null };
-    if (status) filter.status = status;
     if (associationId) {
         filter.association = associationId;
         filter.isDistributed = true;

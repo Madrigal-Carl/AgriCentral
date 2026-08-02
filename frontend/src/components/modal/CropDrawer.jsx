@@ -4,6 +4,10 @@ import { Calendar, Info, User, X } from "lucide-react";
 import { fmtDate } from "@/utils/format";
 
 export function CropDrawer({ row, farmerName, onClose }) {
+  const quantity = row.quantity || 0;
+  const unplanted = row.unplanted || 0;
+  const planted = quantity - unplanted;
+
   return (
     <div className="fixed inset-0 z-50" onClick={onClose}>
       <div className="absolute inset-0 bg-foreground-40" />
@@ -19,11 +23,6 @@ export function CropDrawer({ row, farmerName, onClose }) {
                 {row.name}
               </h2>
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <StatusPill
-                  tone={row.status === "planted" ? "success" : "neutral"}
-                >
-                  {row.status === "planted" ? "Planted" : "Not Planted"}
-                </StatusPill>
                 <StatusPill tone={row.isDistributed ? "success" : "neutral"}>
                   {row.isDistributed ? "Distributed" : "Not Distributed"}
                 </StatusPill>
@@ -45,11 +44,9 @@ export function CropDrawer({ row, farmerName, onClose }) {
               items={[
                 ["Association", row.association?.name || "—"],
                 ["Crop Name", row.name || "—"],
-                ["Quantity", `${(row.quantity || 0).toLocaleString()}`],
-                [
-                  "Status",
-                  row.status === "planted" ? "Planted" : "Not Planted",
-                ],
+                ["Quantity", quantity.toLocaleString()],
+                ["Planted", planted.toLocaleString()],
+                ["Unplanted", unplanted.toLocaleString()],
                 ["Distributed", row.isDistributed ? "Yes" : "No"],
               ]}
             />

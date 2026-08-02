@@ -9,6 +9,26 @@ import { LocationMap } from "@/components/ui";
 import { StatusPill } from "@/components/public";
 import { DefList, Section } from "@/components/drawer";
 
+// The backend no longer persists a `status` on a crop entry — this
+// derives a representative display stage straight from `quantities`,
+// same priority as FarmModal: growing (once set) over planted, then
+// whichever terminal status (withered/harvested/damaged) has data. A crop
+// can technically have quantity split across more than one of the three
+// terminal statuses at once; this shows only one as a simple summary
+// pill, not a full breakdown.
+const inferCropStage = (quantities) => {
+  const q = quantities ?? {};
+  if (q.growing != null) return "growing";
+  const terminal = ["withered", "harvested", "damaged"].find(
+    (s) => q[s] != null,
+  );
+  if (terminal) return terminal;
+  return "planted";
+};
+
+const cropStage = (c) => inferCropStage(c.quantities);
+const cropQuantity = (c) => c.quantities?.[cropStage(c)] ?? 0;
+
 export function FarmDrawer({ row, onClose }) {
   const crops = row.crops || [];
   const farmers = row.assignedFarmers || [];
@@ -27,7 +47,13 @@ export function FarmDrawer({ row, onClose }) {
     return farmer.fullName ?? "Unknown farmer";
   };
 
-  const totalYield = crops.reduce((sum, c) => sum + (c.yield || 0), 0);
+  // "Yield" specifically means harvest output — only crops whose inferred
+  // stage is harvested count. A planted/growing/withered/damaged crop
+  // hasn't produced anything yet (or produced nothing usable), so it
+  // shouldn't inflate this total.
+  const totalYield = crops
+    .filter((c) => cropStage(c) === "harvested")
+    .reduce((sum, c) => sum + cropQuantity(c), 0);
 
   const location =
     row.latitude != null && row.longitude != null
@@ -88,7 +114,7 @@ export function FarmDrawer({ row, onClose }) {
               </div>
               <div>
                 <div className="text-xs text-secondary">
-                  Total yielded quantity
+                  Total harvested quantity
                 </div>
                 <div className="font-display text-xl tracking-tight text-foreground">
                   {totalYield.toLocaleString()}
@@ -127,26 +153,27 @@ export function FarmDrawer({ row, onClose }) {
               <div className="text-sm text-secondary">No crops planted.</div>
             ) : (
               <ul className="space-y-2">
-                {crops.map((c, i) => (
-                  <li
-                    key={c.crop?._id || c.crop || i}
-                    className="flex items-center justify-between border border-border bg-muted-30 px-3 py-2 text-sm"
-                  >
-                    <span className="font-medium text-foreground">
-                      {cropLabel(c)}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      {c.status === "harvested" && (
+                {crops.map((c, i) => {
+                  const stage = cropStage(c);
+                  return (
+                    <li
+                      key={c.crop?._id || c.crop || i}
+                      className="flex items-center justify-between border border-border bg-muted-30 px-3 py-2 text-sm"
+                    >
+                      <span className="font-medium text-foreground">
+                        {cropLabel(c)}
+                      </span>
+                      <div className="flex items-center gap-2">
                         <span className="text-xs text-secondary">
-                          {(c.yield || 0).toLocaleString()} quantity
+                          {cropQuantity(c).toLocaleString()} qty
                         </span>
-                      )}
-                      <StatusPill tone={CROP_STATUS_TONE[c.status]}>
-                        {CROP_STATUS_LABEL[c.status]}
-                      </StatusPill>
-                    </div>
-                  </li>
-                ))}
+                        <StatusPill tone={CROP_STATUS_TONE[stage]}>
+                          {CROP_STATUS_LABEL[stage]}
+                        </StatusPill>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </Section>

@@ -1,10 +1,10 @@
 import Crop from "../models/crop.model.js";
 
 const CROPS_TO_SEED = [
-    { name: "Rice", quantity: 1200, status: "not_planted" },
-    { name: "Corn", quantity: 800, status: "not_planted" },
-    { name: "Sugarcane", quantity: 500, status: "not_planted" },
-    { name: "Peanut", quantity: 300, status: "not_planted" },
+    { name: "Rice", quantity: 1200 },
+    { name: "Corn", quantity: 800 },
+    { name: "Sugarcane", quantity: 500 },
+    { name: "Peanut", quantity: 300 },
 ];
 
 export const wipeCrops = async () => {
@@ -12,8 +12,6 @@ export const wipeCrops = async () => {
     console.log(`  Wiped ${result.deletedCount} crop(s).`);
 };
 
-// Requires associations and farmers to already exist so `association` and
-// `assignedFarmer` FKs point at real documents.
 export const seedCrops = async ({ farmers } = {}) => {
     if (!farmers?.length) {
         throw new Error("seedCrops requires farmers to already be seeded");
@@ -27,6 +25,8 @@ export const seedCrops = async ({ farmers } = {}) => {
 
         const crop = await Crop.create({
             ...data,
+            unplanted: data.quantity,
+            isDistributed: true,
             association: farmer.association,
             assignedFarmer: farmer._id,
         });

@@ -1,5 +1,16 @@
 import mongoose from "mongoose";
 
+const cropQuantitiesSchema = new mongoose.Schema(
+    {
+        planted: { type: Number, min: 0, default: null },
+        growing: { type: Number, min: 0, default: null },
+        withered: { type: Number, min: 0, default: null },
+        harvested: { type: Number, min: 0, default: null },
+        damaged: { type: Number, min: 0, default: null },
+    },
+    { _id: false }
+);
+
 const farmCropSchema = new mongoose.Schema(
     {
         crop: {
@@ -7,21 +18,9 @@ const farmCropSchema = new mongoose.Schema(
             ref: "Crop",
             required: true,
         },
-        status: {
-            type: String,
-            enum: [
-                "planted",
-                "growing",
-                "withered",
-                "harvested",
-                "damaged",
-            ],
-            default: "planted",
-        },
-        yield: {
-            type: Number,
-            min: 0,
-            default: 0,
+        quantities: {
+            type: cropQuantitiesSchema,
+            default: () => ({}),
         },
     },
     {

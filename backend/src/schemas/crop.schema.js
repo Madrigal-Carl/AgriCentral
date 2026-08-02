@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-const STATUSES = ["planted", "not_planted"];
-
 const objectIdOrEmpty = (message) =>
     z.preprocess(
         (val) => (val === "" ? undefined : val),
@@ -27,7 +25,6 @@ export const createCropSchema = z.object({
         .optional()
         .default(0),
     assignedFarmer: requiredObjectId("Invalid farmer id", "Assigned farmer is required"),
-    status: z.enum(STATUSES).optional().default("not_planted"),
 });
 
 export const updateCropSchema = z.object({
@@ -43,7 +40,6 @@ export const updateCropSchema = z.object({
         .min(0, "Quantity cannot be negative")
         .optional(),
     assignedFarmer: requiredObjectId("Invalid farmer id", "Assigned farmer is required").optional(),
-    status: z.enum(STATUSES).optional(),
 }).refine((data) => Object.keys(data).length > 0, {
     message: "At least one field must be provided",
 });
@@ -53,7 +49,6 @@ export const cropIdParamSchema = z.object({
 });
 
 export const getCropsQuerySchema = z.object({
-    status: z.enum(STATUSES).optional(),
     search: z.string().trim().min(1).max(100).optional(),
     associationId: z
         .string()
