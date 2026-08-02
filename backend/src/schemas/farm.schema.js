@@ -32,6 +32,7 @@ const cropQuantitiesSchema = z.object({
 });
 
 const farmCropSchema = z.object({
+    _id: optionalObjectId("crop entry id"),
     crop: objectId("crop id"),
     quantities: cropQuantitiesSchema.optional().default({}),
 });

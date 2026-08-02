@@ -33,6 +33,8 @@ const validateCropQuantities = async (crops, previousPlantedByCropId = new Map()
     const cropDocs = await Crop.find({ _id: { $in: cropIds } }).select("name unplanted");
     const cropById = new Map(cropDocs.map((c) => [c._id.toString(), c]));
 
+    const claimedByCropId = new Map();
+
     for (const entry of crops) {
         const cropId = entry.crop.toString();
         const cropDoc = cropById.get(cropId);
@@ -45,27 +47,11 @@ const validateCropQuantities = async (crops, previousPlantedByCropId = new Map()
 
         const rawQuantities = entry.quantities ?? {};
         const planted = rawQuantities.planted ?? 0;
-        const growing = rawQuantities.growing ?? 0;
-        const withered = rawQuantities.withered ?? 0;
-        const harvested = rawQuantities.harvested ?? 0;
-        const damaged = rawQuantities.damaged ?? 0;
-
-        const previouslyPlanted = previousPlantedByCropId.get(cropId) ?? 0;
-        const availableForThisEntry = cropDoc.unplanted + previouslyPlanted;
-
-        if (planted > availableForThisEntry) {
-            const validationError = new Error(
-                `Planted quantity for ${cropDoc.name} (${planted}) cannot exceed available unplanted stock (${availableForThisEntry})`
-            );
-            validationError.statusCode = 400;
-            throw validationError;
-        }
-
         const dependentStatuses = [
-            ["growing", growing],
-            ["withered", withered],
-            ["harvested", harvested],
-            ["damaged", damaged],
+            ["growing", rawQuantities.growing ?? 0],
+            ["withered", rawQuantities.withered ?? 0],
+            ["harvested", rawQuantities.harvested ?? 0],
+            ["damaged", rawQuantities.damaged ?? 0],
         ];
 
         for (const [statusName, value] of dependentStatuses) {
@@ -76,6 +62,22 @@ const validateCropQuantities = async (crops, previousPlantedByCropId = new Map()
                 validationError.statusCode = 400;
                 throw validationError;
             }
+        }
+
+        claimedByCropId.set(cropId, (claimedByCropId.get(cropId) ?? 0) + planted);
+    }
+
+    for (const [cropId, totalPlanted] of claimedByCropId) {
+        const cropDoc = cropById.get(cropId);
+        const previouslyPlanted = previousPlantedByCropId.get(cropId) ?? 0;
+        const availableForThisCrop = cropDoc.unplanted + previouslyPlanted;
+
+        if (totalPlanted > availableForThisCrop) {
+            const validationError = new Error(
+                `Planted quantity for ${cropDoc.name} (${totalPlanted}) cannot exceed available unplanted stock (${availableForThisCrop})`
+            );
+            validationError.statusCode = 400;
+            throw validationError;
         }
     }
 };
@@ -231,19 +233,22 @@ export const updateFarm = async (id, data) => {
     const needsPrevious = farmData.crops || farmData.assignedFarmers;
     const previousFarm = needsPrevious
         ? await Farm.findOne({ _id: id, deletedAt: null }).select(
-            "crops.crop crops.quantities assignedFarmers tag"
+            "crops._id crops.crop crops.quantities assignedFarmers tag"
         )
         : null;
 
-    // Only `planted` is needed here — it's the one quantity that reconciles
-    // against Crop.unplanted stock. There's no `status` to carry forward
-    // anymore.
-    const previousPlantedByCropId = new Map(
-        (previousFarm?.crops ?? []).map((c) => [
-            c.crop.toString(),
-            c.quantities?.planted ?? 0,
-        ]),
-    );
+    const previousEntries = (previousFarm?.crops ?? []).map((c) => ({
+        id: c._id?.toString(),
+        cropId: c.crop.toString(),
+        planted: c.quantities?.planted ?? 0,
+    }));
+
+    // Summed per crop (a crop may have multiple existing entries) — used only
+    // for the stock-availability check in validateCropQuantities.
+    const previousPlantedByCropId = new Map();
+    for (const e of previousEntries) {
+        previousPlantedByCropId.set(e.cropId, (previousPlantedByCropId.get(e.cropId) ?? 0) + e.planted);
+    }
 
     if (farmData.crops?.length) {
         await validateCropQuantities(farmData.crops, previousPlantedByCropId);
@@ -262,31 +267,35 @@ export const updateFarm = async (id, data) => {
     }
 
     if (farmData.crops) {
-        const newCrops = farmData.crops.map((c) => ({
-            cropId: c.crop.toString(),
-            planted: c.quantities?.planted ?? 0,
-        }));
-
-        const removedCropIds = [...previousPlantedByCropId.keys()].filter(
-            (cid) => !newCrops.some((c) => c.cropId === cid),
-        );
-
-        // Reconcile each crop's `unplanted` stock against the change in
-        // planted quantity — derived here, never set directly: an entry
-        // that plants more draws from unplanted; one that plants less
-        // (or is dropped from the farm entirely) gives it back.
+        const previousEntryById = new Map(previousEntries.filter((e) => e.id).map((e) => [e.id, e]));
         const plantedDeltaByCropId = new Map();
-        for (const c of newCrops) {
-            const previousPlanted = previousPlantedByCropId.get(c.cropId) ?? 0;
-            const delta = c.planted - previousPlanted;
-            if (delta !== 0) {
-                plantedDeltaByCropId.set(c.cropId, (plantedDeltaByCropId.get(c.cropId) ?? 0) + delta);
+        const addDelta = (cropId, delta) => {
+            if (!delta) return;
+            plantedDeltaByCropId.set(cropId, (plantedDeltaByCropId.get(cropId) ?? 0) + delta);
+        };
+
+        const matchedPreviousIds = new Set();
+        for (const c of farmData.crops) {
+            const cropId = c.crop.toString();
+            const newPlanted = c.quantities?.planted ?? 0;
+            const entryId = c._id?.toString();
+            const previous = entryId ? previousEntryById.get(entryId) : undefined;
+
+            if (previous) {
+                matchedPreviousIds.add(entryId);
+                addDelta(cropId, newPlanted - previous.planted);
+            } else {
+                // Brand-new entry: either a genuinely new crop, or a fresh
+                // planting cycle for a crop whose earlier entry already
+                // finished (fully withered/harvested/damaged).
+                addDelta(cropId, newPlanted);
             }
         }
-        for (const cropId of removedCropIds) {
-            const previousPlanted = previousPlantedByCropId.get(cropId) ?? 0;
-            if (previousPlanted) {
-                plantedDeltaByCropId.set(cropId, (plantedDeltaByCropId.get(cropId) ?? 0) - previousPlanted);
+
+        // Any previous entry that didn't come back gives its planted stock back.
+        for (const e of previousEntries) {
+            if (e.id && !matchedPreviousIds.has(e.id)) {
+                addDelta(e.cropId, -e.planted);
             }
         }
 

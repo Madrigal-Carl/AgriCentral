@@ -39,6 +39,7 @@ const cropQuantityFieldSchema = z
 // removes it from the parsed values react-hook-form hands to onSubmit —
 // it never reaches the API payload.
 const farmCropSchema = z.object({
+    _id: z.string().optional(),
     crop: z.string().min(1, "Invalid crop"),
     quantities: z
         .object({

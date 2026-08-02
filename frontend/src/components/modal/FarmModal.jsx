@@ -28,29 +28,25 @@ const inferCropStage = (quantities) => {
   return q.growing != null ? "growing" : "planted";
 };
 
-const getAvailableQuantity = (quantities, status) => {
+const TERMINAL_STATUSES = ["withered", "harvested", "damaged"];
+
+const getAvailableQuantity = (quantities, status, plantableCeiling) => {
   const q = quantities ?? {};
-  if (status === "planted") return null;
+  if (status === "planted") return plantableCeiling ?? null;
 
-  if (status === "growing") {
-    const claimedFromPlanted =
-      (q.withered ?? 0) + (q.harvested ?? 0) + (q.damaged ?? 0);
-    return Math.max((q.planted ?? 0) - claimedFromPlanted, 0);
-  }
+  const planted = q.planted ?? 0;
+  const claimedByTerminals = TERMINAL_STATUSES.filter(
+    (s) => s !== status,
+  ).reduce((sum, s) => sum + (q[s] ?? 0), 0);
 
-  const pool = q.growing ?? q.planted ?? 0;
-  const claimedByOthers = ["withered", "harvested", "damaged"]
-    .filter((s) => s !== status)
-    .reduce((sum, s) => sum + (q[s] ?? 0), 0);
-
-  return Math.max(pool - claimedByOthers, 0);
+  return Math.max(planted - claimedByTerminals, 0);
 };
 
 const getRemainingQuantity = (quantities) => {
   const q = quantities ?? {};
-  const pool = q.growing ?? q.planted ?? 0;
+  const planted = q.planted ?? 0;
   const claimed = (q.withered ?? 0) + (q.harvested ?? 0) + (q.damaged ?? 0);
-  return Math.max(pool - claimed, 0);
+  return Math.max(planted - claimed, 0);
 };
 
 const blankForm = {
@@ -95,11 +91,12 @@ export function FarmModal({
     (a) => ({ value: a._id, label: a.name }),
   );
 
-  // A crop stays editable here as long as it still has unclaimed
+  // A crop entry stays editable here as long as it still has unclaimed
   // planted/growing stock (see getRemainingQuantity). Only once
-  // withered+harvested+damaged have fully consumed the growing (or
-  // planted) pool does it drop out, since at that point there's nothing
-  // left to manage.
+  // withered+harvested+damaged have fully consumed the planted pool does
+  // it drop out ("frozen"), since at that point there's nothing left to
+  // manage on that specific entry — a fresh selection of the same crop
+  // should start a brand-new entry, not resume this one.
   const editableInitialCrops = useMemo(
     () =>
       (initial?.crops ?? []).filter(
@@ -114,7 +111,10 @@ export function FarmModal({
   // useForm so all downstream comparisons (.includes(id), Map lookups,
   // etc.) work. assignedFarmers keeps its {farmer, classification} shape —
   // just unwraps the farmer object down to its id. `status` per crop is
-  // freshly inferred here since the backend no longer sends one.
+  // freshly inferred here since the backend no longer sends one. `_id`
+  // (the crop-entry id, distinct from the crop id) is carried through so
+  // the backend can tell "this is the same entry, edited" apart from "this
+  // is a new entry" when the crops array is submitted.
   const normalizedInitial = useMemo(() => {
     if (!initial) return initial;
     return {
@@ -124,6 +124,7 @@ export function FarmModal({
         classification: a.classification ?? "farm_worker",
       })),
       crops: editableInitialCrops.map((c) => ({
+        _id: c._id,
         crop: typeof c.crop === "string" ? c.crop : c.crop._id,
         quantities: c.quantities ?? {},
         status: inferCropStage(c.quantities),
@@ -137,18 +138,34 @@ export function FarmModal({
     };
   }, [initial, editableInitialCrops]);
 
-  // Names/quantity of crops already on this farm, captured from the populated
-  // initial data *before* normalizedInitial strips them to bare ids. Needed
-  // because getCropsByFarmerId only returns a farmer's *available* (not yet
-  // planted) crops — once a crop is saved onto this farm it drops out of
-  // that farmer-scoped query, so cropOptions alone can't be relied on to
-  // label crops already assigned here. Scoped to editableInitialCrops so it
-  // stays consistent with what the form actually manages.
-  const initialCropLabelById = useMemo(() => {
+  // crop._id -> { _id, quantities }, sourced ONLY from editableInitialCrops
+  // (open entries), not all of the farm's crops. This is deliberate: if a
+  // crop's only existing entry is already finished (fully withered/
+  // harvested/damaged), it has no entry here, so re-selecting that crop in
+  // the MultiSelect below starts a genuinely new, blank entry — a fresh
+  // planting cycle — instead of resuming the finished one's cumulative
+  // numbers. A crop that still has an open entry, on the other hand, keeps
+  // resuming that same entry (same _id, same quantities) as before.
+  const initialEntryByCropId = useMemo(() => {
+    const map = new Map();
+    editableInitialCrops.forEach((c) => {
+      const cropId = typeof c.crop === "string" ? c.crop : c.crop._id;
+      map.set(cropId, { _id: c._id, quantities: c.quantities ?? {} });
+    });
+    return map;
+  }, [editableInitialCrops]);
+
+  // crop._id -> crop name, sourced ONLY from editableInitialCrops (open
+  // entries). Kept separate from quantity now — the quantity part of the
+  // label is computed dynamically below (see getDisplayUnplanted) instead
+  // of being baked into a static string, since the same crop can need to
+  // display a different number depending on whether it's an open entry on
+  // this farm or a fresh pick.
+  const initialCropNameById = useMemo(() => {
     const map = new Map();
     editableInitialCrops.forEach((c) => {
       if (typeof c.crop === "string" || !c.crop) return; // unpopulated, no name to grab
-      map.set(c.crop._id, `${c.crop.quantity} ${c.crop.name}`);
+      map.set(c.crop._id, c.crop.name);
     });
     return map;
   }, [editableInitialCrops]);
@@ -213,25 +230,81 @@ export function FarmModal({
     return map;
   }, [allCrops]);
 
+  // crop._id -> live unplanted stock. Sourced from two places: the
+  // farmer-scoped "available crops" query (allCrops) for crops still
+  // selectable there, and the farm's own populated crop docs (initial.crops)
+  // for crops that have already been fully used up and dropped out of that
+  // query. This alone is the "already subtracted" number — combined with
+  // an entry's own committed `planted` via getDisplayUnplanted below, it
+  // becomes the "not yet subtracted" ceiling for an in-progress entry.
+  // Moved above cropOptions/getDisplayUnplanted since both depend on it.
+  const cropUnplantedById = useMemo(() => {
+    const map = new Map();
+    allCrops.forEach((c) => map.set(c._id, c.unplanted));
+    (initial?.crops ?? []).forEach((c) => {
+      if (typeof c.crop === "string" || !c.crop) return;
+      if (!map.has(c.crop._id)) map.set(c.crop._id, c.crop.unplanted);
+    });
+    return map;
+  }, [allCrops, initial]);
+
+  // crop._id -> crop name, unioning the live farmer-scoped query with the
+  // fallback name map for crops that dropped out of that query (already
+  // fully committed elsewhere, or tied up in this farm's own entry).
+  const cropNameById = useMemo(() => {
+    const map = new Map();
+    allCrops.forEach((c) => map.set(c._id, c.name));
+    initialCropNameById.forEach((name, id) => {
+      if (!map.has(id)) map.set(id, name);
+    });
+    return map;
+  }, [allCrops, initialCropNameById]);
+
+  // Returns the quantity to DISPLAY for a crop, given how much a specific
+  // entry has already committed to `planted`. For an entry that's still
+  // in progress on this farm (committedPlanted > 0, carried over from its
+  // existing quantities), this adds that commitment back on top of the
+  // live unplanted count — so the number reads as the full pool this
+  // entry could still be edited up to, not net of its own subtraction.
+  // For a brand-new pick (committedPlanted defaults to 0 — nothing of
+  // this entry has been planted yet, whether it's a fresh replant on this
+  // farm or a pick destined for a different farm), this collapses to the
+  // live, already-subtracted number with no special-casing needed.
+  const getDisplayUnplanted = (cropId, committedPlanted = 0) => {
+    const live = cropUnplantedById.get(cropId);
+    return live != null ? live + committedPlanted : null;
+  };
+
   // allCrops is the union of the currently assigned farmers' *available*
-  // crops (each per-farmer query is scoped server-side). That excludes any
-  // crop that's already planted on this farm, so we backfill those from
-  // initialCropLabelById to keep already-selected crops from losing their
-  // label/option entry once they're no longer "available".
+  // crops (each per-farmer query is scoped server-side, already net of
+  // every commitment). That excludes any crop that's fully tied up on
+  // this farm, so we backfill those from cropNameById/getDisplayUnplanted
+  // — labeled with the "not yet subtracted" ceiling, since they're already
+  // committed to an open entry on this farm and could still be adjusted.
   const cropOptions = useMemo(() => {
     const fromQuery = allCrops.map((c) => ({
       value: c._id,
-      label: `${c.quantity} ${c.name}`,
+      label: `${c.unplanted} ${c.name}`,
     }));
 
     const selectedIds = new Set(crops.map((c) => c.crop));
     const known = new Set(fromQuery.map((o) => o.value));
     const missing = [...selectedIds]
-      .filter((id) => !known.has(id) && initialCropLabelById.has(id))
-      .map((id) => ({ value: id, label: initialCropLabelById.get(id) }));
+      .filter((id) => !known.has(id) && cropNameById.has(id))
+      .map((id) => {
+        const committedPlanted =
+          crops.find((c) => c.crop === id)?.quantities?.planted ?? 0;
+        const displayQty = getDisplayUnplanted(id, committedPlanted);
+        const name = cropNameById.get(id);
+        return {
+          value: id,
+          label: displayQty != null ? `${displayQty} ${name}` : name,
+        };
+      });
 
     return [...fromQuery, ...missing];
-  }, [allCrops, crops, initialCropLabelById]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allCrops, crops, cropNameById, cropUnplantedById]);
 
   // Keep track of the previous assignedFarmer ids so we only react to
   // actual removals (avoids stripping crops on unrelated re-renders).
@@ -328,8 +401,40 @@ export function FarmModal({
     setValue("longitude", next.lng, { shouldValidate: true });
   };
 
+  // Crops with nothing left to manage (see editableInitialCrops) are hidden
+  // from the form, but they still need to ride along in the submitted
+  // payload unchanged. Farm.crops is replaced wholesale on update, so any
+  // crop entry missing from the payload reads to the backend as "this
+  // entry was removed" and gets its planted stock refunded to `unplanted`
+  // — which is wrong for an entry that's simply fully harvested/withered/
+  // damaged, not actually deleted. Each one keeps its `_id` so the backend
+  // matches it back to the same entry rather than treating it as new.
+  const frozenCrops = useMemo(
+    () =>
+      (initial?.crops ?? [])
+        .filter((c) => getRemainingQuantity(c.quantities) === 0)
+        .map((c) => ({
+          _id: c._id,
+          crop: typeof c.crop === "string" ? c.crop : c.crop._id,
+          quantities: c.quantities ?? {},
+        })),
+    [initial],
+  );
+
   const onSubmit = (values) => {
-    onSave({ id: initial.id, ...values });
+    // frozenCrops (finished entries, untouched) and values.crops (open
+    // entries the user is actively managing, plus any brand-new entries
+    // they just added) are always disjoint by construction now: a crop can
+    // legitimately appear in both — e.g. an old finished entry sitting in
+    // frozenCrops alongside a fresh new entry for the same crop in
+    // values.crops. That's the whole point (see initialEntryByCropId
+    // above), so no id-collision filtering is needed here anymore. The
+    // backend matches by each entry's own `_id`.
+    onSave({
+      id: initial.id,
+      ...values,
+      crops: [...values.crops, ...frozenCrops],
+    });
   };
 
   const locationError = errors.latitude?.message || errors.longitude?.message;
@@ -441,12 +546,28 @@ export function FarmModal({
                         field.onChange(
                           nextIds.map((id) => {
                             const prior = existing.get(id);
+                            // Already present in the form (open entry being
+                            // edited this session, or a re-selection within
+                            // this session) — keep it exactly as-is,
+                            // including its _id.
+                            if (prior) return prior;
+
+                            // Not currently in the form. If this crop still
+                            // has an OPEN entry from the initial load,
+                            // resume that same entry (same _id, same
+                            // quantities). If it only has a finished entry
+                            // (or none at all), initialEntryByCropId has
+                            // nothing for it — this becomes a brand-new
+                            // entry with no _id and blank quantities, which
+                            // is exactly what we want for "replant after
+                            // harvest".
+                            const openEntry = initialEntryByCropId.get(id);
+                            const quantities = openEntry?.quantities ?? {};
                             return {
+                              _id: openEntry?._id,
                               crop: id,
-                              status:
-                                prior?.status ??
-                                inferCropStage(prior?.quantities),
-                              quantities: prior?.quantities ?? {},
+                              status: inferCropStage(quantities),
+                              quantities,
                             };
                           }),
                         );
@@ -473,16 +594,29 @@ export function FarmModal({
                 {crops.length > 0 && (
                   <div className="sm:col-span-2 space-y-2">
                     {crops.map((c) => {
-                      const label =
-                        cropOptions.find((o) => o.value === c.crop)?.label ??
-                        initialCropLabelById.get(c.crop) ??
-                        c.crop;
+                      const committedPlanted = c.quantities?.planted ?? 0;
+                      // "Not yet subtracted" for an in-progress entry (has
+                      // its own commitment already), naturally becomes the
+                      // live subtracted number for a fresh pick (commitment
+                      // is 0) — see getDisplayUnplanted above.
+                      const displayQty = getDisplayUnplanted(
+                        c.crop,
+                        committedPlanted,
+                      );
+                      const cropName = cropNameById.get(c.crop);
+                      const label = cropName
+                        ? displayQty != null
+                          ? `${displayQty} ${cropName}`
+                          : cropName
+                        : (cropOptions.find((o) => o.value === c.crop)?.label ??
+                          c.crop);
                       const statusLabel =
                         CROP_STATUS_OPTIONS.find((o) => o.value === c.status)
                           ?.label ?? c.status;
                       const available = getAvailableQuantity(
                         c.quantities,
                         c.status,
+                        displayQty,
                       );
                       const currentQuantity = c.quantities?.[c.status] ?? "";
 
@@ -500,21 +634,26 @@ export function FarmModal({
                             onChange={(v) => setCropStatus(c.crop, v)}
                             options={CROP_STATUS_OPTIONS}
                           />
-                          <TextInput
-                            type="number"
-                            min={0}
-                            max={available ?? undefined}
-                            value={currentQuantity}
-                            onChange={(e) =>
-                              setCropQuantity(c.crop, c.status, e.target.value)
-                            }
-                            placeholder={
-                              available != null
-                                ? `Max ${available}`
-                                : "Quantity"
-                            }
-                            className="w-28 shrink-0"
-                          />
+                          <div className="w-28 shrink-0">
+                            <TextInput
+                              type="number"
+                              min={0}
+                              max={available ?? undefined}
+                              value={currentQuantity}
+                              onChange={(e) =>
+                                setCropQuantity(
+                                  c.crop,
+                                  c.status,
+                                  e.target.value,
+                                )
+                              }
+                              placeholder={
+                                available != null
+                                  ? `Max ${available}`
+                                  : "Quantity"
+                              }
+                            />
+                          </div>
                         </div>
                       );
                     })}
