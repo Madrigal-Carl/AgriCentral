@@ -9,13 +9,6 @@ import { LocationMap } from "@/components/ui";
 import { StatusPill } from "@/components/public";
 import { DefList, Section } from "@/components/drawer";
 
-// The backend no longer persists a `status` on a crop entry — this
-// derives a representative display stage straight from `quantities`,
-// same priority as FarmModal: growing (once set) over planted, then
-// whichever terminal status (withered/harvested/damaged) has data. A crop
-// can technically have quantity split across more than one of the three
-// terminal statuses at once; this shows only one as a simple summary
-// pill, not a full breakdown.
 const inferCropStage = (quantities) => {
   const q = quantities ?? {};
   if (q.growing != null) return "growing";
@@ -29,13 +22,20 @@ const inferCropStage = (quantities) => {
 const cropStage = (c) => inferCropStage(c.quantities);
 const cropQuantity = (c) => c.quantities?.[cropStage(c)] ?? 0;
 
+const getRemainingQuantity = (quantities) => {
+  const q = quantities ?? {};
+  const planted = q.planted ?? 0;
+  const claimed = (q.withered ?? 0) + (q.harvested ?? 0) + (q.damaged ?? 0);
+  return Math.max(planted - claimed, 0);
+};
+
 export function FarmDrawer({ row, onClose }) {
   const crops = row.crops || [];
   const farmers = row.assignedFarmers || [];
+  const inProgressCrops = crops.filter(
+    (c) => getRemainingQuantity(c.quantities) > 0,
+  );
 
-  // crops.crop and assignedFarmers.farmer come back populated ({_id, name} /
-  // {_id, fullName}) from the API, but fall back to the raw id/string just
-  // in case a caller ever passes an unpopulated row.
   const cropLabel = (c) =>
     typeof c.crop === "string" ? c.crop : (c.crop?.name ?? "Unknown crop");
 
@@ -47,13 +47,10 @@ export function FarmDrawer({ row, onClose }) {
     return farmer.fullName ?? "Unknown farmer";
   };
 
-  // "Yield" specifically means harvest output — only crops whose inferred
-  // stage is harvested count. A planted/growing/withered/damaged crop
-  // hasn't produced anything yet (or produced nothing usable), so it
-  // shouldn't inflate this total.
-  const totalYield = crops
-    .filter((c) => cropStage(c) === "harvested")
-    .reduce((sum, c) => sum + cropQuantity(c), 0);
+  const totalYield = crops.reduce(
+    (sum, c) => sum + (c.quantities?.harvested ?? 0),
+    0,
+  );
 
   const location =
     row.latitude != null && row.longitude != null
@@ -79,7 +76,9 @@ export function FarmDrawer({ row, onClose }) {
                   {row.address}
                 </h2>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <StatusPill tone="neutral">{crops.length} crops</StatusPill>
+                  <StatusPill tone="neutral">
+                    {inProgressCrops.length} crops
+                  </StatusPill>
                   <StatusPill tone="info">{farmers.length} farmers</StatusPill>
                 </div>
               </div>
@@ -102,7 +101,7 @@ export function FarmDrawer({ row, onClose }) {
                 ["Association", row.association?.name || "—"],
                 ["Address", row.address],
                 ["Farmer", farmers.length],
-                ["Crops", crops.length],
+                ["Crops", inProgressCrops.length],
               ]}
             />
           </Section>
@@ -149,11 +148,11 @@ export function FarmDrawer({ row, onClose }) {
           </Section>
 
           <Section icon={Wheat} title="Crop Information">
-            {crops.length === 0 ? (
+            {inProgressCrops.length === 0 ? (
               <div className="text-sm text-secondary">No crops planted.</div>
             ) : (
               <ul className="space-y-2">
-                {crops.map((c, i) => {
+                {inProgressCrops.map((c, i) => {
                   const stage = cropStage(c);
                   return (
                     <li

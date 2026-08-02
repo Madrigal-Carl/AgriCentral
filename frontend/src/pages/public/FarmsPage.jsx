@@ -16,6 +16,13 @@ import {
 } from "@/hooks/useFarms";
 import { useCrops } from "@/hooks/useCrops";
 
+const getRemainingQuantity = (quantities) => {
+  const q = quantities ?? {};
+  const planted = q.planted ?? 0;
+  const claimed = (q.withered ?? 0) + (q.harvested ?? 0) + (q.damaged ?? 0);
+  return Math.max(planted - claimed, 0);
+};
+
 const blankForm = {
   id: "",
   address: "",
@@ -232,7 +239,10 @@ export function FarmsPage() {
           {
             key: "crops",
             header: "Crops",
-            cell: (r) => (r.crops || []).length,
+            cell: (r) =>
+              (r.crops || []).filter(
+                (c) => getRemainingQuantity(c.quantities) > 0,
+              ).length,
           },
           {
             key: "farmers",

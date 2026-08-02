@@ -9,6 +9,8 @@ const CROP_POPULATE = { path: "crops.crop" };
 const FARMER_POPULATE = { path: "assignedFarmers.farmer", select: "firstName lastName emailAddress" };
 const ASSOCIATION_POPULATE = { path: "association", select: "name" };
 
+const CROP_QUANTITY_STATUSES = ["planted", "growing", "withered", "harvested", "damaged"];
+
 function toFarmObject(farm) {
     if (!farm) return farm;
     return typeof farm.toObject === "function" ? farm.toObject() : farm;
@@ -167,6 +169,61 @@ const logFarmerAssignmentChanges = async ({ farm, changes }) => {
     }
 };
 
+const logCropQuantityChanges = async ({ farm, changes }) => {
+    if (!changes.length) return;
+
+    const cropIds = [...new Set(changes.map((c) => c.cropId))];
+    const crops = await Crop.find({ _id: { $in: cropIds } }).select("name");
+    const cropIdToName = new Map(crops.map((c) => [c._id.toString(), c.name]));
+
+    for (const change of changes) {
+        const cropName = cropIdToName.get(change.cropId) ?? "A crop";
+
+        if (change.type === "planted") {
+            await createLog({
+                entityType: "crop",
+                entityId: change.cropId,
+                association: farm.association,
+                message: `${change.quantity} unit(s) were planted on farm ${farm.tag}.`,
+            });
+            await createLog({
+                entityType: "farm",
+                entityId: farm._id,
+                association: farm.association,
+                message: `${change.quantity} unit(s) of ${cropName} were planted on this farm.`,
+            });
+        } else if (change.type === "quantity") {
+            const statusLabel = humanize(change.status).toLowerCase();
+
+            await createLog({
+                entityType: "crop",
+                entityId: change.cropId,
+                association: farm.association,
+                message: `${statusLabel} quantity on farm ${farm.tag} changed from ${change.from} to ${change.to}.`,
+            });
+            await createLog({
+                entityType: "farm",
+                entityId: farm._id,
+                association: farm.association,
+                message: `${cropName}'s ${statusLabel} quantity changed from ${change.from} to ${change.to}.`,
+            });
+        } else if (change.type === "removed") {
+            await createLog({
+                entityType: "crop",
+                entityId: change.cropId,
+                association: farm.association,
+                message: `${change.quantity} unit(s) were removed from farm ${farm.tag} (planting cycle ended).`,
+            });
+            await createLog({
+                entityType: "farm",
+                entityId: farm._id,
+                association: farm.association,
+                message: `${change.quantity} unit(s) of ${cropName} were removed from this farm (planting cycle ended).`,
+            });
+        }
+    }
+};
+
 export const createFarm = async (data, authenticatedUserId) => {
     const { associationId, ...farmData } = data;
 
@@ -193,20 +250,24 @@ export const createFarm = async (data, authenticatedUserId) => {
 
     if (farmData.crops?.length) {
         const plantedDeltaByCropId = new Map();
+        const cropChanges = [];
+
         for (const c of farmData.crops) {
+            const cropId = c.crop.toString();
             const planted = c.quantities?.planted ?? 0;
             if (planted) {
-                const cropId = c.crop.toString();
                 plantedDeltaByCropId.set(cropId, (plantedDeltaByCropId.get(cropId) ?? 0) + planted);
+                cropChanges.push({ cropId, type: "planted", quantity: planted });
             }
         }
+
         if (plantedDeltaByCropId.size) {
             await applyCropPlantingDeltas(plantedDeltaByCropId);
         }
-        // Per-crop status-transition logging was removed along with the
-        // `status` field — quantities can now span multiple stages at
-        // once, so there's no single "from -> to" transition to narrate
-        // per entry anymore.
+
+        if (cropChanges.length) {
+            await logCropQuantityChanges({ farm, changes: cropChanges });
+        }
     }
 
     if (farmData.assignedFarmers?.length) {
@@ -240,14 +301,23 @@ export const updateFarm = async (id, data) => {
     const previousEntries = (previousFarm?.crops ?? []).map((c) => ({
         id: c._id?.toString(),
         cropId: c.crop.toString(),
-        planted: c.quantities?.planted ?? 0,
+        quantities: {
+            planted: c.quantities?.planted ?? 0,
+            growing: c.quantities?.growing ?? 0,
+            withered: c.quantities?.withered ?? 0,
+            harvested: c.quantities?.harvested ?? 0,
+            damaged: c.quantities?.damaged ?? 0,
+        },
     }));
 
     // Summed per crop (a crop may have multiple existing entries) — used only
     // for the stock-availability check in validateCropQuantities.
     const previousPlantedByCropId = new Map();
     for (const e of previousEntries) {
-        previousPlantedByCropId.set(e.cropId, (previousPlantedByCropId.get(e.cropId) ?? 0) + e.planted);
+        previousPlantedByCropId.set(
+            e.cropId,
+            (previousPlantedByCropId.get(e.cropId) ?? 0) + e.quantities.planted
+        );
     }
 
     if (farmData.crops?.length) {
@@ -269,6 +339,7 @@ export const updateFarm = async (id, data) => {
     if (farmData.crops) {
         const previousEntryById = new Map(previousEntries.filter((e) => e.id).map((e) => [e.id, e]));
         const plantedDeltaByCropId = new Map();
+        const cropChanges = [];
         const addDelta = (cropId, delta) => {
             if (!delta) return;
             plantedDeltaByCropId.set(cropId, (plantedDeltaByCropId.get(cropId) ?? 0) + delta);
@@ -277,30 +348,54 @@ export const updateFarm = async (id, data) => {
         const matchedPreviousIds = new Set();
         for (const c of farmData.crops) {
             const cropId = c.crop.toString();
-            const newPlanted = c.quantities?.planted ?? 0;
+            const newQuantities = {
+                planted: c.quantities?.planted ?? 0,
+                growing: c.quantities?.growing ?? 0,
+                withered: c.quantities?.withered ?? 0,
+                harvested: c.quantities?.harvested ?? 0,
+                damaged: c.quantities?.damaged ?? 0,
+            };
             const entryId = c._id?.toString();
             const previous = entryId ? previousEntryById.get(entryId) : undefined;
 
             if (previous) {
                 matchedPreviousIds.add(entryId);
-                addDelta(cropId, newPlanted - previous.planted);
+                addDelta(cropId, newQuantities.planted - previous.quantities.planted);
+
+                for (const status of CROP_QUANTITY_STATUSES) {
+                    const from = previous.quantities[status];
+                    const to = newQuantities[status];
+                    if (from !== to) {
+                        cropChanges.push({ cropId, type: "quantity", status, from, to });
+                    }
+                }
             } else {
                 // Brand-new entry: either a genuinely new crop, or a fresh
                 // planting cycle for a crop whose earlier entry already
                 // finished (fully withered/harvested/damaged).
-                addDelta(cropId, newPlanted);
+                addDelta(cropId, newQuantities.planted);
+                if (newQuantities.planted) {
+                    cropChanges.push({ cropId, type: "planted", quantity: newQuantities.planted });
+                }
             }
         }
 
         // Any previous entry that didn't come back gives its planted stock back.
         for (const e of previousEntries) {
             if (e.id && !matchedPreviousIds.has(e.id)) {
-                addDelta(e.cropId, -e.planted);
+                addDelta(e.cropId, -e.quantities.planted);
+                if (e.quantities.planted) {
+                    cropChanges.push({ cropId: e.cropId, type: "removed", quantity: e.quantities.planted });
+                }
             }
         }
 
         if (plantedDeltaByCropId.size) {
             await applyCropPlantingDeltas(plantedDeltaByCropId);
+        }
+
+        if (cropChanges.length) {
+            await logCropQuantityChanges({ farm, changes: cropChanges });
         }
     }
 
