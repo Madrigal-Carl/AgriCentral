@@ -13,11 +13,6 @@ import {
   Cell,
   LineChart,
   Line,
-  RadarChart,
-  Radar,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
 } from "recharts";
 import {
   Tractor,
@@ -89,23 +84,79 @@ const cropStatus = [
   { name: "Fallow", value: 10 },
 ];
 
-const monthlyYield = [
-  { month: "Jan", rice: 1400, corn: 900, coconut: 700 },
-  { month: "Feb", rice: 1600, corn: 950, coconut: 720 },
-  { month: "Mar", rice: 1800, corn: 1100, coconut: 800 },
-  { month: "Apr", rice: 1500, corn: 1300, coconut: 780 },
-  { month: "May", rice: 2100, corn: 1250, coconut: 860 },
-  { month: "Jun", rice: 2400, corn: 1400, coconut: 900 },
-  { month: "Jul", rice: 2200, corn: 1500, coconut: 950 },
-  { month: "Aug", rice: 2000, corn: 1600, coconut: 980 },
-];
-
-const farmPerformance = [
-  { metric: "Yield", value: 82 },
-  { metric: "Efficiency", value: 74 },
-  { metric: "Health", value: 88 },
-  { metric: "Utilization", value: 69 },
-  { metric: "Coverage", value: 91 },
+const monthlyFarmYield = [
+  {
+    month: "Jan",
+    "South Farm": 1050,
+    "Boac South": 640,
+    "North Farm": 1450,
+    "West Farm": 480,
+    "East Farm": 870,
+    "Central Farm": 1650,
+  },
+  {
+    month: "Feb",
+    "South Farm": 1120,
+    "Boac South": 660,
+    "North Farm": 1520,
+    "West Farm": 500,
+    "East Farm": 890,
+    "Central Farm": 1700,
+  },
+  {
+    month: "Mar",
+    "South Farm": 1250,
+    "Boac South": 700,
+    "North Farm": 1600,
+    "West Farm": 520,
+    "East Farm": 930,
+    "Central Farm": 1800,
+  },
+  {
+    month: "Apr",
+    "South Farm": 1180,
+    "Boac South": 680,
+    "North Farm": 1550,
+    "West Farm": 490,
+    "East Farm": 900,
+    "Central Farm": 1750,
+  },
+  {
+    month: "May",
+    "South Farm": 1400,
+    "Boac South": 760,
+    "North Farm": 1750,
+    "West Farm": 560,
+    "East Farm": 990,
+    "Central Farm": 1980,
+  },
+  {
+    month: "Jun",
+    "South Farm": 1520,
+    "Boac South": 800,
+    "North Farm": 1900,
+    "West Farm": 600,
+    "East Farm": 1050,
+    "Central Farm": 2150,
+  },
+  {
+    month: "Jul",
+    "South Farm": 1450,
+    "Boac South": 780,
+    "North Farm": 1820,
+    "West Farm": 580,
+    "East Farm": 1020,
+    "Central Farm": 2050,
+  },
+  {
+    month: "Aug",
+    "South Farm": 1380,
+    "Boac South": 750,
+    "North Farm": 1750,
+    "West Farm": 550,
+    "East Farm": 980,
+    "Central Farm": 1950,
+  },
 ];
 
 /* ---------------- Colors (semantic tokens) ---------------- */
@@ -315,6 +366,37 @@ function SectionHeader({ icon: Icon, title, subtitle, onExport }) {
   );
 }
 
+/* Two section headers side-by-side, each with its own export button */
+function DualSectionHeader({ left, right }) {
+  return (
+    <div className="mb-4 mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 first:mt-0">
+      {[left, right].map((section, i) => (
+        <div key={i} className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="grid h-9 w-9 place-items-center bg-accent-soft text-foreground">
+              <section.icon className="h-4 w-4 text-accent" />
+            </div>
+            <div>
+              <h2 className="font-display text-xl tracking-tight text-foreground">
+                {section.title}
+              </h2>
+              {section.subtitle && (
+                <p className="text-xs text-secondary">{section.subtitle}</p>
+              )}
+            </div>
+          </div>
+          {section.onExport && (
+            <Button variant="outline" onClick={section.onExport}>
+              <Download className="h-4 w-4" />
+              Export
+            </Button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ---------------- Page ---------------- */
 export function AnalyticsPage() {
   // Filters (period defaults to "This Month"; association defaults to "All")
@@ -325,13 +407,6 @@ export function AnalyticsPage() {
   const totalLivestock = livestockByCategory.reduce((s, i) => s + i.count, 0);
   const totalYield = cropYield.reduce((s, i) => s + i.yield, 0);
   const totalFarmArea = farmSizeYield.reduce((s, i) => s + i.size, 0);
-
-  const equipmentMaintenance =
-    equipmentStatus.find((s) => s.name === "Maintenance")?.value ?? 0;
-  const equipmentGoodCondition =
-    equipmentStatus.find((s) => s.name === "Operational")?.value ?? 0;
-  const equipmentNotAssigned =
-    equipmentStatus.find((s) => s.name === "Idle")?.value ?? 0;
 
   const handleExport = () => {
     const rows = [
@@ -349,9 +424,6 @@ export function AnalyticsPage() {
 
   const handleExportEquipment = () => {
     const rows = [
-      ["Type", "Count"],
-      ...equipmentByType.map((e) => [e.type, e.count]),
-      [],
       ["Status", "Count"],
       ...equipmentStatus.map((e) => [e.name, e.value]),
     ];
@@ -360,38 +432,27 @@ export function AnalyticsPage() {
 
   const handleExportLivestock = () => {
     const rows = [
-      ["Category", "Count"],
-      ...livestockByCategory.map((l) => [l.category, l.count]),
-      [],
       ["Health Status", "Count"],
       ...livestockHealth.map((l) => [l.name, l.value]),
     ];
     exportCsv("agricentral-livestock.csv", rows);
   };
 
-  const handleExportFarms = () => {
+  const handleExportFarm = () => {
     const rows = [
       ["Farm", "Size (ha)", "Yield (quantity)"],
       ...farmSizeYield.map((f) => [f.farm, f.size, f.yield]),
       [],
-      ["Metric", "Score"],
-      ...farmPerformance.map((f) => [f.metric, f.value]),
-    ];
-    exportCsv("agricentral-farms.csv", rows);
-  };
-
-  const handleExportCrops = () => {
-    const rows = [
-      ["Crop", "Yield (quantity)"],
-      ...cropYield.map((c) => [c.crop, c.yield]),
-      [],
       ["Status", "Count"],
       ...cropStatus.map((c) => [c.name, c.value]),
       [],
-      ["Month", "Rice", "Corn", "Coconut"],
-      ...monthlyYield.map((m) => [m.month, m.rice, m.corn, m.coconut]),
+      ["Month", ...farmSizeYield.map((f) => f.farm)],
+      ...monthlyFarmYield.map((m) => [
+        m.month,
+        ...farmSizeYield.map((f) => m[f.farm]),
+      ]),
     ];
-    exportCsv("agricentral-crops.csv", rows);
+    exportCsv("agricentral-farm.csv", rows);
   };
 
   return (
@@ -422,48 +483,42 @@ export function AnalyticsPage() {
           value={totalEquipment}
           sub={`${equipmentStatus[0].value} operational`}
         />
-        <>
-          <StatCard
-            icon={Beef}
-            label="Livestock"
-            value={totalLivestock.toLocaleString()}
-            sub={`${livestockHealth[0].value} healthy`}
-          />
-          <StatCard
-            icon={Wheat}
-            label="Farm"
-            value={`${totalFarmArea}`}
-            sub={`${farmSizeYield.length} farms`}
-          />
-          <StatCard
-            icon={Leaf}
-            label="Crop Yield"
-            value={`${(totalYield / 1000).toFixed(1)}t`}
-            sub="last season"
-          />
-        </>
+        <StatCard
+          icon={Beef}
+          label="Livestock"
+          value={totalLivestock.toLocaleString()}
+          sub={`${livestockHealth[0].value} healthy`}
+        />
+        <StatCard
+          icon={Wheat}
+          label="Farm"
+          value={`${totalFarmArea}`}
+          sub={`${farmSizeYield.length} farms`}
+        />
+        <StatCard
+          icon={Leaf}
+          label="Crop Yield"
+          value={`${(totalYield / 1000).toFixed(1)}t`}
+          sub="last season"
+        />
       </div>
 
-      {/* Equipment */}
-      <SectionHeader
-        icon={Tractor}
-        title="Equipment"
-        subtitle="Fleet composition and status."
-        onExport={handleExportEquipment}
+      {/* Equipment + Livestock, side by side */}
+      <DualSectionHeader
+        left={{
+          icon: Tractor,
+          title: "Equipment",
+          subtitle: "Current fleet status.",
+          onExport: handleExportEquipment,
+        }}
+        right={{
+          icon: Beef,
+          title: "Livestock",
+          subtitle: "Overall herd health.",
+          onExport: handleExportLivestock,
+        }}
       />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <ChartCard
-          title="By Type"
-          subtitle="Number of units per equipment type."
-        >
-          <BarChart data={equipmentByType}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis dataKey="type" tick={{ fontSize: 12 }} />
-            <YAxis tick={{ fontSize: 12 }} />
-            <Tooltip />
-            <Bar dataKey="count" fill="#166534" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ChartCard>
         <ChartCard
           title="Status Distribution"
           subtitle="Current fleet condition."
@@ -484,183 +539,106 @@ export function AnalyticsPage() {
             <Legend />
           </PieChart>
         </ChartCard>
+        <ChartCard title="Health Status" subtitle="Livestock health status.">
+          <PieChart>
+            <Pie
+              data={livestockHealth}
+              dataKey="value"
+              nameKey="name"
+              innerRadius={55}
+              outerRadius={95}
+              paddingAngle={2}
+              label
+            >
+              {livestockHealth.map((_, i) => (
+                <Cell key={i} fill={COLORS[i % COLORS.length]} />
+              ))}
+            </Pie>
+            <Tooltip />
+            <Legend />
+          </PieChart>
+        </ChartCard>
       </div>
-      <>
-        {/* Livestock */}
-        <SectionHeader
-          icon={Beef}
-          title="Livestock"
-          subtitle="Population by category and overall health."
-          onExport={handleExportLivestock}
-        />
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <ChartCard title="Population by Category">
-            <BarChart data={livestockByCategory} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis type="number" tick={{ fontSize: 12 }} />
-              <YAxis
-                type="category"
-                dataKey="category"
-                tick={{ fontSize: 12 }}
-                width={80}
-              />
-              <Tooltip />
-              <Bar dataKey="count" fill="#ca8a04" radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ChartCard>
-          <ChartCard title="Health Status">
-            <PieChart>
-              <Pie
-                data={livestockHealth}
-                dataKey="value"
-                nameKey="name"
-                innerRadius={55}
-                outerRadius={95}
-                paddingAngle={2}
-                label
-              >
-                {livestockHealth.map((_, i) => (
-                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend />
-            </PieChart>
-          </ChartCard>
-        </div>
 
-        {/* Farms */}
-        <SectionHeader
-          icon={Wheat}
-          title="Farms"
-          subtitle="Area, yield, and operational performance."
-          onExport={handleExportFarms}
-        />
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <ChartCard
-            title="Yield per Farm"
-            subtitle="Quantity harvested per farm."
-          >
-            <BarChart data={farmSizeYield}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="farm" tick={{ fontSize: 12 }} />
-              <YAxis
-                tick={{ fontSize: 12 }}
-                label={{
-                  value: "quantity",
-                  angle: -90,
-                  position: "insideLeft",
-                  fontSize: 11,
-                }}
-              />
-              <Tooltip />
-              <Bar
-                dataKey="yield"
-                fill="#166534"
-                name="Yield (quantity)"
-                radius={[4, 4, 0, 0]}
-              />
-            </BarChart>
-          </ChartCard>
-          <ChartCard
-            title="Performance Index"
-            subtitle="Composite score across farms."
-          >
-            <RadarChart data={farmPerformance}>
-              <PolarGrid stroke="#e5e7eb" />
-              <PolarAngleAxis dataKey="metric" tick={{ fontSize: 11 }} />
-              <PolarRadiusAxis
-                angle={30}
-                domain={[0, 100]}
-                tick={{ fontSize: 10 }}
-              />
-              <Radar
-                name="Score"
-                dataKey="value"
-                stroke="#166534"
-                fill="#166534"
-                fillOpacity={0.35}
-              />
-              <Tooltip />
-            </RadarChart>
-          </ChartCard>
-        </div>
-
-        {/* Crops */}
-        <SectionHeader
-          icon={Leaf}
-          title="Crops"
-          subtitle="Yield, status, and monthly trends."
-          onExport={handleExportCrops}
-        />
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <ChartCard title="Yield by Crop" subtitle="Total quantity harvested.">
-            <BarChart data={cropYield}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="crop" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip />
-              <Bar dataKey="yield" fill="#65a30d" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ChartCard>
-          <ChartCard
-            title="Crop Status"
-            subtitle="Distribution across lifecycle."
-          >
-            <PieChart>
-              <Pie
-                data={cropStatus}
-                dataKey="value"
-                nameKey="name"
-                outerRadius={95}
-                label
-              >
-                {cropStatus.map((_, i) => (
-                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend />
-            </PieChart>
-          </ChartCard>
-        </div>
-        <div className="mt-4">
-          <ChartCard
-            title="Monthly Yield Trend"
-            subtitle="Quantity harvested per month for top crops."
-            height={320}
-          >
-            <LineChart data={monthlyYield}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip />
-              <Legend />
+      {/* Farm (formerly Crops) */}
+      <SectionHeader
+        icon={Wheat}
+        title="Farm"
+        subtitle="Yield per farm, crop status, and monthly trends."
+        onExport={handleExportFarm}
+      />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <ChartCard
+          title="Yield per Farm"
+          subtitle="Quantity harvested per farm."
+        >
+          <BarChart data={farmSizeYield}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <XAxis dataKey="farm" tick={{ fontSize: 12 }} />
+            <YAxis
+              tick={{ fontSize: 12 }}
+              label={{
+                value: "quantity",
+                angle: -90,
+                position: "insideLeft",
+                fontSize: 11,
+              }}
+            />
+            <Tooltip />
+            <Bar
+              dataKey="yield"
+              fill="#166534"
+              name="Yield (quantity)"
+              radius={[4, 4, 0, 0]}
+            />
+          </BarChart>
+        </ChartCard>
+        <ChartCard
+          title="Crop Status"
+          subtitle="Distribution across lifecycle."
+        >
+          <PieChart>
+            <Pie
+              data={cropStatus}
+              dataKey="value"
+              nameKey="name"
+              outerRadius={95}
+              label
+            >
+              {cropStatus.map((_, i) => (
+                <Cell key={i} fill={COLORS[i % COLORS.length]} />
+              ))}
+            </Pie>
+            <Tooltip />
+            <Legend />
+          </PieChart>
+        </ChartCard>
+      </div>
+      <div className="mt-4">
+        <ChartCard
+          title="Monthly Yield Trend"
+          subtitle="Quantity harvested per month, by farm."
+          height={320}
+        >
+          <LineChart data={monthlyFarmYield}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+            <YAxis tick={{ fontSize: 12 }} />
+            <Tooltip />
+            <Legend />
+            {farmSizeYield.map((f, i) => (
               <Line
+                key={f.farm}
                 type="monotone"
-                dataKey="rice"
-                stroke="#166534"
+                dataKey={f.farm}
+                stroke={COLORS[i % COLORS.length]}
                 strokeWidth={2}
                 dot={{ r: 3 }}
               />
-              <Line
-                type="monotone"
-                dataKey="corn"
-                stroke="#ca8a04"
-                strokeWidth={2}
-                dot={{ r: 3 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="coconut"
-                stroke="#2563eb"
-                strokeWidth={2}
-                dot={{ r: 3 }}
-              />
-            </LineChart>
-          </ChartCard>
-        </div>
-      </>
+            ))}
+          </LineChart>
+        </ChartCard>
+      </div>
     </div>
   );
 }
