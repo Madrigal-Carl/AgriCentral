@@ -1,4 +1,5 @@
 import { getAnalytics } from "../services/analytics.service.js";
+import { generateAnalyticsPdf } from "../services/pdf.service.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 export const getAnalyticsHandler = asyncHandler(async (req, res) => {
@@ -8,4 +9,17 @@ export const getAnalyticsHandler = asyncHandler(async (req, res) => {
         message: "Analytics fetched successfully",
         data,
     });
+});
+
+export const exportAnalyticsPdfHandler = asyncHandler(async (req, res) => {
+    const { section, association, period } = req.query;
+
+    const pdfBuffer = await generateAnalyticsPdf({ section, association, period });
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="agricentral-${section}-report.pdf"`,
+    );
+    return res.status(200).send(pdfBuffer);
 });

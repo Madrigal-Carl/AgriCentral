@@ -7,3 +7,7 @@ export const getAnalyticsQuerySchema = z.object({
         .optional(),
     period: z.enum(["week", "month", "year"]).optional().default("month"),
 });
+
+export const exportAnalyticsPdfQuerySchema = getAnalyticsQuerySchema.extend({
+    section: z.enum(["equipment", "livestock", "farm", "all"]).optional().default("all"),
+});

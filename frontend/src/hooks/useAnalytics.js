@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getAnalytics } from "@/services/analytics.service";
+import { getAnalytics, exportAnalyticsPdf } from "@/services/analytics.service";
 
 /* ---------------- Query Keys ---------------- */
 export const analyticsKeys = {
@@ -15,4 +15,15 @@ export function useAnalytics(filters = {}, options = {}) {
         keepPreviousData: true,
         ...options,
     });
+}
+
+/* ---------------- PDF export ---------------- */
+export async function downloadAnalyticsPdf(filters, section) {
+    const blob = await exportAnalyticsPdf({ ...filters, section });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `agricentral-${section}-report.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
 }

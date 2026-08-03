@@ -3,35 +3,11 @@ import Equipment from "../models/equipment.model.js";
 import Livestock from "../models/livestock.model.js";
 import Farm from "../models/farm.model.js";
 import Harvest from "../models/harvest.model.js";
+import { getDateRange } from "../utils/dateRange.util.js";
 
 const EQUIPMENT_CONDITIONS = ["good", "excellent", "damaged", "maintenance", "unusable"];
 const LIVESTOCK_CONDITIONS = ["healthy", "pregnant", "sick", "injured", "deceased"];
 const CROP_QUANTITY_KEYS = ["planted", "growing", "withered", "harvested", "damaged"];
-
-// "week" = Sunday through now, "month" = 1st of current month through now,
-// "year" = Jan 1 through now.
-const getDateRange = (period) => {
-    const now = new Date();
-    let start;
-
-    switch (period) {
-        case "week": {
-            start = new Date(now);
-            start.setDate(now.getDate() - now.getDay());
-            start.setHours(0, 0, 0, 0);
-            break;
-        }
-        case "year":
-            start = new Date(now.getFullYear(), 0, 1);
-            break;
-        case "month":
-        default:
-            start = new Date(now.getFullYear(), now.getMonth(), 1);
-            break;
-    }
-
-    return { start, end: now };
-};
 
 // Fills in every enum value with 0 so pie charts don't drop empty
 // categories just because nothing in the period matched them.

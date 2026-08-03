@@ -23,10 +23,11 @@ import {
   Search,
   ChevronDown,
   Check,
+  Loader2,
 } from "lucide-react";
 import { PageHeader, StatCard } from "@/components/public";
 import { Button, Select } from "@/components/ui";
-import { useAnalytics } from "@/hooks/useAnalytics";
+import { useAnalytics, downloadAnalyticsPdf } from "@/hooks/useAnalytics";
 import { useAssociations } from "@/hooks/useAssociations";
 
 /* ---------------- Colors (semantic tokens) ---------------- */
@@ -67,17 +68,6 @@ const ALL_ASSOCIATIONS_OPTION = { id: null, name: "All Associations" };
 function capitalize(str) {
   if (!str) return str;
   return str.charAt(0).toUpperCase() + str.slice(1);
-}
-
-function exportCsv(filename, rows) {
-  const csv = rows.map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 // Pivots the backend's long-format monthly rows into the wide shape
@@ -231,7 +221,20 @@ function FilterBar({
   );
 }
 
-function SectionHeader({ icon: Icon, title, onExport }) {
+function ExportButton({ onClick, isExporting }) {
+  return (
+    <Button variant="outline" onClick={onClick} disabled={isExporting}>
+      {isExporting ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <Download className="h-4 w-4" />
+      )}
+      {isExporting ? "Exporting…" : "Export"}
+    </Button>
+  );
+}
+
+function SectionHeader({ icon: Icon, title, onExport, isExporting }) {
   return (
     <div className="mb-4 mt-8 flex items-center justify-between gap-3 first:mt-0">
       <div className="flex items-center gap-3">
@@ -245,10 +248,7 @@ function SectionHeader({ icon: Icon, title, onExport }) {
         </div>
       </div>
       {onExport && (
-        <Button variant="outline" onClick={onExport}>
-          <Download className="h-4 w-4" />
-          Export
-        </Button>
+        <ExportButton onClick={onExport} isExporting={isExporting} />
       )}
     </div>
   );
@@ -270,10 +270,10 @@ function DualSectionHeader({ left, right }) {
             </div>
           </div>
           {section.onExport && (
-            <Button variant="outline" onClick={section.onExport}>
-              <Download className="h-4 w-4" />
-              Export
-            </Button>
+            <ExportButton
+              onClick={section.onExport}
+              isExporting={section.isExporting}
+            />
           )}
         </div>
       ))}
@@ -285,6 +285,10 @@ function DualSectionHeader({ left, right }) {
 export function AnalyticsPage() {
   const [period, setPeriod] = useState("month");
   const [associationId, setAssociationId] = useState(null); // null = All Associations
+
+  // Tracks which section's PDF is currently rendering — null when none is.
+  // "all" | "equipment" | "livestock" | "farm" | null
+  const [exportingSection, setExportingSection] = useState(null);
 
   const { data: associationsRes } = useAssociations({ all: true });
 
@@ -353,45 +357,18 @@ export function AnalyticsPage() {
     cropYield: 0,
   };
 
-  const handleExport = () => {
-    const rows = [
-      ["Metric", "Value"],
-      ["Equipment (added this period)", kpis.equipment],
-      ["Livestock (added this period)", kpis.livestock],
-      ["Farms (added this period)", kpis.farm],
-      ["Crop Yield (quantity)", kpis.cropYield],
-    ];
-    exportCsv("agricentral-analytics.csv", rows);
-  };
-
-  const handleExportEquipment = () => {
-    const rows = [
-      ["Condition", "Count"],
-      ...equipmentStatus.map((e) => [e.name, e.value]),
-    ];
-    exportCsv("agricentral-equipment.csv", rows);
-  };
-
-  const handleExportLivestock = () => {
-    const rows = [
-      ["Condition", "Count"],
-      ...livestockHealth.map((l) => [l.name, l.value]),
-    ];
-    exportCsv("agricentral-livestock.csv", rows);
-  };
-
-  const handleExportFarm = () => {
-    const rows = [
-      ["Farm", "Size (ha)", "Harvested (quantity)"],
-      ...yieldPerFarm.map((f) => [f.farm, f.size, f.harvested]),
-      [],
-      ["Status", "Count"],
-      ...cropStatus.map((c) => [c.name, c.value]),
-      [],
-      ["Month", ...farmNames],
-      ...monthlyFarmYield.map((m) => [m.month, ...farmNames.map((f) => m[f])]),
-    ];
-    exportCsv("agricentral-farm.csv", rows);
+  // Single handler for every export button — section decides which PDF
+  // the backend builds. Guards against double-clicks while one is running.
+  const handleExportPdf = async (section) => {
+    if (exportingSection) return;
+    setExportingSection(section);
+    try {
+      await downloadAnalyticsPdf(filters, section);
+    } catch (err) {
+      console.error("Failed to export PDF:", err);
+    } finally {
+      setExportingSection(null);
+    }
   };
 
   if (isError) {
@@ -414,9 +391,17 @@ export function AnalyticsPage() {
         title="Analytics"
         subtitle="Consolidated report across equipment, livestock, farms, and crops."
         action={
-          <Button variant="accent" onClick={handleExport} disabled={isLoading}>
-            <Download className="h-4 w-4" />
-            Export Report
+          <Button
+            variant="accent"
+            onClick={() => handleExportPdf("all")}
+            disabled={isLoading || !!exportingSection}
+          >
+            {exportingSection === "all" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            {exportingSection === "all" ? "Exporting…" : "Export Report"}
           </Button>
         }
       />
@@ -455,12 +440,14 @@ export function AnalyticsPage() {
             left={{
               icon: Tractor,
               title: "Equipment",
-              onExport: handleExportEquipment,
+              onExport: () => handleExportPdf("equipment"),
+              isExporting: exportingSection === "equipment",
             }}
             right={{
               icon: Beef,
               title: "Livestock",
-              onExport: handleExportLivestock,
+              onExport: () => handleExportPdf("livestock"),
+              isExporting: exportingSection === "livestock",
             }}
           />
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -512,7 +499,8 @@ export function AnalyticsPage() {
           <SectionHeader
             icon={Wheat}
             title="Farm"
-            onExport={handleExportFarm}
+            onExport={() => handleExportPdf("farm")}
+            isExporting={exportingSection === "farm"}
           />
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <ChartCard
