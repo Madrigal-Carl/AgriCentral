@@ -102,13 +102,13 @@ async function getAssociationRecipient(associationId) {
 
     const association = await Association.findById(associationId)
         .select("name user")
-        .populate({ path: "user", select: "name email" });
+        .populate({ path: "user", select: "fullname email" });
 
     if (!association?.user?.email) return null;
 
     return {
         email: association.user.email,
-        name: association.user.name || association.name || "there",
+        name: association.user.fullname || association.name || "there",
     };
 }
 

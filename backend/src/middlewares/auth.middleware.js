@@ -183,32 +183,46 @@ export const scopeByApprovalStage = (req, res, next) => {
 //                  aew-submitted report. No association restriction.
 //   coordinator -> sees only aew-submitted reports, across every
 //                  association. No association restriction either.
-export const scopeReportsByRole = (req, res, next) => {
-  const query = { ...req.query };
-  const role = req.user?.role;
+//
+// Note: there is no `association` field on the User model — a far
+// user's association has to be looked up from the Association
+// collection (Association.user -> User), same as scopeByAssociationId
+// above. This must be async for that reason.
+export const scopeReportsByRole = async (req, res, next) => {
+  try {
+    const query = { ...req.query };
+    const role = req.user?.role;
 
-  if (role === "far") {
-    query.associationId = req.user.association
-      ? String(req.user.association)
-      : "000000000000000000000000";
-    query.stage = "far";
-  } else if (role === "aew") {
-    delete query.associationId;
-    delete query.stage;
-  } else if (role === "coordinator") {
-    delete query.associationId;
-    query.stage = "aew";
-  } else {
-    delete query.associationId;
-    delete query.stage;
+    if (role === "far") {
+      const association = await Association.findOne({
+        user: req.user._id,
+        deletedAt: null,
+      }).select("_id");
+
+      query.associationId = association
+        ? String(association._id)
+        : "000000000000000000000000";
+      query.stage = "far";
+    } else if (role === "aew") {
+      delete query.associationId;
+      delete query.stage;
+    } else if (role === "coordinator") {
+      delete query.associationId;
+      query.stage = "aew";
+    } else {
+      delete query.associationId;
+      delete query.stage;
+    }
+
+    Object.defineProperty(req, "query", {
+      value: query,
+      writable: true,
+      configurable: true,
+      enumerable: true,
+    });
+
+    next();
+  } catch (err) {
+    next(err);
   }
-
-  Object.defineProperty(req, "query", {
-    value: query,
-    writable: true,
-    configurable: true,
-    enumerable: true,
-  });
-
-  next();
 };

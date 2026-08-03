@@ -5,6 +5,8 @@ import Livestock from "../models/livestock.model.js";
 import Equipment from "../models/equipment.model.js";
 import Association from "../models/association.model.js";
 import { createLog, getLogsForEntities, humanize } from "./log.service.js";
+import emailQueue from "../queues/email.queue.js";
+import { EMAIL_JOBS } from "../queues/email.jobs.js";
 
 const STAGE_ROLES = ["aew", "coordinator"];
 
@@ -86,6 +88,77 @@ const resolveFarAssociationId = async (userId) => {
     }).select("_id");
     return association ? String(association._id) : undefined;
 };
+
+// Resolves the association's assigned user so approval/denial emails have
+// somewhere to go. Returns null (rather than throwing) when there's no
+// association or no user email on file, so callers can just skip sending.
+async function getAssociationRecipient(associationId) {
+    if (!associationId) return null;
+
+    const association = await Association.findById(associationId)
+        .select("name user")
+        .populate({ path: "user", select: "fullname email" });
+
+    if (!association?.user?.email) return null;
+
+    return {
+        email: association.user.email,
+        name: association.user.fullname || association.name || "there",
+    };
+}
+
+function mapItemsForEmail(entityType, docs) {
+    if (entityType === "farm") {
+        return docs.map((doc) => ({
+            label: doc.name,
+            detail: doc.quantity != null ? `Qty: ${doc.quantity}` : "",
+        }));
+    }
+    return docs.map((doc) => ({
+        label: entityType === "livestock" ? doc.animal : doc.name,
+        detail: doc.propertyNumber,
+    }));
+}
+
+async function sendReportApprovedEmail(report, role) {
+    const recipient = await getAssociationRecipient(report.association);
+    if (!recipient) return;
+
+    const EntityModel = ENTITY_MODELS[report.entityType];
+    const itemDocs = await EntityModel.find({
+        _id: { $in: report.itemIds },
+    })
+        .select(ENTITY_SELECT[report.entityType])
+        .lean();
+
+    await emailQueue.add(EMAIL_JOBS.REPORT_APPROVED, {
+        type: EMAIL_JOBS.REPORT_APPROVED,
+        data: {
+            to: recipient.email,
+            name: recipient.name,
+            reportTitle: report.title,
+            entityType: report.entityType,
+            stage: humanize(role),
+            items: mapItemsForEmail(report.entityType, itemDocs),
+        },
+    });
+}
+
+async function sendReportRejectedEmail(report, role, remarks) {
+    const recipient = await getAssociationRecipient(report.association);
+    if (!recipient) return;
+
+    await emailQueue.add(EMAIL_JOBS.REPORT_REJECTED, {
+        type: EMAIL_JOBS.REPORT_REJECTED,
+        data: {
+            to: recipient.email,
+            name: recipient.name,
+            reportTitle: report.title,
+            stage: humanize(role),
+            remarks: remarks || "",
+        },
+    });
+}
 
 export const createReport = async (data, actingUser) => {
     const { associationId, ...reportData } = data;
@@ -216,6 +289,15 @@ export const updateReportApproval = async (id, { status, remarks }, actingUser) 
         association: report.association,
         message: `${stageLabel} has ${decisionVerb} the report "${report.title}".${remarksSuffix}`,
     });
+
+    // Terminal either way (approve or deny) — send the association's
+    // user their outcome email right away rather than waiting on any
+    // further stage, since reports never chain past a single reviewer.
+    if (status === "approved") {
+        await sendReportApprovedEmail(report, role);
+    } else {
+        await sendReportRejectedEmail(report, role, remarks);
+    }
 
     await report.save();
     return report;
