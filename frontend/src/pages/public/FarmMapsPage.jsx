@@ -1,14 +1,10 @@
 import { useMemo, useRef, useState, useEffect } from "react";
-import { Wheat, Filter, Search } from "lucide-react";
-import { PageHeader, StatusPill } from "@/components/public";
+import { Wheat, Search } from "lucide-react";
+import { PageHeader } from "@/components/public";
 import { Select } from "@/components/ui";
 import { useFarms } from "@/hooks/useFarms";
 import { useCrops } from "@/hooks/useCrops";
-import {
-  BOAC_CENTER,
-  CROP_STATUS_TONE,
-  CROP_STATUS_LABEL,
-} from "@/constants/data";
+import { BOAC_CENTER } from "@/constants/data";
 
 const MARKER_ICON_URL =
   "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png";
@@ -16,20 +12,6 @@ const MARKER_ICON_2X_URL =
   "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png";
 const MARKER_SHADOW_URL =
   "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png";
-
-const TONE_COLOR = {
-  success: "#16a34a",
-  info: "#2563eb",
-  neutral: "#64748b",
-  warning: "#d97706",
-  danger: "#dc2626",
-};
-
-// The farm list API (filterActiveCrops in farm.service.js) only ever
-// returns crop entries with one of these two statuses — harvested/withered/
-// damaged crops are stripped off the farm before it reaches the client.
-// So these are the only statuses that can ever actually match here.
-const ACTIVE_CROP_STATUSES = ["planted", "growing"];
 
 function escapeHtml(s) {
   return String(s).replace(
@@ -49,16 +31,15 @@ function popupHtml(farm) {
   const farmerNames = farm.farmers;
 
   const crops = farm.crops
-    .map((c) => {
-      const color = TONE_COLOR[CROP_STATUS_TONE[c.status]] || "#64748b";
-      return `
+    .map(
+      (c) => `
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 0;">
           <span style="font-size:13px;color:#0f172a;font-weight:500;">${escapeHtml(c.name)}</span>
-          <span style="font-size:11px;font-weight:600;color:${color};text-transform:uppercase;letter-spacing:0.04em;">
-            ${escapeHtml(CROP_STATUS_LABEL[c.status] || c.status)}
+          <span style="font-size:12px;font-weight:600;color:#64748b;">
+            ${c.planted.toLocaleString()} planted
           </span>
-        </div>`;
-    })
+        </div>`,
+    )
     .join("");
   return `
     <div style="min-width:200px;font-family:inherit;">
@@ -203,7 +184,6 @@ function FarmsLeafletMap({ farms }) {
 export function FarmMapsPage() {
   const [search, setSearch] = useState("");
   const [cropFilter, setCropFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
 
   // The backend already resolves `search` (tag/address) and `crop` (crop
   // name) into a farm filter server-side (see getFarms in farm.service.js),
@@ -239,27 +219,25 @@ export function FarmMapsPage() {
           typeof c.crop === "string"
             ? c.crop
             : (c.crop?.name ?? "Unknown crop"),
-        status: c.status,
-        yield: c.yield || 0,
+        planted: c.quantities?.planted || 0,
+        yield: c.quantities?.harvested || 0,
       })),
-      yieldKg: (f.crops || []).reduce((sum, c) => sum + (c.yield || 0), 0),
+      yieldKg: (f.crops || []).reduce(
+        (sum, c) => sum + (c.quantities?.harvested || 0),
+        0,
+      ),
     }));
   }, [data]);
 
   const filtered = useMemo(() => {
-    return farms.filter((f) => {
-      if (!f.location) return false;
-      if (statusFilter && !f.crops.some((c) => c.status === statusFilter))
-        return false;
-      return true;
-    });
-  }, [farms, statusFilter]);
+    return farms.filter((f) => !!f.location);
+  }, [farms]);
 
   return (
     <div>
       <PageHeader
         title="Farm Maps"
-        subtitle="Geospatial view of all farms. Hover a pin to see the farmer, yielded crops, and status."
+        subtitle="Geospatial view of all farms. Hover a pin to see the farmer and crops."
       />
 
       {isError && (
@@ -286,30 +264,13 @@ export function FarmMapsPage() {
           placeholder="All crops"
           options={[{ value: "", label: "All crops" }, ...cropOptions]}
         />
-        <Select
-          value={statusFilter}
-          onChange={setStatusFilter}
-          placeholder="All statuses"
-          options={[
-            { value: "", label: "All statuses" },
-            ...ACTIVE_CROP_STATUSES.map((s) => ({
-              value: s,
-              label: CROP_STATUS_LABEL[s] || s,
-            })),
-          ]}
-        />
       </div>
 
       <FarmsLeafletMap farms={filtered} />
 
       <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-secondary">
         <Wheat className="h-3.5 w-3.5 text-accent" />
-        <span>Status legend:</span>
-        {ACTIVE_CROP_STATUSES.map((s) => (
-          <StatusPill key={s} tone={CROP_STATUS_TONE[s]}>
-            {CROP_STATUS_LABEL[s]}
-          </StatusPill>
-        ))}
+        <span>Pins show farm location, farmer, and planted crops.</span>
       </div>
     </div>
   );
