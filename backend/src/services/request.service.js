@@ -4,6 +4,8 @@ import Livestock from "../models/livestock.model.js";
 import Equipment from "../models/equipment.model.js";
 import Association from "../models/association.model.js";
 import { createLog, getLogsForEntities, humanize } from "./log.service.js";
+import emailQueue from "../queues/email.queue.js";
+import { EMAIL_JOBS } from "../queues/email.jobs.js";
 
 const STAGE_ORDER = ["coordinator", "governor", "head"];
 
@@ -89,6 +91,90 @@ const resolveAssociationId = async (authenticatedUserId) => {
 
     return association?._id ?? undefined;
 };
+
+// Resolves the association's assigned user so approval/release/rejection
+// emails have somewhere to go. Returns null (rather than throwing) when
+// there's no association or no user email on file, so callers can just
+// skip sending in that case — mirrors the tolerant "unaffiliated user"
+// handling already used in createRequest's log message.
+async function getAssociationRecipient(associationId) {
+    if (!associationId) return null;
+
+    const association = await Association.findById(associationId)
+        .select("name user")
+        .populate({ path: "user", select: "name email" });
+
+    if (!association?.user?.email) return null;
+
+    return {
+        email: association.user.email,
+        name: association.user.name || association.name || "there",
+    };
+}
+
+function mapItemsForEmail(entityType, docs) {
+    return docs.map((doc) => ({
+        label: entityType === "livestock" ? doc.animal : doc.name,
+        propertyNumber: doc.propertyNumber,
+    }));
+}
+
+async function sendRequestApprovedEmail(request) {
+    const recipient = await getAssociationRecipient(request.association);
+    if (!recipient) return;
+
+    const EntityModel = ENTITY_MODELS[request.entityType];
+    const reservedDocs = await EntityModel.find({
+        _id: { $in: request.entityIds },
+        reservedBy: request._id,
+    })
+        .select(ENTITY_SELECT[request.entityType])
+        .lean();
+
+    await emailQueue.add(EMAIL_JOBS.REQUEST_APPROVED, {
+        type: EMAIL_JOBS.REQUEST_APPROVED,
+        data: {
+            to: recipient.email,
+            name: recipient.name,
+            requestTitle: request.title,
+            entityType: request.entityType,
+            items: mapItemsForEmail(request.entityType, reservedDocs),
+        },
+    });
+}
+
+async function sendRequestReleasedEmail(request, releasedDocs, isPartial) {
+    const recipient = await getAssociationRecipient(request.association);
+    if (!recipient) return;
+
+    await emailQueue.add(EMAIL_JOBS.REQUEST_RELEASED, {
+        type: EMAIL_JOBS.REQUEST_RELEASED,
+        data: {
+            to: recipient.email,
+            name: recipient.name,
+            requestTitle: request.title,
+            entityType: request.entityType,
+            items: mapItemsForEmail(request.entityType, releasedDocs),
+            isPartial,
+        },
+    });
+}
+
+async function sendRequestRejectedEmail(request, role, remarks) {
+    const recipient = await getAssociationRecipient(request.association);
+    if (!recipient) return;
+
+    await emailQueue.add(EMAIL_JOBS.REQUEST_REJECTED, {
+        type: EMAIL_JOBS.REQUEST_REJECTED,
+        data: {
+            to: recipient.email,
+            name: recipient.name,
+            requestTitle: request.title,
+            stage: humanize(role),
+            remarks: remarks || "",
+        },
+    });
+}
 
 export const createRequest = async (data, authenticatedUserId) => {
     const resolvedAssociationId = await resolveAssociationId(authenticatedUserId);
@@ -213,7 +299,11 @@ export const updateRequestApproval = async (id, { status, remarks }, actingUser)
                 association: request.association,
                 message: `Request "${request.title}" has been fully approved. ${request.entityIds.length} item(s) have been reserved pending release.`,
             });
+
+            await sendRequestApprovedEmail(request);
         }
+    } else if (status === "denied") {
+        await sendRequestRejectedEmail(request, role, remarks);
     }
 
     await request.save();
@@ -315,6 +405,12 @@ export const releaseRequest = async (id) => {
             message: `${itemLabel} has been released from request "${request.title}" and added to ${associationLabel}.`,
         });
     }
+
+    await sendRequestReleasedEmail(
+        request,
+        availableDocs,
+        request.releaseStatus === "partial"
+    );
 
     if (request.releaseStatus === "released") {
         await createLog({
