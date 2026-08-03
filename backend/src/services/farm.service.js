@@ -3,6 +3,7 @@ import Crop from "../models/crop.model.js";
 import Farmer from "../models/farmer.model.js";
 import User from "../models/user.model.js";
 import Association from "../models/association.model.js";
+import HarvestLog from "../models/harvest.model.js";
 import { createLog, getLogsForEntities, humanize } from "./log.service.js";
 
 const CROP_POPULATE = { path: "crops.crop" };
@@ -224,6 +225,24 @@ const logCropQuantityChanges = async ({ farm, changes }) => {
     }
 };
 
+// entries: array of { cropId, quantity } — quantity is the harvested delta
+// introduced by this edit (positive for a new harvest, negative for a
+// downward correction). Always inserts new documents rather than updating
+// an existing one, so the collection stays a per-event history that can be
+// accurately grouped by month later, instead of a cumulative snapshot.
+const logHarvestEntries = async ({ farm, entries }) => {
+    if (!entries.length) return;
+
+    await HarvestLog.insertMany(
+        entries.map((e) => ({
+            farm: farm._id,
+            association: farm.association,
+            crop: e.cropId,
+            quantity: e.quantity,
+        }))
+    );
+};
+
 export const createFarm = async (data, authenticatedUserId) => {
     const { associationId, ...farmData } = data;
 
@@ -251,13 +270,20 @@ export const createFarm = async (data, authenticatedUserId) => {
     if (farmData.crops?.length) {
         const plantedDeltaByCropId = new Map();
         const cropChanges = [];
+        const harvestEntries = [];
 
         for (const c of farmData.crops) {
             const cropId = c.crop.toString();
             const planted = c.quantities?.planted ?? 0;
+            const harvested = c.quantities?.harvested ?? 0;
+
             if (planted) {
                 plantedDeltaByCropId.set(cropId, (plantedDeltaByCropId.get(cropId) ?? 0) + planted);
                 cropChanges.push({ cropId, type: "planted", quantity: planted });
+            }
+
+            if (harvested) {
+                harvestEntries.push({ cropId, quantity: harvested });
             }
         }
 
@@ -267,6 +293,10 @@ export const createFarm = async (data, authenticatedUserId) => {
 
         if (cropChanges.length) {
             await logCropQuantityChanges({ farm, changes: cropChanges });
+        }
+
+        if (harvestEntries.length) {
+            await logHarvestEntries({ farm, entries: harvestEntries });
         }
     }
 
@@ -340,6 +370,7 @@ export const updateFarm = async (id, data) => {
         const previousEntryById = new Map(previousEntries.filter((e) => e.id).map((e) => [e.id, e]));
         const plantedDeltaByCropId = new Map();
         const cropChanges = [];
+        const harvestEntries = [];
         const addDelta = (cropId, delta) => {
             if (!delta) return;
             plantedDeltaByCropId.set(cropId, (plantedDeltaByCropId.get(cropId) ?? 0) + delta);
@@ -367,6 +398,10 @@ export const updateFarm = async (id, data) => {
                     const to = newQuantities[status];
                     if (from !== to) {
                         cropChanges.push({ cropId, type: "quantity", status, from, to });
+
+                        if (status === "harvested") {
+                            harvestEntries.push({ cropId, quantity: to - from });
+                        }
                     }
                 }
             } else {
@@ -377,10 +412,16 @@ export const updateFarm = async (id, data) => {
                 if (newQuantities.planted) {
                     cropChanges.push({ cropId, type: "planted", quantity: newQuantities.planted });
                 }
+                if (newQuantities.harvested) {
+                    harvestEntries.push({ cropId, quantity: newQuantities.harvested });
+                }
             }
         }
 
-        // Any previous entry that didn't come back gives its planted stock back.
+        // Any previous entry that didn't come back gives its planted stock
+        // back. Its historical harvested quantity is left untouched in the
+        // harvest log — that harvest genuinely happened, even though the
+        // crop cycle entry itself is now gone from the farm.
         for (const e of previousEntries) {
             if (e.id && !matchedPreviousIds.has(e.id)) {
                 addDelta(e.cropId, -e.quantities.planted);
@@ -396,6 +437,10 @@ export const updateFarm = async (id, data) => {
 
         if (cropChanges.length) {
             await logCropQuantityChanges({ farm, changes: cropChanges });
+        }
+
+        if (harvestEntries.length) {
+            await logHarvestEntries({ farm, entries: harvestEntries });
         }
     }
 

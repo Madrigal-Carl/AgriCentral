@@ -1,7 +1,6 @@
 import { TrendingDown, TrendingUp } from "lucide-react";
 
-export function StatCard({ label, value, icon: Icon, trend, trendDir = "up" }) {
-  const TrendIcon = trendDir === "up" ? TrendingUp : TrendingDown;
+export function StatCard({ label, value, icon: Icon }) {
   return (
     <div className="group bg-surface border border-border p-5 transition-shadow hover:shadow-[0_8px_24px_-12px_rgba(14,16,22,0.18)] rounded-lg">
       <div className="flex items-start justify-between">
@@ -13,19 +12,6 @@ export function StatCard({ label, value, icon: Icon, trend, trendDir = "up" }) {
       <div className="mt-5 font-display text-4xl tracking-tight text-foreground">
         {value}
       </div>
-      {trend && (
-        <div className="mt-3 flex items-center gap-1.5 text-xs">
-          <TrendIcon
-            className={`h-3.5 w-3.5 ${trendDir === "up" ? "text-accent" : "text-danger"}`}
-          />
-          <span
-            className={`font-semibold ${trendDir === "up" ? "text-foreground" : "text-danger"}`}
-          >
-            {trend}
-          </span>
-          <span className="text-secondary">vs last month</span>
-        </div>
-      )}
     </div>
   );
 }

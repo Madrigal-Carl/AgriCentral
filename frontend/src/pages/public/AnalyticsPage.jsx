@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useEffect, useRef, useState } from "react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -24,140 +24,10 @@ import {
   ChevronDown,
   Check,
 } from "lucide-react";
-import { PageHeader } from "@/components/public";
+import { PageHeader, StatCard } from "@/components/public";
 import { Button, Select } from "@/components/ui";
-
-/* ---------------- Mock analytics data ---------------- */
-const equipmentStatus = [
-  { name: "Operational", value: 42 },
-  { name: "Maintenance", value: 9 },
-  { name: "Repair", value: 5 },
-  { name: "Idle", value: 12 },
-];
-
-const equipmentByType = [
-  { type: "Tractor", count: 14 },
-  { type: "Harvester", count: 6 },
-  { type: "Plow", count: 11 },
-  { type: "Sprayer", count: 8 },
-  { type: "Irrigation", count: 15 },
-  { type: "Trailer", count: 14 },
-];
-
-const livestockByCategory = [
-  { category: "Cattle", count: 128 },
-  { category: "Goats", count: 84 },
-  { category: "Sheep", count: 52 },
-  { category: "Poultry", count: 640 },
-  { category: "Swine", count: 46 },
-];
-
-const livestockHealth = [
-  { name: "Healthy", value: 812 },
-  { name: "Under Watch", value: 92 },
-  { name: "Sick", value: 34 },
-  { name: "Quarantined", value: 12 },
-];
-
-const farmSizeYield = [
-  { farm: "South Farm", size: 12, yield: 8400 },
-  { farm: "Boac South", size: 8, yield: 5200 },
-  { farm: "North Farm", size: 15, yield: 11800 },
-  { farm: "West Farm", size: 6, yield: 3900 },
-  { farm: "East Farm", size: 10, yield: 7100 },
-  { farm: "Central Farm", size: 18, yield: 13600 },
-];
-
-const cropYield = [
-  { crop: "Rice", yield: 18400 },
-  { crop: "Corn", yield: 12300 },
-  { crop: "Coconut", yield: 9800 },
-  { crop: "Banana", yield: 7600 },
-  { crop: "Cassava", yield: 5400 },
-  { crop: "Coffee", yield: 3200 },
-];
-
-const cropStatus = [
-  { name: "Planted", value: 24 },
-  { name: "Growing", value: 38 },
-  { name: "Harvested", value: 28 },
-  { name: "Fallow", value: 10 },
-];
-
-const monthlyFarmYield = [
-  {
-    month: "Jan",
-    "South Farm": 1050,
-    "Boac South": 640,
-    "North Farm": 1450,
-    "West Farm": 480,
-    "East Farm": 870,
-    "Central Farm": 1650,
-  },
-  {
-    month: "Feb",
-    "South Farm": 1120,
-    "Boac South": 660,
-    "North Farm": 1520,
-    "West Farm": 500,
-    "East Farm": 890,
-    "Central Farm": 1700,
-  },
-  {
-    month: "Mar",
-    "South Farm": 1250,
-    "Boac South": 700,
-    "North Farm": 1600,
-    "West Farm": 520,
-    "East Farm": 930,
-    "Central Farm": 1800,
-  },
-  {
-    month: "Apr",
-    "South Farm": 1180,
-    "Boac South": 680,
-    "North Farm": 1550,
-    "West Farm": 490,
-    "East Farm": 900,
-    "Central Farm": 1750,
-  },
-  {
-    month: "May",
-    "South Farm": 1400,
-    "Boac South": 760,
-    "North Farm": 1750,
-    "West Farm": 560,
-    "East Farm": 990,
-    "Central Farm": 1980,
-  },
-  {
-    month: "Jun",
-    "South Farm": 1520,
-    "Boac South": 800,
-    "North Farm": 1900,
-    "West Farm": 600,
-    "East Farm": 1050,
-    "Central Farm": 2150,
-  },
-  {
-    month: "Jul",
-    "South Farm": 1450,
-    "Boac South": 780,
-    "North Farm": 1820,
-    "West Farm": 580,
-    "East Farm": 1020,
-    "Central Farm": 2050,
-  },
-  {
-    month: "Aug",
-    "South Farm": 1380,
-    "Boac South": 750,
-    "North Farm": 1750,
-    "West Farm": 550,
-    "East Farm": 980,
-    "Central Farm": 1950,
-  },
-];
+import { useAnalytics } from "@/hooks/useAnalytics";
+import { useAssociations } from "@/hooks/useAssociations";
 
 /* ---------------- Colors (semantic tokens) ---------------- */
 const COLORS = [
@@ -176,17 +46,29 @@ const PERIOD_OPTIONS = [
   { value: "year", label: "This Year" },
 ];
 
-const ASSOCIATIONS = [
-  "All Associations",
-  "Boac, Marinduque",
-  "Mogpog, Marinduque",
-  "Santa Cruz, Marinduque",
-  "Torrijos, Marinduque",
-  "Buenavista, Marinduque",
-  "Gasan, Marinduque",
+const MONTH_LABELS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
 ];
 
-/* ---------------- CSV export helper ---------------- */
+const ALL_ASSOCIATIONS_OPTION = { id: null, name: "All Associations" };
+
+/* ---------------- Helpers ---------------- */
+function capitalize(str) {
+  if (!str) return str;
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
 function exportCsv(filename, rows) {
   const csv = rows.map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
   const blob = new Blob([csv], { type: "text/csv" });
@@ -198,20 +80,22 @@ function exportCsv(filename, rows) {
   URL.revokeObjectURL(url);
 }
 
-/* ---------------- Small UI helpers ---------------- */
-function StatCard({ icon: Icon, label, value, sub }) {
-  return (
-    <div className="border border-border bg-surface p-4">
-      <div className="flex items-center gap-2 label-eyebrow">
-        <Icon className="h-3.5 w-3.5 text-accent" />
-        {label}
-      </div>
-      <div className="mt-2 font-display text-2xl tracking-tight text-foreground">
-        {value}
-      </div>
-      {sub && <div className="mt-0.5 text-xs text-secondary">{sub}</div>}
-    </div>
-  );
+// Pivots the backend's long-format monthly rows into the wide shape
+// LineChart expects: one row per month, one key per farm. Farms with no
+// harvest logged in a given month are filled with 0 rather than left
+// undefined, so lines stay continuous instead of showing gaps.
+function buildMonthlyChartData(monthlyYieldRows, farmNames) {
+  const byMonth = new Map();
+  for (let m = 1; m <= 12; m++) {
+    const row = { month: MONTH_LABELS[m - 1] };
+    for (const farm of farmNames) row[farm] = 0;
+    byMonth.set(m, row);
+  }
+  for (const r of monthlyYieldRows) {
+    const entry = byMonth.get(r.month);
+    if (entry) entry[r.farm] = r.harvested;
+  }
+  return Array.from(byMonth.values());
 }
 
 function ChartCard({ title, subtitle, children, height = 280 }) {
@@ -232,6 +116,8 @@ function ChartCard({ title, subtitle, children, height = 280 }) {
   );
 }
 
+// value/options now work off association id (null = "All Associations")
+// instead of raw display strings, since the backend needs a real ObjectId.
 function AssociationFilter({ value, onChange, options }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -258,10 +144,12 @@ function AssociationFilter({ value, onChange, options }) {
     };
   }, []);
 
+  const selected = options.find((o) => o.id === value) ?? options[0];
+
   const filtered = useMemo(() => {
     if (!query) return options;
     const q = query.toLowerCase();
-    return options.filter((o) => o.toLowerCase().includes(q));
+    return options.filter((o) => o.name.toLowerCase().includes(q));
   }, [options, query]);
 
   return (
@@ -271,7 +159,7 @@ function AssociationFilter({ value, onChange, options }) {
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center justify-between gap-2 border border-border bg-surface px-3 py-2 text-sm text-foreground hover:border-foreground"
       >
-        <span className="truncate">{value}</span>
+        <span className="truncate">{selected?.name}</span>
         <ChevronDown className="h-4 w-4 shrink-0 text-secondary" />
       </button>
 
@@ -294,18 +182,18 @@ function AssociationFilter({ value, onChange, options }) {
               </li>
             )}
             {filtered.map((option) => (
-              <li key={option}>
+              <li key={option.id ?? "all"}>
                 <button
                   type="button"
                   onClick={() => {
-                    onChange(option);
+                    onChange(option.id);
                     setOpen(false);
                     setQuery("");
                   }}
                   className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm text-foreground hover:bg-muted"
                 >
-                  <span className="truncate">{option}</span>
-                  {option === value && (
+                  <span className="truncate">{option.name}</span>
+                  {option.id === value && (
                     <Check className="h-3.5 w-3.5 shrink-0 text-accent" />
                   )}
                 </button>
@@ -323,6 +211,7 @@ function FilterBar({
   onPeriodChange,
   association,
   onAssociationChange,
+  associationOptions,
 }) {
   return (
     <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
@@ -336,7 +225,7 @@ function FilterBar({
       <AssociationFilter
         value={association}
         onChange={onAssociationChange}
-        options={ASSOCIATIONS}
+        options={associationOptions}
       />
     </div>
   );
@@ -366,7 +255,6 @@ function SectionHeader({ icon: Icon, title, subtitle, onExport }) {
   );
 }
 
-/* Two section headers side-by-side, each with its own export button */
 function DualSectionHeader({ left, right }) {
   return (
     <div className="mb-4 mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 first:mt-0">
@@ -399,32 +287,90 @@ function DualSectionHeader({ left, right }) {
 
 /* ---------------- Page ---------------- */
 export function AnalyticsPage() {
-  // Filters (period defaults to "This Month"; association defaults to "All")
   const [period, setPeriod] = useState("month");
-  const [association, setAssociation] = useState("All Associations");
+  const [associationId, setAssociationId] = useState(null); // null = All Associations
 
-  const totalEquipment = equipmentByType.reduce((s, i) => s + i.count, 0);
-  const totalLivestock = livestockByCategory.reduce((s, i) => s + i.count, 0);
-  const totalYield = cropYield.reduce((s, i) => s + i.yield, 0);
-  const totalFarmArea = farmSizeYield.reduce((s, i) => s + i.size, 0);
+  const { data: associationsRes } = useAssociations({ all: true });
+
+  const associationOptions = useMemo(() => {
+    const list = associationsRes?.associations ?? [];
+    return [
+      ALL_ASSOCIATIONS_OPTION,
+      ...list.map((a) => ({ id: a._id, name: a.name })),
+    ];
+  }, [associationsRes]);
+
+  const filters = useMemo(
+    () => ({
+      period,
+      ...(associationId && { association: associationId }),
+    }),
+    [period, associationId],
+  );
+
+  const { data: analyticsRes, isLoading, isError } = useAnalytics(filters);
+  const analytics = analyticsRes?.data;
+
+  const equipmentStatus = useMemo(
+    () =>
+      (analytics?.equipment?.statusDistribution ?? []).map((s) => ({
+        name: capitalize(s.name),
+        value: s.value,
+      })),
+    [analytics],
+  );
+
+  const livestockHealth = useMemo(
+    () =>
+      (analytics?.livestock?.healthStatus ?? []).map((s) => ({
+        name: capitalize(s.name),
+        value: s.value,
+      })),
+    [analytics],
+  );
+
+  const cropStatus = useMemo(
+    () =>
+      (analytics?.farm?.cropStatus ?? []).map((s) => ({
+        name: capitalize(s.name),
+        value: s.value,
+      })),
+    [analytics],
+  );
+
+  const yieldPerFarm = analytics?.farm?.yieldPerFarm ?? [];
+
+  const monthlyYieldRows = analytics?.farm?.monthlyYieldTrend ?? [];
+  const farmNames = useMemo(
+    () => Array.from(new Set(monthlyYieldRows.map((r) => r.farm))),
+    [monthlyYieldRows],
+  );
+  const monthlyFarmYield = useMemo(
+    () => buildMonthlyChartData(monthlyYieldRows, farmNames),
+    [monthlyYieldRows, farmNames],
+  );
+
+  const kpis = analytics?.kpis ?? {
+    equipment: 0,
+    livestock: 0,
+    farm: 0,
+    cropYield: 0,
+  };
 
   const handleExport = () => {
     const rows = [
       ["Metric", "Value"],
-      ["Equipment", totalEquipment],
-      ["Operational Equipment", equipmentStatus[0].value],
-      ["Livestock", totalLivestock],
-      ["Healthy Livestock", livestockHealth[0].value],
-      ["Farm", totalFarmArea],
-      ["Farms", farmSizeYield.length],
-      ["Crop Yield (quantity)", totalYield],
+      ["Equipment (added this period)", kpis.equipment],
+      ["Livestock (added this period)", kpis.livestock],
+      ["Farms (added this period)", kpis.farm],
+      ["Crop Yield (quantity)", kpis.cropYield],
     ];
     exportCsv("agricentral-analytics.csv", rows);
   };
 
   const handleExportEquipment = () => {
     const rows = [
-      ["Status", "Count"],
+      ["Condition", "Count"],
       ...equipmentStatus.map((e) => [e.name, e.value]),
     ];
     exportCsv("agricentral-equipment.csv", rows);
@@ -432,7 +378,7 @@ export function AnalyticsPage() {
 
   const handleExportLivestock = () => {
     const rows = [
-      ["Health Status", "Count"],
+      ["Condition", "Count"],
       ...livestockHealth.map((l) => [l.name, l.value]),
     ];
     exportCsv("agricentral-livestock.csv", rows);
@@ -440,20 +386,31 @@ export function AnalyticsPage() {
 
   const handleExportFarm = () => {
     const rows = [
-      ["Farm", "Size (ha)", "Yield (quantity)"],
-      ...farmSizeYield.map((f) => [f.farm, f.size, f.yield]),
+      ["Farm", "Size (ha)", "Harvested (quantity)"],
+      ...yieldPerFarm.map((f) => [f.farm, f.size, f.harvested]),
       [],
       ["Status", "Count"],
       ...cropStatus.map((c) => [c.name, c.value]),
       [],
-      ["Month", ...farmSizeYield.map((f) => f.farm)],
-      ...monthlyFarmYield.map((m) => [
-        m.month,
-        ...farmSizeYield.map((f) => m[f.farm]),
-      ]),
+      ["Month", ...farmNames],
+      ...monthlyFarmYield.map((m) => [m.month, ...farmNames.map((f) => m[f])]),
     ];
     exportCsv("agricentral-farm.csv", rows);
   };
+
+  if (isError) {
+    return (
+      <div>
+        <PageHeader
+          title="Analytics"
+          subtitle="Consolidated report across equipment, livestock, farms, and crops."
+        />
+        <p className="mt-6 text-sm text-secondary">
+          Couldn't load analytics data. Try refreshing the page.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -461,7 +418,7 @@ export function AnalyticsPage() {
         title="Analytics"
         subtitle="Consolidated report across equipment, livestock, farms, and crops."
         action={
-          <Button variant="accent" onClick={handleExport}>
+          <Button variant="accent" onClick={handleExport} disabled={isLoading}>
             <Download className="h-4 w-4" />
             Export Report
           </Button>
@@ -471,174 +428,173 @@ export function AnalyticsPage() {
       <FilterBar
         period={period}
         onPeriodChange={setPeriod}
-        association={association}
-        onAssociationChange={setAssociation}
+        association={associationId}
+        onAssociationChange={setAssociationId}
+        associationOptions={associationOptions}
       />
 
-      {/* KPI row */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard
-          icon={Tractor}
-          label="Equipment"
-          value={totalEquipment}
-          sub={`${equipmentStatus[0].value} operational`}
-        />
-        <StatCard
-          icon={Beef}
-          label="Livestock"
-          value={totalLivestock.toLocaleString()}
-          sub={`${livestockHealth[0].value} healthy`}
-        />
-        <StatCard
-          icon={Wheat}
-          label="Farm"
-          value={`${totalFarmArea}`}
-          sub={`${farmSizeYield.length} farms`}
-        />
-        <StatCard
-          icon={Leaf}
-          label="Crop Yield"
-          value={`${(totalYield / 1000).toFixed(1)}t`}
-          sub="last season"
-        />
-      </div>
-
-      {/* Equipment + Livestock, side by side */}
-      <DualSectionHeader
-        left={{
-          icon: Tractor,
-          title: "Equipment",
-          subtitle: "Current fleet status.",
-          onExport: handleExportEquipment,
-        }}
-        right={{
-          icon: Beef,
-          title: "Livestock",
-          subtitle: "Overall herd health.",
-          onExport: handleExportLivestock,
-        }}
-      />
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <ChartCard
-          title="Status Distribution"
-          subtitle="Current fleet condition."
-        >
-          <PieChart>
-            <Pie
-              data={equipmentStatus}
-              dataKey="value"
-              nameKey="name"
-              outerRadius={95}
-              label
-            >
-              {equipmentStatus.map((_, i) => (
-                <Cell key={i} fill={COLORS[i % COLORS.length]} />
-              ))}
-            </Pie>
-            <Tooltip />
-            <Legend />
-          </PieChart>
-        </ChartCard>
-        <ChartCard title="Health Status" subtitle="Livestock health status.">
-          <PieChart>
-            <Pie
-              data={livestockHealth}
-              dataKey="value"
-              nameKey="name"
-              innerRadius={55}
-              outerRadius={95}
-              paddingAngle={2}
-              label
-            >
-              {livestockHealth.map((_, i) => (
-                <Cell key={i} fill={COLORS[i % COLORS.length]} />
-              ))}
-            </Pie>
-            <Tooltip />
-            <Legend />
-          </PieChart>
-        </ChartCard>
-      </div>
-
-      {/* Farm (formerly Crops) */}
-      <SectionHeader
-        icon={Wheat}
-        title="Farm"
-        subtitle="Yield per farm, crop status, and monthly trends."
-        onExport={handleExportFarm}
-      />
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <ChartCard
-          title="Yield per Farm"
-          subtitle="Quantity harvested per farm."
-        >
-          <BarChart data={farmSizeYield}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis dataKey="farm" tick={{ fontSize: 12 }} />
-            <YAxis
-              tick={{ fontSize: 12 }}
-              label={{
-                value: "quantity",
-                angle: -90,
-                position: "insideLeft",
-                fontSize: 11,
-              }}
+      {isLoading ? (
+        <p className="mt-6 text-sm text-secondary">Loading analytics…</p>
+      ) : (
+        <>
+          {/* KPI row */}
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <StatCard label="Equipment" value={kpis.equipment} icon={Tractor} />
+            <StatCard label="Livestock" value={kpis.livestock} icon={Beef} />
+            <StatCard label="Farms" value={kpis.farm} icon={Wheat} />
+            <StatCard
+              label="Crop Yield"
+              value={kpis.cropYield.toLocaleString()}
+              icon={Leaf}
             />
-            <Tooltip />
-            <Bar
-              dataKey="yield"
-              fill="#166534"
-              name="Yield (quantity)"
-              radius={[4, 4, 0, 0]}
-            />
-          </BarChart>
-        </ChartCard>
-        <ChartCard
-          title="Crop Status"
-          subtitle="Distribution across lifecycle."
-        >
-          <PieChart>
-            <Pie
-              data={cropStatus}
-              dataKey="value"
-              nameKey="name"
-              outerRadius={95}
-              label
+          </div>
+
+          {/* Equipment + Livestock, side by side */}
+          <DualSectionHeader
+            left={{
+              icon: Tractor,
+              title: "Equipment",
+              subtitle: "Current fleet condition.",
+              onExport: handleExportEquipment,
+            }}
+            right={{
+              icon: Beef,
+              title: "Livestock",
+              subtitle: "Overall herd health.",
+              onExport: handleExportLivestock,
+            }}
+          />
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <ChartCard
+              title="Status Distribution"
+              subtitle="Current fleet condition."
             >
-              {cropStatus.map((_, i) => (
-                <Cell key={i} fill={COLORS[i % COLORS.length]} />
-              ))}
-            </Pie>
-            <Tooltip />
-            <Legend />
-          </PieChart>
-        </ChartCard>
-      </div>
-      <div className="mt-4">
-        <ChartCard
-          title="Monthly Yield Trend"
-          subtitle="Quantity harvested per month, by farm."
-          height={320}
-        >
-          <LineChart data={monthlyFarmYield}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-            <YAxis tick={{ fontSize: 12 }} />
-            <Tooltip />
-            <Legend />
-            {farmSizeYield.map((f, i) => (
-              <Line
-                key={f.farm}
-                type="monotone"
-                dataKey={f.farm}
-                stroke={COLORS[i % COLORS.length]}
-                strokeWidth={2}
-                dot={{ r: 3 }}
-              />
-            ))}
-          </LineChart>
-        </ChartCard>
-      </div>
+              <PieChart>
+                <Pie
+                  data={equipmentStatus}
+                  dataKey="value"
+                  nameKey="name"
+                  outerRadius={95}
+                  label
+                >
+                  {equipmentStatus.map((_, i) => (
+                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ChartCard>
+            <ChartCard
+              title="Health Status"
+              subtitle="Livestock health status."
+            >
+              <PieChart>
+                <Pie
+                  data={livestockHealth}
+                  dataKey="value"
+                  nameKey="name"
+                  innerRadius={55}
+                  outerRadius={95}
+                  paddingAngle={2}
+                  label
+                >
+                  {livestockHealth.map((_, i) => (
+                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ChartCard>
+          </div>
+
+          {/* Farm */}
+          <SectionHeader
+            icon={Wheat}
+            title="Farm"
+            subtitle="Yield per farm, crop status, and monthly trends."
+            onExport={handleExportFarm}
+          />
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <ChartCard
+              title="Yield per Farm"
+              subtitle="Quantity harvested per farm."
+            >
+              <BarChart data={yieldPerFarm}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="farm" tick={{ fontSize: 12 }} />
+                <YAxis
+                  tick={{ fontSize: 12 }}
+                  label={{
+                    value: "quantity",
+                    angle: -90,
+                    position: "insideLeft",
+                    fontSize: 11,
+                  }}
+                />
+                <Tooltip
+                  formatter={(value, name, props) => [
+                    `${value} (${props.payload.size} ha)`,
+                    "Harvested",
+                  ]}
+                />
+                <Bar
+                  dataKey="harvested"
+                  fill="#166534"
+                  name="Harvested (quantity)"
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ChartCard>
+            <ChartCard
+              title="Crop Status"
+              subtitle="Distribution across lifecycle."
+            >
+              <PieChart>
+                <Pie
+                  data={cropStatus}
+                  dataKey="value"
+                  nameKey="name"
+                  outerRadius={95}
+                  label
+                >
+                  {cropStatus.map((_, i) => (
+                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ChartCard>
+          </div>
+          <div className="mt-4">
+            <ChartCard
+              title="Monthly Yield Trend"
+              subtitle="Quantity harvested per month, by farm (full current year)."
+              height={320}
+            >
+              <LineChart data={monthlyFarmYield}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Legend />
+                {farmNames.map((farm, i) => (
+                  <Line
+                    key={farm}
+                    type="monotone"
+                    dataKey={farm}
+                    stroke={COLORS[i % COLORS.length]}
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                  />
+                ))}
+              </LineChart>
+            </ChartCard>
+          </div>
+        </>
+      )}
     </div>
   );
 }
