@@ -231,7 +231,7 @@ function FilterBar({
   );
 }
 
-function SectionHeader({ icon: Icon, title, subtitle, onExport }) {
+function SectionHeader({ icon: Icon, title, onExport }) {
   return (
     <div className="mb-4 mt-8 flex items-center justify-between gap-3 first:mt-0">
       <div className="flex items-center gap-3">
@@ -242,7 +242,6 @@ function SectionHeader({ icon: Icon, title, subtitle, onExport }) {
           <h2 className="font-display text-xl tracking-tight text-foreground">
             {title}
           </h2>
-          {subtitle && <p className="text-xs text-secondary">{subtitle}</p>}
         </div>
       </div>
       {onExport && (
@@ -268,9 +267,6 @@ function DualSectionHeader({ left, right }) {
               <h2 className="font-display text-xl tracking-tight text-foreground">
                 {section.title}
               </h2>
-              {section.subtitle && (
-                <p className="text-xs text-secondary">{section.subtitle}</p>
-              )}
             </div>
           </div>
           {section.onExport && (
@@ -434,7 +430,12 @@ export function AnalyticsPage() {
       />
 
       {isLoading ? (
-        <p className="mt-6 text-sm text-secondary">Loading analytics…</p>
+        <div className="flex min-h-[400px] items-center justify-center">
+          <div role="status" className="flex flex-col items-center gap-3">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-accent" />
+            <p className="text-sm text-secondary">Loading analytics…</p>
+          </div>
+        </div>
       ) : (
         <>
           {/* KPI row */}
@@ -454,13 +455,11 @@ export function AnalyticsPage() {
             left={{
               icon: Tractor,
               title: "Equipment",
-              subtitle: "Current fleet condition.",
               onExport: handleExportEquipment,
             }}
             right={{
               icon: Beef,
               title: "Livestock",
-              subtitle: "Overall herd health.",
               onExport: handleExportLivestock,
             }}
           />
@@ -513,7 +512,6 @@ export function AnalyticsPage() {
           <SectionHeader
             icon={Wheat}
             title="Farm"
-            subtitle="Yield per farm, crop status, and monthly trends."
             onExport={handleExportFarm}
           />
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
