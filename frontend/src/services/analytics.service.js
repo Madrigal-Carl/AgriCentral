@@ -5,6 +5,11 @@ export async function getAnalytics(params) {
     return response.data;
 }
 
+export async function getOverview(params) {
+    const response = await api.get("/analytics/overview", { params });
+    return response.data;
+}
+
 export async function exportAnalyticsPdf(params) {
     const response = await api.get("/analytics/export-pdf", {
         params,

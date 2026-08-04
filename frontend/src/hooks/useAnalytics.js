@@ -1,10 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
-import { getAnalytics, exportAnalyticsPdf } from "@/services/analytics.service";
+import {
+    getAnalytics,
+    getOverview,
+    exportAnalyticsPdf,
+} from "@/services/analytics.service";
 
 /* ---------------- Query Keys ---------------- */
 export const analyticsKeys = {
     all: ["analytics"],
     data: (filters) => [...analyticsKeys.all, filters],
+};
+
+export const overviewKeys = {
+    all: ["overview"],
+    data: (filters) => [...overviewKeys.all, filters],
 };
 
 /* ---------------- Queries ---------------- */
@@ -13,6 +22,14 @@ export function useAnalytics(filters = {}, options = {}) {
         queryKey: analyticsKeys.data(filters),
         queryFn: () => getAnalytics(filters),
         keepPreviousData: true,
+        ...options,
+    });
+}
+
+export function useOverview(filters = {}, options = {}) {
+    return useQuery({
+        queryKey: overviewKeys.data(filters),
+        queryFn: () => getOverview(filters),
         ...options,
     });
 }

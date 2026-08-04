@@ -1,13 +1,19 @@
 import mongoose from "mongoose";
+import Farmer from "../models/farmer.model.js";
 import Equipment from "../models/equipment.model.js";
 import Livestock from "../models/livestock.model.js";
 import Farm from "../models/farm.model.js";
 import Harvest from "../models/harvest.model.js";
+import Association from "../models/association.model.js";
+import Log from "../models/log.model.js";
 import { getDateRange } from "../utils/dateRange.util.js";
 
 const EQUIPMENT_CONDITIONS = ["good", "excellent", "damaged", "maintenance", "unusable"];
 const LIVESTOCK_CONDITIONS = ["healthy", "pregnant", "sick", "injured", "deceased"];
 const CROP_QUANTITY_KEYS = ["planted", "growing", "withered", "harvested", "damaged"];
+
+const TOP_FARMS_LIMIT = 6;
+const RECENT_ACTIVITIES_LIMIT = 6;
 
 // Fills in every enum value with 0 so pie charts don't drop empty
 // categories just because nothing in the period matched them.
@@ -194,5 +200,113 @@ export const getAnalytics = async ({ association, period }) => {
             cropStatus,
             monthlyYieldTrend: monthlyYieldRows,
         },
+    };
+};
+
+// Powers the dashboard Overview page — all-time KPIs and chart data,
+// not period-scoped like getAnalytics above. Same association-scoping
+// contract: `associationId` arrives pre-resolved by scopeByAssociationId
+// (pinned for `far` users, optional/omitted for everyone else).
+export const getOverview = async ({ associationId }) => {
+    const associationObjectId = associationId
+        ? new mongoose.Types.ObjectId(associationId)
+        : null;
+
+    const baseMatch = {
+        deletedAt: null,
+        ...(associationObjectId && { association: associationObjectId }),
+    };
+
+    const harvestMatch = {
+        ...(associationObjectId && { association: associationObjectId }),
+    };
+
+    const logMatch = associationObjectId ? { association: associationObjectId } : {};
+
+    const [
+        associationCount,
+        farmerCount,
+        farmCount,
+        equipmentCount,
+        livestockCount,
+        livestockConditionRows,
+        equipmentConditionRows,
+        topFarmHarvestRows,
+        recentLogs,
+    ] = await Promise.all([
+        // Only meaningful for roles not pinned to a single association —
+        // `far` users never see this KPI on the frontend, so skip the
+        // query entirely when scoped.
+        associationObjectId
+            ? Promise.resolve(null)
+            : Association.countDocuments({ deletedAt: null }),
+
+        Farmer.countDocuments(baseMatch),
+        Farm.countDocuments(baseMatch),
+        Equipment.countDocuments(baseMatch),
+        Livestock.countDocuments(baseMatch),
+
+        Livestock.aggregate([
+            { $match: baseMatch },
+            { $group: { _id: "$condition", count: { $sum: 1 } } },
+        ]),
+
+        Equipment.aggregate([
+            { $match: baseMatch },
+            { $group: { _id: "$condition", count: { $sum: 1 } } },
+        ]),
+
+        // Top farms by all-time harvested quantity — same Harvest-log
+        // sourcing as yieldPerFarm above, just not period-bounded and
+        // capped to the top N for the dashboard widget.
+        Harvest.aggregate([
+            { $match: harvestMatch },
+            { $group: { _id: "$farm", harvested: { $sum: "$quantity" } } },
+            {
+                $lookup: {
+                    from: "farms",
+                    localField: "_id",
+                    foreignField: "_id",
+                    as: "farmDoc",
+                },
+            },
+            { $unwind: "$farmDoc" },
+            {
+                $project: {
+                    _id: 0,
+                    farm: FARM_LABEL_EXPR,
+                    harvested: 1,
+                },
+            },
+            { $sort: { harvested: -1 } },
+            { $limit: TOP_FARMS_LIMIT },
+        ]),
+
+        Log.find(logMatch).sort({ createdAt: -1 }).limit(RECENT_ACTIVITIES_LIMIT),
+    ]);
+
+    return {
+        kpis: {
+            associations: associationCount,
+            farmers: farmerCount,
+            farms: farmCount,
+            equipment: equipmentCount,
+            livestock: livestockCount,
+        },
+        livestock: {
+            healthStatus: fillCategories(livestockConditionRows, LIVESTOCK_CONDITIONS),
+        },
+        equipment: {
+            statusDistribution: fillCategories(equipmentConditionRows, EQUIPMENT_CONDITIONS),
+        },
+        farm: {
+            topHarvested: topFarmHarvestRows,
+        },
+        activities: recentLogs.map((log) => ({
+            id: log._id,
+            entityType: log.entityType,
+            message: log.message,
+            createdAt: log.createdAt,
+        })),
     };
 };
