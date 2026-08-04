@@ -29,40 +29,12 @@ import { PageHeader, StatCard } from "@/components/public";
 import { Button, Select } from "@/components/ui";
 import { useAnalytics, downloadAnalyticsPdf } from "@/hooks/useAnalytics";
 import { useAssociations } from "@/hooks/useAssociations";
-
-/* ---------------- Colors (semantic tokens) ---------------- */
-const COLORS = [
-  "#166534",
-  "#65a30d",
-  "#ca8a04",
-  "#dc2626",
-  "#2563eb",
-  "#7c3aed",
-];
-
-/* ---------------- Filter options ---------------- */
-const PERIOD_OPTIONS = [
-  { value: "week", label: "This Week" },
-  { value: "month", label: "This Month" },
-  { value: "year", label: "This Year" },
-];
-
-const MONTH_LABELS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
-
-const ALL_ASSOCIATIONS_OPTION = { id: null, name: "All Associations" };
+import {
+  ANALYTICS_CHART_COLORS,
+  ANALYTICS_PERIOD_OPTIONS,
+  ANALYTICS_MONTH_LABELS,
+  ALL_ASSOCIATIONS_OPTION,
+} from "@/constants/data";
 
 /* ---------------- Helpers ---------------- */
 function capitalize(str) {
@@ -77,7 +49,7 @@ function capitalize(str) {
 function buildMonthlyChartData(monthlyYieldRows, farmNames) {
   const byMonth = new Map();
   for (let m = 1; m <= 12; m++) {
-    const row = { month: MONTH_LABELS[m - 1] };
+    const row = { month: ANALYTICS_MONTH_LABELS[m - 1] };
     for (const farm of farmNames) row[farm] = 0;
     byMonth.set(m, row);
   }
@@ -209,7 +181,7 @@ function FilterBar({
         <Select
           value={period}
           onChange={onPeriodChange}
-          options={PERIOD_OPTIONS}
+          options={ANALYTICS_PERIOD_OPTIONS}
         />
       </div>
       <AssociationFilter
@@ -464,7 +436,14 @@ export function AnalyticsPage() {
                   label
                 >
                   {equipmentStatus.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    <Cell
+                      key={i}
+                      fill={
+                        ANALYTICS_CHART_COLORS[
+                          i % ANALYTICS_CHART_COLORS.length
+                        ]
+                      }
+                    />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -486,7 +465,14 @@ export function AnalyticsPage() {
                   label
                 >
                   {livestockHealth.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    <Cell
+                      key={i}
+                      fill={
+                        ANALYTICS_CHART_COLORS[
+                          i % ANALYTICS_CHART_COLORS.length
+                        ]
+                      }
+                    />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -546,7 +532,14 @@ export function AnalyticsPage() {
                   label
                 >
                   {cropStatus.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    <Cell
+                      key={i}
+                      fill={
+                        ANALYTICS_CHART_COLORS[
+                          i % ANALYTICS_CHART_COLORS.length
+                        ]
+                      }
+                    />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -571,7 +564,9 @@ export function AnalyticsPage() {
                     key={farm}
                     type="monotone"
                     dataKey={farm}
-                    stroke={COLORS[i % COLORS.length]}
+                    stroke={
+                      ANALYTICS_CHART_COLORS[i % ANALYTICS_CHART_COLORS.length]
+                    }
                     strokeWidth={2}
                     dot={{ r: 3 }}
                   />

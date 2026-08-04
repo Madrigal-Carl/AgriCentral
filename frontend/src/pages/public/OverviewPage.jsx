@@ -1,62 +1,15 @@
 import { Users, Wheat, Tractor, Beef, Building2 } from "lucide-react";
 import { PageHeader, StatCard } from "@/components/public";
 import { useOverview } from "@/hooks/useAnalytics";
-
-const STATUS_TONES = {
-  healthy: "bg-accent",
-  pregnant: "bg-[#a855f7]",
-  sick: "bg-[#f59e0b]",
-  injured: "bg-[#ef4444]",
-  deceased: "bg-[#94a3b8]",
-};
-
-const STATUS_HEX = {
-  healthy: "#00e676",
-  pregnant: "#a855f7",
-  sick: "#f59e0b",
-  injured: "#ef4444",
-  deceased: "#94a3b8",
-};
-
-const LIVESTOCK_ORDER = ["healthy", "pregnant", "sick", "injured", "deceased"];
-
-const EQUIPMENT_TONES = {
-  excellent: "bg-accent",
-  good: "bg-[#3b82f6]",
-  maintenance: "bg-[#f59e0b]",
-  damaged: "bg-[#ef4444]",
-  unusable: "bg-[#64748b]",
-};
-
-const EQUIPMENT_HEX = {
-  excellent: "#00e676",
-  good: "#3b82f6",
-  maintenance: "#f59e0b",
-  damaged: "#ef4444",
-  unusable: "#64748b",
-};
-
-// Display order differs from the backend's enum order (good, excellent,
-// damaged, maintenance, unusable) — reordered here for a "best to worst"
-// reading order in the UI.
-const EQUIPMENT_ORDER = [
-  "excellent",
-  "good",
-  "maintenance",
-  "damaged",
-  "unusable",
-];
-
-const FARM_PALETTE = [
-  "#00a86b",
-  "#3b82f6",
-  "#f59e0b",
-  "#a855f7",
-  "#06b6d4",
-  "#ec4899",
-  "#84cc16",
-  "#f97316",
-];
+import {
+  LIVESTOCK_STATUS_TONES,
+  LIVESTOCK_STATUS_HEX,
+  LIVESTOCK_STATUS_ORDER,
+  EQUIPMENT_CONDITION_TONES,
+  EQUIPMENT_CONDITION_HEX,
+  EQUIPMENT_CONDITION_CHART_ORDER,
+  FARM_HARVEST_PALETTE,
+} from "@/constants/data";
 
 function relativeTime(dateStr) {
   const then = new Date(dateStr).getTime();
@@ -76,25 +29,25 @@ export function OverviewPage() {
   const overview = data?.data;
   const showAssociations = typeof overview?.kpis?.associations === "number";
 
-  // ─── Livestock: reorder backend rows into LIVESTOCK_ORDER, attach tone/hex ───
+  // ─── Livestock: reorder backend rows into LIVESTOCK_STATUS_ORDER, attach tone/hex ───
   const livestockRows = overview?.livestock?.healthStatus ?? [];
   const livestockByName = new Map(livestockRows.map((r) => [r.name, r.value]));
-  const LIVESTOCK_STATUS = LIVESTOCK_ORDER.map((key) => ({
+  const LIVESTOCK_STATUS = LIVESTOCK_STATUS_ORDER.map((key) => ({
     label: key.charAt(0).toUpperCase() + key.slice(1),
     value: livestockByName.get(key) ?? 0,
-    tone: STATUS_TONES[key],
-    hex: STATUS_HEX[key],
+    tone: LIVESTOCK_STATUS_TONES[key],
+    hex: LIVESTOCK_STATUS_HEX[key],
   }));
   const totalLivestock = LIVESTOCK_STATUS.reduce((s, x) => s + x.value, 0);
 
-  // ─── Equipment: reorder backend rows into EQUIPMENT_ORDER, attach tone/hex ───
+  // ─── Equipment: reorder backend rows into EQUIPMENT_CONDITION_CHART_ORDER, attach tone/hex ───
   const equipmentRows = overview?.equipment?.statusDistribution ?? [];
   const equipmentByName = new Map(equipmentRows.map((r) => [r.name, r.value]));
-  const EQUIPMENT_CONDITION = EQUIPMENT_ORDER.map((key) => ({
+  const EQUIPMENT_CONDITION = EQUIPMENT_CONDITION_CHART_ORDER.map((key) => ({
     label: key.charAt(0).toUpperCase() + key.slice(1),
     value: equipmentByName.get(key) ?? 0,
-    tone: EQUIPMENT_TONES[key],
-    hex: EQUIPMENT_HEX[key],
+    tone: EQUIPMENT_CONDITION_TONES[key],
+    hex: EQUIPMENT_CONDITION_HEX[key],
   }));
   const totalEquipment = EQUIPMENT_CONDITION.reduce((s, x) => s + x.value, 0);
 
@@ -103,7 +56,7 @@ export function OverviewPage() {
     label: d.farm,
     value: d.harvested,
     unit: "kg",
-    color: FARM_PALETTE[i % FARM_PALETTE.length],
+    color: FARM_HARVEST_PALETTE[i % FARM_HARVEST_PALETTE.length],
   }));
   const maxHarvest = Math.max(1, ...FARM_HARVEST.map((d) => d.value));
 

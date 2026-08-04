@@ -299,16 +299,6 @@ export const REPORTS = [
 
 export const BOAC_CENTER = { lat: 13.4456, lng: 121.8403 };
 
-export const CROP_OPTIONS = [
-    "Rice",
-    "Maize",
-    "Wheat",
-    "Vegetables",
-    "Coffee",
-    "Cocoa",
-    "Cassava",
-    "Sorghum",
-];
 
 export const CROP_STATUS_TONE = {
     planted: "info",
@@ -501,14 +491,6 @@ export const GENDER_OPTIONS = [
     { value: "female", label: "Female" },
 ];
 
-export const ASSOCIATION_OPTIONS = [
-    "Boac, Marinduque",
-    "Gasan, Marinduque",
-    "Buenavista, Marinduque",
-    "Mogpog, Marinduque",
-    "Santa Cruz, Marinduque",
-    "Torrijos, Marinduque",
-];
 
 export const POSITION_OPTIONS = [
     { value: "president", label: "President" },
@@ -522,14 +504,6 @@ export const POSITION_OPTIONS = [
     { value: "member", label: "Member" },
 ];
 
-export const FARMER_OPTIONS = [
-    "FR-001 · Lina Okoro",
-    "FR-002 · Samuel Mwangi",
-    "FR-003 · Aisha Bello",
-    "FR-004 · Chidi Okafor",
-    "FR-005 · Joseph Kamau",
-    "FR-006 · Mariam Diallo",
-];
 
 export const CROP_STATUS_OPTIONS = [
     { value: "planted", label: "Planted" },
@@ -555,18 +529,6 @@ export const condLabel = {
     unusable: "Unusable",
 };
 
-export const EQUIPMENT_CATALOG = [
-    "Tractor T-204",
-    "Harvester H-12",
-    "Plow P-08",
-    "Sprayer S-31",
-    "Seeder SD-15",
-    "Rotavator RV-09",
-    "Cultivator C-22",
-    "Baler B-17",
-    "Irrigation Pump IP-05",
-    "Thresher TR-11",
-];
 
 export const EQUIPMENT_CONDITION_OPTIONS = [
     { value: "excellent", label: "Excellent" },
@@ -596,44 +558,8 @@ export const LIVESTOCK_HEALTH_OPTIONS = [
     { value: "deceased", label: "Deceased" },
 ];
 
-export const LIVESTOCK_CATALOG = [
-    { id: "LS-101", animal: "Cow", breed: "Friesian", gender: "female" },
-    { id: "LS-102", animal: "Cow", breed: "Jersey", gender: "female" },
-    { id: "LS-103", animal: "Cow", breed: "Angus", gender: "male" },
-    { id: "LS-104", animal: "Goat", breed: "Boer", gender: "male" },
-    { id: "LS-105", animal: "Goat", breed: "Nubian", gender: "female" },
-    { id: "LS-106", animal: "Sheep", breed: "Merino", gender: "female" },
-    { id: "LS-107", animal: "Sheep", breed: "Dorper", gender: "male" },
-    { id: "LS-108", animal: "Pig", breed: "Yorkshire", gender: "female" },
-    { id: "LS-109", animal: "Chicken", breed: "Leghorn", gender: "female" },
-    {
-        id: "LS-110",
-        animal: "Chicken",
-        breed: "Rhode Island Red",
-        gender: "male",
-    },
-];
 
-export const LIVESTOCK_LIST = [
-    "Cow - Friesian (Female) [LS-101]",
-    "Cow - Jersey (Female) [LS-102]",
-    "Cow - Angus (Male) [LS-103]",
-    "Goat - Boer (Male) [LS-104]",
-    "Goat - Nubian (Female) [LS-105]",
-    "Sheep - Merino (Female) [LS-106]",
-    "Sheep - Dorper (Male) [LS-107]",
-    "Pig - Yorkshire (Female) [LS-108]",
-    "Chicken - Leghorn (Female) [LS-109]",
-    "Chicken - Rhode Island Red (Male) [LS-110]",
-];
 
-export const ANIMAL_OPTIONS = [
-    { value: "Cow", label: "Cow" },
-    { value: "Goat", label: "Goat" },
-    { value: "Sheep", label: "Sheep" },
-    { value: "Pig", label: "Pig" },
-    { value: "Chicken", label: "Chicken" },
-];
 
 export const typeLabel = {
     equipment: "Equipment", livestock: "Livestock",
@@ -677,11 +603,6 @@ export const TYPE_OPTIONS = [
     { value: "livestock", label: "Livestock" },
 ];
 
-export const REPORT_TYPE_OPTIONS = [
-    { value: "crop", label: "Crop" },
-    { value: "equipment", label: "Equipment" },
-    { value: "livestock", label: "Livestock" },
-];
 
 export const positionTone = {
     President: "danger",
@@ -738,3 +659,105 @@ export const FARMER_CLASSIFICATION_LABEL = {
     co_owner: "Co-Owner",
     beneficiary: "Beneficiary",
 };
+
+// ─── Overview page: livestock health donut display tokens ───
+// Named distinctly from `healthTone` above — that one maps to generic
+// badge tones (success/warning/...), these map to the exact bg-class +
+// hex pairs the Overview donut/legend needs.
+export const LIVESTOCK_STATUS_TONES = {
+    healthy: "bg-accent",
+    pregnant: "bg-[#a855f7]",
+    sick: "bg-[#f59e0b]",
+    injured: "bg-[#ef4444]",
+    deceased: "bg-[#94a3b8]",
+};
+
+export const LIVESTOCK_STATUS_HEX = {
+    healthy: "#00e676",
+    pregnant: "#a855f7",
+    sick: "#f59e0b",
+    injured: "#ef4444",
+    deceased: "#94a3b8",
+};
+
+export const LIVESTOCK_STATUS_ORDER = [
+    "healthy",
+    "pregnant",
+    "sick",
+    "injured",
+    "deceased",
+];
+
+// ─── Overview page: equipment condition donut display tokens ───
+// Distinct from `condTone` above for the same reason as livestock.
+export const EQUIPMENT_CONDITION_TONES = {
+    excellent: "bg-accent",
+    good: "bg-[#3b82f6]",
+    maintenance: "bg-[#f59e0b]",
+    damaged: "bg-[#ef4444]",
+    unusable: "bg-[#64748b]",
+};
+
+export const EQUIPMENT_CONDITION_HEX = {
+    excellent: "#00e676",
+    good: "#3b82f6",
+    maintenance: "#f59e0b",
+    damaged: "#ef4444",
+    unusable: "#64748b",
+};
+
+// Display order differs from the backend's enum order (good, excellent,
+// damaged, maintenance, unusable) — reordered here for a "best to worst"
+// reading order in the UI.
+export const EQUIPMENT_CONDITION_CHART_ORDER = [
+    "excellent",
+    "good",
+    "maintenance",
+    "damaged",
+    "unusable",
+];
+
+// Overview page: palette cycled across the top-harvested-farms bar list.
+export const FARM_HARVEST_PALETTE = [
+    "#00a86b",
+    "#3b82f6",
+    "#f59e0b",
+    "#a855f7",
+    "#06b6d4",
+    "#ec4899",
+    "#84cc16",
+    "#f97316",
+];
+
+// ─── Analytics page display tokens ───
+export const ANALYTICS_CHART_COLORS = [
+    "#166534",
+    "#65a30d",
+    "#ca8a04",
+    "#dc2626",
+    "#2563eb",
+    "#7c3aed",
+];
+
+export const ANALYTICS_PERIOD_OPTIONS = [
+    { value: "week", label: "This Week" },
+    { value: "month", label: "This Month" },
+    { value: "year", label: "This Year" },
+];
+
+export const ANALYTICS_MONTH_LABELS = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+];
+
+export const ALL_ASSOCIATIONS_OPTION = { id: null, name: "All Associations" };
