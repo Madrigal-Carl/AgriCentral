@@ -1,6 +1,10 @@
-import { Users, Wheat, Tractor, Beef, Activity } from "lucide-react";
+import { Users, Wheat, Tractor, Beef, Building2 } from "lucide-react";
 import { PageHeader, StatCard } from "@/components/public";
 import { FARMERS, FARMS, LIVESTOCKS, EQUIPMENTS } from "@/constants/data";
+import useAuth from "@/hooks/useAuth";
+
+// ─── Association count (hardcoded for now — will come from Association collection) ───
+const ASSOCIATION_COUNT = 8;
 
 const STATUS_TONES = {
   healthy: "bg-accent",
@@ -18,49 +22,79 @@ const STATUS_HEX = {
   deceased: "#94a3b8",
 };
 
-const CROP_PALETTE = [
-  "#00a86b", // green
-  "#f59e0b", // amber
-  "#3b82f6", // blue
-  "#ef4444", // red
-  "#a855f7", // purple
-  "#06b6d4", // cyan
-  "#eab308", // yellow
-  "#ec4899", // pink
-  "#84cc16", // lime
-  "#f97316", // orange
-  "#14b8a6", // teal
-  "#6366f1", // indigo
+// ─── Equipment condition (hardcoded for now — mirrors Equipment.condition enum) ───
+const EQUIPMENT_TONES = {
+  excellent: "bg-accent",
+  good: "bg-[#3b82f6]",
+  maintenance: "bg-[#f59e0b]",
+  damaged: "bg-[#ef4444]",
+  unusable: "bg-[#64748b]",
+};
+
+const EQUIPMENT_HEX = {
+  excellent: "#00e676",
+  good: "#3b82f6",
+  maintenance: "#f59e0b",
+  damaged: "#ef4444",
+  unusable: "#64748b",
+};
+
+const EQUIPMENT_CONDITION = [
+  { key: "excellent", label: "Excellent", value: 14 },
+  { key: "good", label: "Good", value: 27 },
+  { key: "maintenance", label: "Maintenance", value: 7 },
+  { key: "damaged", label: "Damaged", value: 3 },
+  { key: "unusable", label: "Unusable", value: 1 },
+].map((s) => ({
+  ...s,
+  tone: EQUIPMENT_TONES[s.key],
+  hex: EQUIPMENT_HEX[s.key],
+}));
+
+// ─── Farm harvest totals (hardcoded for now — will sum Harvest.quantity per farm) ───
+const FARM_PALETTE = [
+  "#00a86b",
+  "#3b82f6",
+  "#f59e0b",
+  "#a855f7",
+  "#06b6d4",
+  "#ec4899",
+  "#84cc16",
+  "#f97316",
 ];
 
-function colorForCrop(label, index) {
-  return CROP_PALETTE[index % CROP_PALETTE.length];
-}
+const FARM_HARVEST = [
+  { label: "Farm 01 · Rosario", value: 4820, unit: "kg" },
+  { label: "Farm 04 · Sta. Cruz", value: 3960, unit: "kg" },
+  { label: "Farm 02 · San Isidro", value: 3410, unit: "kg" },
+  { label: "Farm 07 · Del Pilar", value: 2680, unit: "kg" },
+  { label: "Farm 05 · Malaya", value: 1975, unit: "kg" },
+  { label: "Farm 03 · Bagong Silang", value: 1240, unit: "kg" },
+]
+  .sort((a, b) => b.value - a.value)
+  .map((d, i) => ({ ...d, color: FARM_PALETTE[i % FARM_PALETTE.length] }));
 
-function buildFarmDistribution() {
-  const counts = new Map();
-  for (const f of FARMS) {
-    for (const c of f.crops || []) {
-      counts.set(c.crop, (counts.get(c.crop) || 0) + 1);
-    }
-  }
-  return [...counts.entries()]
-    .map(([label, value]) => ({ label, value }))
-    .sort((a, b) => b.value - a.value)
-    .map((d, i) => ({ ...d, color: colorForCrop(d.label, i) }));
-}
+const LIVESTOCK_STATUSES = [
+  "healthy",
+  "pregnant",
+  "sick",
+  "injured",
+  "deceased",
+];
 
 function buildLivestockStatus() {
-  const counts = new Map();
+  const counts = new Map(LIVESTOCK_STATUSES.map((k) => [k, 0]));
   for (const l of LIVESTOCKS) {
-    const key = l.health || "active";
-    counts.set(key, (counts.get(key) || 0) + 1);
+    const key = l.condition || l.health;
+    if (counts.has(key)) {
+      counts.set(key, counts.get(key) + 1);
+    }
   }
-  return [...counts.entries()].map(([k, v]) => ({
+  return LIVESTOCK_STATUSES.map((k) => ({
     label: k.charAt(0).toUpperCase() + k.slice(1),
-    value: v,
-    tone: STATUS_TONES[k] || "bg-secondary",
-    hex: STATUS_HEX[k] || "#64748b",
+    value: counts.get(k),
+    tone: STATUS_TONES[k],
+    hex: STATUS_HEX[k],
   }));
 }
 
@@ -118,12 +152,15 @@ function buildActivities() {
 }
 
 export function OverviewPage() {
-  const FARM_DISTRIBUTION = buildFarmDistribution();
+  const { role } = useAuth();
+  const showAssociations = role !== "far";
+
   const LIVESTOCK_STATUS = buildLivestockStatus();
   const ACTIVITIES = buildActivities();
 
   const totalLivestock = LIVESTOCK_STATUS.reduce((s, x) => s + x.value, 0);
-  const maxDist = Math.max(1, ...FARM_DISTRIBUTION.map((d) => d.value));
+  const totalEquipment = EQUIPMENT_CONDITION.reduce((s, x) => s + x.value, 0);
+  const maxHarvest = Math.max(1, ...FARM_HARVEST.map((d) => d.value));
 
   return (
     <div>
@@ -132,7 +169,18 @@ export function OverviewPage() {
         subtitle="Live operational view of your farm network."
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div
+        className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${
+          showAssociations ? "xl:grid-cols-5" : "xl:grid-cols-4"
+        }`}
+      >
+        {showAssociations && (
+          <StatCard
+            label="Total Associations"
+            value={ASSOCIATION_COUNT.toLocaleString()}
+            icon={Building2}
+          />
+        )}
         <StatCard
           label="Total Farmers"
           value={FARMERS.length.toLocaleString()}
@@ -155,56 +203,49 @@ export function OverviewPage() {
         />
       </div>
 
+      {/* ─── Graphs: Livestock health · Equipment condition · Farm harvest ─── */}
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="bg-surface border border-border p-6 lg:col-span-2 rounded-lg">
-          <div className="mb-6 flex items-end justify-between">
-            <div>
-              <div className="label-eyebrow">Farm distribution</div>
-              <h3 className="font-display mt-1 text-xl text-foreground">
-                By crop type
-              </h3>
-            </div>
-            <Activity className="h-4 w-4 text-secondary" />
-          </div>
-          {FARM_DISTRIBUTION.length === 0 ? (
-            <div className="text-sm text-secondary">No crops recorded.</div>
-          ) : (
-            <div className="space-y-4">
-              {FARM_DISTRIBUTION.map((d) => (
-                <div key={d.label}>
-                  <div className="mb-1.5 flex items-center justify-between text-xs">
-                    <span className="flex items-center gap-2 font-semibold text-foreground">
-                      <span
-                        className="h-2.5 w-2.5 rounded-full"
-                        style={{ backgroundColor: d.color }}
-                      />
-                      {d.label}
-                    </span>
-                    <span className="text-secondary">
-                      {d.value} {d.value === 1 ? "farm" : "farms"}
-                    </span>
-                  </div>
-                  <div className="h-2 w-full bg-muted">
-                    <div
-                      className="h-full transition-all"
-                      style={{
-                        width: `${(d.value / maxDist) * 100}%`,
-                        backgroundColor: d.color,
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Livestock status card unchanged */}
         <div className="bg-surface border border-border p-6 rounded-lg">
           <div className="mb-6">
-            <div className="label-eyebrow">Livestock health status</div>
+            <div className="label-eyebrow">Top Farms</div>
             <h3 className="font-display mt-1 text-xl text-foreground">
-              Distribution
+              Total harvested
+            </h3>
+          </div>
+          <div className="space-y-4">
+            {FARM_HARVEST.map((d) => (
+              <div key={d.label}>
+                <div className="mb-1.5 flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-2 font-semibold text-foreground">
+                    <span
+                      className="h-2.5 w-2.5 rounded-full"
+                      style={{ backgroundColor: d.color }}
+                    />
+                    {d.label}
+                  </span>
+                  <span className="text-secondary">
+                    {d.value.toLocaleString()} {d.unit}
+                  </span>
+                </div>
+                <div className="h-2 w-full bg-muted">
+                  <div
+                    className="h-full transition-all"
+                    style={{
+                      width: `${(d.value / maxHarvest) * 100}%`,
+                      backgroundColor: d.color,
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-surface border border-border p-6 rounded-lg">
+          <div className="mb-6">
+            <div className="label-eyebrow">Livestock</div>
+            <h3 className="font-display mt-1 text-xl text-foreground">
+              Health status
             </h3>
           </div>
           <div className="flex flex-col items-center">
@@ -227,8 +268,37 @@ export function OverviewPage() {
             </ul>
           </div>
         </div>
+
+        <div className="bg-surface border border-border p-6 rounded-lg">
+          <div className="mb-6">
+            <div className="label-eyebrow">Equipment</div>
+            <h3 className="font-display mt-1 text-xl text-foreground">
+              Condition overview
+            </h3>
+          </div>
+          <div className="flex flex-col items-center">
+            <Donut data={EQUIPMENT_CONDITION} total={totalEquipment} />
+            <ul className="mt-6 w-full space-y-2">
+              {EQUIPMENT_CONDITION.map((s) => (
+                <li
+                  key={s.label}
+                  className="flex items-center justify-between text-sm"
+                >
+                  <span className="flex items-center gap-2">
+                    <span className={`h-2.5 w-2.5 ${s.tone}`} />
+                    <span className="text-foreground">{s.label}</span>
+                  </span>
+                  <span className="font-semibold text-foreground">
+                    {s.value}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
       </div>
 
+      {/* ─── Recent activities (unchanged) ─── */}
       <div className="mt-6 bg-surface border border-border p-6 rounded-lg">
         <div className="mb-5 flex items-center justify-between">
           <div>
