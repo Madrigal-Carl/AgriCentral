@@ -1,8 +1,16 @@
 import Association from "../models/association.model.js";
 
 const ASSOCIATIONS_TO_SEED = [
-    { name: "San Isidro Farmers Association" },
-    { name: "Mabuhay Agri Cooperative" },
+    { name: "Agot Rice Farmers Association" },
+    { name: "Isok Vegetable Growers Cooperative" },
+    { name: "Laylay Coconut Farmers Association" },
+    { name: "Mansiwat Agri-Livestock Association" },
+    { name: "Tumagabok Rootcrop Growers Cooperative" },
+    { name: "Balimbing Farmers and Fisherfolk Association" },
+    { name: "Boi Corn Producers Association" },
+    { name: "Catubugan Banana Growers Cooperative" },
+    { name: "Poctoy Coastal Farmers Association" },
+    { name: "Mataas na Bayan Highland Farmers Association" },
 ];
 
 export const wipeAssociations = async () => {

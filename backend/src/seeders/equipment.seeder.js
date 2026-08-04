@@ -4,6 +4,11 @@ const EQUIPMENT_TO_SEED = [
     { propertyNumber: "EQP-001", name: "Hand Tractor", condition: "good" },
     { propertyNumber: "EQP-002", name: "Water Pump", condition: "excellent" },
     { propertyNumber: "EQP-003", name: "Rice Thresher", condition: "maintenance" },
+    { propertyNumber: "EQP-004", name: "Coconut Husker", condition: "good" },
+    { propertyNumber: "EQP-005", name: "Cassava Grater", condition: "good" },
+    { propertyNumber: "EQP-006", name: "Rice Mill", condition: "excellent" },
+    { propertyNumber: "EQP-007", name: "Sprayer", condition: "good" },
+    { propertyNumber: "EQP-008", name: "Grass Cutter", condition: "damaged" },
 ];
 
 // Deliberately has no association/assignedFarmer — these represent
@@ -11,8 +16,10 @@ const EQUIPMENT_TO_SEED = [
 // creating a request (see request.seeder.js), since real requests
 // target existing, unassigned entities.
 const UNASSIGNED_EQUIPMENT_TO_SEED = [
-    { propertyNumber: "EQP-004", name: "Corn Sheller", condition: "good" },
-    { propertyNumber: "EQP-005", name: "Sprayer", condition: "excellent" },
+    { propertyNumber: "EQP-009", name: "Corn Sheller", condition: "good" },
+    { propertyNumber: "EQP-010", name: "Weeding Machine", condition: "excellent" },
+    { propertyNumber: "EQP-011", name: "Sickle Bar Mower", condition: "good" },
+    { propertyNumber: "EQP-012", name: "Multi-Purpose Dryer", condition: "maintenance" },
 ];
 
 export const wipeEquipments = async () => {

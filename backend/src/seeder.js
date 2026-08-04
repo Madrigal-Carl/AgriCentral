@@ -6,6 +6,7 @@ import { wipeUsers, seedUsers } from "./seeders/user.seeder.js";
 import { wipeFarmers, seedFarmers } from "./seeders/farmer.seeder.js";
 import { wipeCrops, seedCrops } from "./seeders/crop.seeder.js";
 import { wipeFarms, seedFarms } from "./seeders/farm.seeder.js";
+import { wipeHarvests, seedHarvests } from "./seeders/harvest.seeder.js";
 import { wipeLivestocks, seedLivestocks } from "./seeders/livestock.seeder.js";
 import { wipeEquipments, seedEquipments } from "./seeders/equipment.seeder.js";
 import { wipeReports, seedReports } from "./seeders/report.seeder.js";
@@ -20,13 +21,16 @@ import { wipeRequests, seedRequests } from "./seeders/request.seeder.js";
 //   Users        -> no dependencies (seeded with association: null)
 //   Farmers      -> needs Associations
 //   Crops        -> needs Farmers (association is copied from the farmer)
-//   Farms        -> needs Associations, Farmers, Crops
+//   Farms        -> needs Associations, Farmers, Crops (each farm now
+//                   comes with assignedFarmers + crops already embedded)
+//   Harvests     -> needs Farms (crops embedded on each farm) and Crops
 //   Livestock    -> needs Farmers
 //   Equipment    -> needs Farmers
-//   Reports      -> wipe-only for now; needs Farmers, Farms, Crops,
-//                   Livestock, Equipment once seeding logic is added
+//   Reports      -> needs Farms, Livestock, Equipment (reported items are
+//                   pulled from these) and Users (aew/coordinator approvers)
 //   Logs         -> needs Farmers, Farms, Livestock, Equipment
-//   Requests     -> wipe-only for now; seeding logic comes later
+//   Requests     -> needs Livestock, Equipment (unassigned items only),
+//                   Associations, and Users (coordinator/governor/head approvers)
 //
 // To add a new model seeder later: create seeders/xxx.seeder.js exporting
 // wipeXxx()/seedXxx(context), import it above, and add one entry below in
@@ -37,6 +41,7 @@ const SEEDERS = [
     { name: "Farmers", wipe: wipeFarmers, seed: seedFarmers },
     { name: "Crops", wipe: wipeCrops, seed: seedCrops },
     { name: "Farms", wipe: wipeFarms, seed: seedFarms },
+    { name: "Harvests", wipe: wipeHarvests, seed: seedHarvests },
     { name: "Livestock", wipe: wipeLivestocks, seed: seedLivestocks },
     { name: "Equipment", wipe: wipeEquipments, seed: seedEquipments },
     { name: "Reports", wipe: wipeReports, seed: seedReports },
