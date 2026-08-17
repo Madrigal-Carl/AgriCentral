@@ -11,13 +11,13 @@ import {
     validateFarmIdParam,
     validateGetFarmsQuery,
 } from "../validators/farm.validator.js";
-import { authenticated, scopeByAssociationId } from "../middlewares/auth.middleware.js";
+import { authenticated, allowRoles, scopeByAssociationId } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
-router.get("/", authenticated, scopeByAssociationId, validateGetFarmsQuery, getFarmsHandler);
-router.post("/", authenticated, validateCreateFarm, createFarmHandler);
-router.patch("/:id", authenticated, validateFarmIdParam, validateUpdateFarm, updateFarmHandler);
-router.delete("/:id", authenticated, validateFarmIdParam, deleteFarmHandler);
+router.get("/", authenticated, allowRoles("far", "aew", "head", "admin"), scopeByAssociationId, validateGetFarmsQuery, getFarmsHandler);
+router.post("/", authenticated, allowRoles("far", "aew", "admin"), validateCreateFarm, createFarmHandler);
+router.patch("/:id", authenticated, allowRoles("far", "aew", "admin"), validateFarmIdParam, validateUpdateFarm, updateFarmHandler);
+router.delete("/:id", authenticated, allowRoles("far", "aew", "admin"), validateFarmIdParam, deleteFarmHandler);
 
 export default router;

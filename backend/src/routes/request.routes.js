@@ -16,6 +16,7 @@ import {
 } from "../validators/request.validator.js";
 import {
     authenticated,
+    allowRoles,
     scopeByAssociationId,
     scopeByApprovalStage,
 } from "../middlewares/auth.middleware.js";
@@ -25,16 +26,18 @@ const router = express.Router();
 router.get(
     "/",
     authenticated,
+    allowRoles("far", "coordinator", "governor", "head", "admin"),
     scopeByAssociationId,
     scopeByApprovalStage,
     validateGetRequestsQuery,
     getRequestsHandler,
 );
-router.post("/", authenticated, validateCreateRequest, createRequestHandler);
-router.patch("/:id", authenticated, validateRequestIdParam, validateUpdateRequest, updateRequestHandler);
+router.post("/", authenticated, allowRoles("far"), validateCreateRequest, createRequestHandler);
+router.patch("/:id", authenticated, allowRoles("far"), validateRequestIdParam, validateUpdateRequest, updateRequestHandler);
 router.patch(
     "/:id/approval",
     authenticated,
+    allowRoles("coordinator", "governor", "head"),
     validateRequestIdParam,
     validateUpdateRequestApproval,
     updateRequestApprovalHandler,
@@ -42,9 +45,10 @@ router.patch(
 router.patch(
     "/:id/release",
     authenticated,
+    allowRoles("coordinator"),
     validateRequestIdParam,
     releaseRequestHandler,
 );
-router.delete("/:id", authenticated, validateRequestIdParam, deleteRequestHandler);
+router.delete("/:id", authenticated, allowRoles("far"), validateRequestIdParam, deleteRequestHandler);
 
 export default router;

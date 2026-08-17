@@ -56,8 +56,25 @@ export const createUser = async (data) => {
     return user;
 };
 
-export const updateUser = async (id, data) => {
-    const { password, association, ...rest } = data;
+export const updateUser = async (id, data, actor) => {
+    let { password, association, ...rest } = data;
+
+    const isAdmin = actor?.role === "admin";
+    const isSelf = String(actor?._id) === String(id);
+
+    // Non-admins may only touch their own record, and only their own
+    // non-privileged fields — role, verification, and association are
+    // admin-only concerns.
+    if (!isAdmin) {
+        if (!isSelf) {
+            const forbidden = new Error("Forbidden: insufficient permissions");
+            forbidden.statusCode = 403;
+            throw forbidden;
+        }
+        delete rest.role;
+        delete rest.isVerified;
+        association = undefined;
+    }
 
     if (rest.email) {
         const existing = await User.findOne({
@@ -85,7 +102,8 @@ export const updateUser = async (id, data) => {
     }
 
     const touchesAssociation =
-        Object.prototype.hasOwnProperty.call(data, "association") || rest.role;
+        isAdmin &&
+        (Object.prototype.hasOwnProperty.call(data, "association") || rest.role);
 
     let resolvedAssociationId;
     if (touchesAssociation) {
@@ -121,7 +139,7 @@ export const updateUser = async (id, data) => {
 
     const resolvedRole = rest.role ?? existingUser.role;
     const justVerified =
-        data.isVerified === true && existingUser.isVerified !== true;
+        isAdmin && data.isVerified === true && existingUser.isVerified !== true;
 
     if (justVerified && resolvedRole === "far") {
         await emailQueue.add(EMAIL_JOBS.ACCOUNT_APPROVED, {

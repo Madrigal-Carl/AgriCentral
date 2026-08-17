@@ -102,6 +102,18 @@ export const allowRoles = (...allowedRoles) => {
   };
 };
 
+// Admins may act on any user; everyone else may only act on their own
+// record (used for profile updates from the Settings page).
+export const selfOrAdmin = (req, res, next) => {
+  const { role, _id } = req.user || {};
+
+  if (role !== "admin" && String(_id) !== String(req.params.id)) {
+    return res.status(403).json({ message: "Forbidden: insufficient permissions" });
+  }
+
+  next();
+};
+
 export const excludeRoles = (...blockedRoles) => {
   return (req, res, next) => {
     if (req.user && blockedRoles.includes(req.user.role)) {

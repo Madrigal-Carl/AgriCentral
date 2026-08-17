@@ -16,7 +16,7 @@ export const createUserHandler = asyncHandler(async (req, res) => {
 });
 
 export const updateUserHandler = asyncHandler(async (req, res) => {
-    const user = await updateUser(req.params.id, req.body);
+    const user = await updateUser(req.params.id, req.body, req.user);
 
     return res.status(200).json({
         message: "User updated successfully",

@@ -12,14 +12,14 @@ import {
     validateEquipmentIdParam,
     validateGetEquipmentsQuery,
 } from "../validators/equipment.validator.js";
-import { authenticated, scopeByAssociationId } from "../middlewares/auth.middleware.js";
+import { authenticated, allowRoles, scopeByAssociationId } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
-router.get("/", authenticated, scopeByAssociationId, validateGetEquipmentsQuery, getEquipmentsHandler);
-router.get("/available", authenticated, getAvailableEquipmentsHandler);
-router.post("/", authenticated, validateCreateEquipment, createEquipmentHandler);
-router.patch("/:id", authenticated, validateEquipmentIdParam, validateUpdateEquipment, updateEquipmentHandler);
-router.delete("/:id", authenticated, validateEquipmentIdParam, deleteEquipmentHandler);
+router.get("/", authenticated, allowRoles("far", "aew", "coordinator", "head", "governor", "admin"), scopeByAssociationId, validateGetEquipmentsQuery, getEquipmentsHandler);
+router.get("/available", authenticated, allowRoles("far", "aew", "coordinator", "head", "governor", "admin"), getAvailableEquipmentsHandler);
+router.post("/", authenticated, allowRoles("coordinator", "admin"), validateCreateEquipment, createEquipmentHandler);
+router.patch("/:id", authenticated, allowRoles("far", "coordinator", "admin"), validateEquipmentIdParam, validateUpdateEquipment, updateEquipmentHandler);
+router.delete("/:id", authenticated, allowRoles("coordinator", "admin"), validateEquipmentIdParam, deleteEquipmentHandler);
 
 export default router;

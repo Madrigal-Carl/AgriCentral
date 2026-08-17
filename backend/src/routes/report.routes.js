@@ -24,6 +24,7 @@ const router = express.Router();
 router.get(
     "/",
     authenticated,
+    allowRoles("far", "aew", "coordinator", "governor", "head", "admin"),
     scopeReportsByRole,
     validateGetReportsQuery,
     getReportsHandler,
@@ -35,14 +36,15 @@ router.post(
     validateCreateReport,
     createReportHandler,
 );
-router.patch("/:id", authenticated, validateReportIdParam, validateUpdateReport, updateReportHandler);
+router.patch("/:id", authenticated, allowRoles("far", "aew"), validateReportIdParam, validateUpdateReport, updateReportHandler);
 router.patch(
     "/:id/approval",
     authenticated,
+    allowRoles("aew", "coordinator"),
     validateReportIdParam,
     validateUpdateReportApproval,
     updateReportApprovalHandler,
 );
-router.delete("/:id", authenticated, validateReportIdParam, deleteReportHandler);
+router.delete("/:id", authenticated, allowRoles("far", "aew"), validateReportIdParam, deleteReportHandler);
 
 export default router;
