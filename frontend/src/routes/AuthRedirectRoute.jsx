@@ -2,12 +2,13 @@ import { Navigate, Outlet } from "react-router-dom";
 import useAuth from "@/hooks/useAuth";
 import { ROLES } from "@/constants/roles";
 import { getRoleRedirect } from "@/utils/getRoleRedirect";
+import { FullScreenLoader } from "@/components/public";
 
 export default function AuthRedirectRoute() {
   const { isAuthenticated, role, loading } = useAuth();
 
   if (loading) {
-    return null;
+    return <FullScreenLoader />;
   }
 
   // Redirect admin/technician/cashier users to their role's default route

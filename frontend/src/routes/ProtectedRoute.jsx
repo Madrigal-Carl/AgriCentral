@@ -1,11 +1,12 @@
 import { Navigate, Outlet } from "react-router-dom";
 import useAuth from "@/hooks/useAuth";
+import { FullScreenLoader } from "@/components/public";
 
 export default function ProtectedRoute({ allowedRoles }) {
   const { isAuthenticated, role, loading } = useAuth();
 
   if (loading) {
-    return null;
+    return <FullScreenLoader />;
   }
 
   // Not logged in

@@ -2,12 +2,13 @@ import { Navigate, Outlet } from "react-router-dom";
 import useAuth from "@/hooks/useAuth";
 import { ROLES } from "@/constants/roles";
 import { getRoleRedirect } from "@/utils/getRoleRedirect";
+import { FullScreenLoader } from "@/components/public";
 
 export default function PublicOnlyRoute() {
   const { isAuthenticated, role, loading } = useAuth();
 
   if (loading) {
-    return null;
+    return <FullScreenLoader />;
   }
 
   // Guests can access
