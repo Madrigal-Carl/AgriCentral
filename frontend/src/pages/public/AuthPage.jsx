@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 
 import logoAsset from "@/assets/logo.png";
-import barnAsset from "@/assets/images/barn.jpg";
+import farmAsset from "@/assets/images/farm.jpg";
 import { registerSchema, loginSchema } from "@/schemas/auth.schema";
 import useAuth from "@/hooks/useAuth";
 
@@ -57,7 +57,7 @@ export function AuthPage() {
     <main className="relative min-h-[100svh] flex items-center justify-center overflow-hidden bg-canvas py-16 px-5">
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(${barnAsset})` }}
+        style={{ backgroundImage: `url(${farmAsset})` }}
       />
       <div className="absolute inset-0 bg-black/55" />
 

@@ -33,9 +33,9 @@ import {
 } from "react-icons/fa6";
 
 import logoAsset from "@/assets/logo.png";
-import barnAsset from "@/assets/images/barn.jpg";
-import farmAerialAsset from "@/assets/images/farm-aerial.jpg";
-import farmerFieldAsset from "@/assets/images/farmer-field.jpg";
+import farmAsset from "@/assets/images/farm.jpg";
+import fieldAsset from "@/assets/images/field.jpg";
+import farmerAsset from "@/assets/images/farmer.jpg";
 import livestockAsset from "@/assets/images/livestock.jpg";
 
 const fadeUp = {
@@ -181,7 +181,7 @@ function Hero() {
     <section className="relative min-h-[100svh] flex items-center pt-10 pb-20 overflow-hidden">
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(${barnAsset})` }}
+        style={{ backgroundImage: `url(${farmAsset})` }}
       />
       <div className="absolute inset-0 bg-black/55" />
       <div className="relative z-10 mx-auto w-full max-w-7xl px-5 lg:px-8">
@@ -231,12 +231,7 @@ function Hero() {
           <motion.div
             variants={fadeUp}
             className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 font-mono text-[10.5px] tracking-[0.14em] text-white/60 uppercase"
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <Circle className="h-2 w-2 fill-accent-agri text-accent-agri" />{" "}
-              System Operational
-            </span>
-          </motion.div>
+          ></motion.div>
         </motion.div>
       </div>
     </section>
@@ -572,7 +567,7 @@ export function HomePage() {
       icon: Clock3,
       title: "Faster Disaster Response",
       desc: "Reduce delays in aid distribution and response planning.",
-      img: farmerFieldAsset,
+      img: farmerAsset,
     },
     {
       icon: Package,
@@ -584,7 +579,7 @@ export function HomePage() {
       icon: ShieldCheck,
       title: "Complete Accountability",
       desc: "Track all actions with comprehensive audit records.",
-      img: farmAerialAsset,
+      img: fieldAsset,
     },
   ];
 
@@ -743,9 +738,6 @@ export function HomePage() {
                 Agricultural intelligence platform for resource management and
                 disaster response.
               </p>
-              <div className="mt-5 font-mono text-[10px] tracking-[0.14em] text-ink-muted uppercase">
-                System Status · Operational
-              </div>
             </div>
             <div className="md:justify-self-center text-ink-muted">
               <div className="font-mono text-[10px] tracking-[0.14em] uppercase">
