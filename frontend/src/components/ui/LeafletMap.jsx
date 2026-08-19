@@ -1,4 +1,3 @@
-import "leaflet/dist/leaflet.css";
 import { useEffect, useRef, useState } from "react";
 import { BOAC_CENTER } from "@/constants/data";
 
@@ -40,6 +39,7 @@ export function LeafletMap({
 
     (async () => {
       const L = (await import("leaflet")).default;
+      await import("leaflet/dist/leaflet.css");
       // Bail if this effect run has since been superseded (StrictMode
       // double-invoke, fast unmount, or the container is gone).
       if (cancelled || myGen !== genRef.current || !containerRef.current)

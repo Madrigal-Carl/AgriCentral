@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
-import "leaflet/dist/leaflet.css";
 
 import { PageHeader, DataTable, RowActions } from "@/components/public";
 import { DeleteConfirmModal, FarmModal, FarmDrawer } from "@/components/modal";

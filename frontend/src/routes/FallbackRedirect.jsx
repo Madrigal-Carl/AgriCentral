@@ -2,7 +2,7 @@ import { Navigate } from "react-router-dom";
 import useAuth from "@/hooks/useAuth";
 import { ROLES } from "@/constants/roles";
 import { getRoleRedirect } from "@/utils/getRoleRedirect";
-import { FullScreenLoader } from "@/components/public";
+import { FullScreenLoader } from "@/components/public/FullScreenLoader";
 
 export default function FallbackRedirect() {
   const { isAuthenticated, role, loading } = useAuth();

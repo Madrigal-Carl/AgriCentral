@@ -37,6 +37,10 @@ import farmAsset from "@/assets/images/farm.jpg";
 import fieldAsset from "@/assets/images/field.jpg";
 import farmerAsset from "@/assets/images/farmer.jpg";
 import livestockAsset from "@/assets/images/livestock.jpg";
+import farmAssetWebp from "@/assets/images/farm.webp";
+import fieldAssetWebp from "@/assets/images/field.webp";
+import farmerAssetWebp from "@/assets/images/farmer.webp";
+import livestockAssetWebp from "@/assets/images/livestock.webp";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
@@ -176,12 +180,25 @@ function Navbar() {
   );
 }
 
+function Picture({ webp, jpg, alt = "", ...rest }) {
+  return (
+    <picture>
+      <source srcSet={webp} type="image/webp" />
+      <img src={jpg} alt={alt} {...rest} />
+    </picture>
+  );
+}
+
 function Hero() {
   return (
     <section className="relative min-h-[100svh] flex items-center pt-10 pb-20 overflow-hidden">
-      <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(${farmAsset})` }}
+      <Picture
+        webp={farmAssetWebp}
+        jpg={farmAsset}
+        alt=""
+        fetchPriority="high"
+        decoding="async"
+        className="absolute inset-0 h-full w-full object-cover object-center"
       />
       <div className="absolute inset-0 bg-black/55" />
       <div className="relative z-10 mx-auto w-full max-w-7xl px-5 lg:px-8">
@@ -381,17 +398,19 @@ function ModuleCard({ icon: Icon, title, desc }) {
   );
 }
 
-function BenefitCard({ icon: Icon, n, title, desc, img }) {
+function BenefitCard({ icon: Icon, n, title, desc, img, webp }) {
   return (
     <motion.div
       variants={fadeUp}
       className="group rounded-[5px] border border-zinc-200 bg-white overflow-hidden hover:shadow-[0_18px_40px_-25px_rgba(15,17,18,0.2)] transition-shadow"
     >
       <div className="aspect-[16/10] overflow-hidden bg-zinc-100">
-        <img
-          src={img}
+        <Picture
+          webp={webp}
+          jpg={img}
           alt={title}
           loading="lazy"
+          decoding="async"
           className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
         />
       </div>
@@ -568,18 +587,21 @@ export function HomePage() {
       title: "Faster Disaster Response",
       desc: "Reduce delays in aid distribution and response planning.",
       img: farmerAsset,
+      webp: farmerAssetWebp,
     },
     {
       icon: Package,
       title: "Better Resource Allocation",
       desc: "Identify where equipment, livestock, and assistance are most needed.",
       img: livestockAsset,
+      webp: livestockAssetWebp,
     },
     {
       icon: ShieldCheck,
       title: "Complete Accountability",
       desc: "Track all actions with comprehensive audit records.",
       img: fieldAsset,
+      webp: fieldAssetWebp,
     },
   ];
 
