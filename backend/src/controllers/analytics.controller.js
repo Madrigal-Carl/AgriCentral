@@ -1,5 +1,6 @@
 import { getAnalytics, getOverview } from "../services/analytics.service.js";
 import { generateAnalyticsPdf } from "../services/pdf.service.js";
+import { generateAnalyticsExcel } from "../services/excel.service.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 export const getAnalyticsHandler = asyncHandler(async (req, res) => {
@@ -33,4 +34,20 @@ export const exportAnalyticsPdfHandler = asyncHandler(async (req, res) => {
         `attachment; filename="agricentral-${section}-report.pdf"`,
     );
     return res.status(200).send(pdfBuffer);
+});
+
+export const exportAnalyticsExcelHandler = asyncHandler(async (req, res) => {
+    const { section, association, period } = req.query;
+
+    const excelBuffer = await generateAnalyticsExcel({ section, association, period });
+
+    res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="agricentral-${section}-report.xlsx"`,
+    );
+    return res.status(200).send(excelBuffer);
 });

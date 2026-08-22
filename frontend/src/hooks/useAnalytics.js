@@ -3,6 +3,7 @@ import {
     getAnalytics,
     getOverview,
     exportAnalyticsPdf,
+    exportAnalyticsExcel,
 } from "@/services/analytics.service";
 
 /* ---------------- Query Keys ---------------- */
@@ -34,13 +35,23 @@ export function useOverview(filters = {}, options = {}) {
     });
 }
 
-/* ---------------- PDF export ---------------- */
+/* ---------------- Export helpers ---------------- */
 export async function downloadAnalyticsPdf(filters, section) {
     const blob = await exportAnalyticsPdf({ ...filters, section });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = `agricentral-${section}-report.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+export async function downloadAnalyticsExcel(filters, section) {
+    const blob = await exportAnalyticsExcel({ ...filters, section });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `agricentral-${section}-report.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
 }

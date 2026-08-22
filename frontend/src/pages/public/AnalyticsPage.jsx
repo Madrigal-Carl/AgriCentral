@@ -25,9 +25,13 @@ import {
   Check,
   Loader2,
 } from "lucide-react";
-import { PageHeader, StatCard } from "@/components/public";
+import { PageHeader, StatCard, ExportDropdown } from "@/components/public";
 import { Button, Select } from "@/components/ui";
-import { useAnalytics, downloadAnalyticsPdf } from "@/hooks/useAnalytics";
+import {
+  useAnalytics,
+  downloadAnalyticsPdf,
+  downloadAnalyticsExcel,
+} from "@/hooks/useAnalytics";
 import { useAssociations } from "@/hooks/useAssociations";
 import {
   ANALYTICS_CHART_COLORS,
@@ -193,19 +197,6 @@ function FilterBar({
   );
 }
 
-function ExportButton({ onClick, isExporting }) {
-  return (
-    <Button variant="outline" onClick={onClick} disabled={isExporting}>
-      {isExporting ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : (
-        <Download className="h-4 w-4" />
-      )}
-      {isExporting ? "Exporting…" : "Export"}
-    </Button>
-  );
-}
-
 function SectionHeader({ icon: Icon, title, onExport, isExporting }) {
   return (
     <div className="mb-4 mt-8 flex items-center justify-between gap-3 first:mt-0">
@@ -220,7 +211,12 @@ function SectionHeader({ icon: Icon, title, onExport, isExporting }) {
         </div>
       </div>
       {onExport && (
-        <ExportButton onClick={onExport} isExporting={isExporting} />
+        <ExportDropdown
+          label="Export"
+          variant="outline"
+          onExport={onExport}
+          isExporting={isExporting}
+        />
       )}
     </div>
   );
@@ -242,8 +238,10 @@ function DualSectionHeader({ left, right }) {
             </div>
           </div>
           {section.onExport && (
-            <ExportButton
-              onClick={section.onExport}
+            <ExportDropdown
+              label="Export"
+              variant="outline"
+              onExport={section.onExport}
               isExporting={section.isExporting}
             />
           )}
@@ -329,15 +327,19 @@ export function AnalyticsPage() {
     cropYield: 0,
   };
 
-  // Single handler for every export button — section decides which PDF
-  // the backend builds. Guards against double-clicks while one is running.
-  const handleExportPdf = async (section) => {
+  // Single handler for every export button — section and format decide which
+  // file the backend builds. Guards against double-clicks while one is running.
+  const handleExport = async (section, format = "pdf") => {
     if (exportingSection) return;
     setExportingSection(section);
     try {
-      await downloadAnalyticsPdf(filters, section);
+      if (format === "xlsx") {
+        await downloadAnalyticsExcel(filters, section);
+      } else {
+        await downloadAnalyticsPdf(filters, section);
+      }
     } catch (err) {
-      console.error("Failed to export PDF:", err);
+      console.error(`Failed to export ${format}:`, err);
     } finally {
       setExportingSection(null);
     }
@@ -363,18 +365,13 @@ export function AnalyticsPage() {
         title="Analytics"
         subtitle="Consolidated report across equipment, livestock, farms, and crops."
         action={
-          <Button
+          <ExportDropdown
+            label="Export Report"
             variant="accent"
-            onClick={() => handleExportPdf("all")}
+            onExport={(format) => handleExport("all", format)}
             disabled={isLoading || !!exportingSection}
-          >
-            {exportingSection === "all" ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Download className="h-4 w-4" />
-            )}
-            {exportingSection === "all" ? "Exporting…" : "Export Report"}
-          </Button>
+            isExporting={exportingSection === "all"}
+          />
         }
       />
 
@@ -412,13 +409,13 @@ export function AnalyticsPage() {
             left={{
               icon: Tractor,
               title: "Equipment",
-              onExport: () => handleExportPdf("equipment"),
+              onExport: (format) => handleExport("equipment", format),
               isExporting: exportingSection === "equipment",
             }}
             right={{
               icon: Beef,
               title: "Livestock",
-              onExport: () => handleExportPdf("livestock"),
+              onExport: (format) => handleExport("livestock", format),
               isExporting: exportingSection === "livestock",
             }}
           />
@@ -485,7 +482,7 @@ export function AnalyticsPage() {
           <SectionHeader
             icon={Wheat}
             title="Farm"
-            onExport={() => handleExportPdf("farm")}
+            onExport={(format) => handleExport("farm", format)}
             isExporting={exportingSection === "farm"}
           />
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

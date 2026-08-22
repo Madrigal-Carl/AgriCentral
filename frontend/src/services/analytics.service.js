@@ -17,3 +17,11 @@ export async function exportAnalyticsPdf(params) {
     });
     return response.data;
 }
+
+export async function exportAnalyticsExcel(params) {
+    const response = await api.get("/analytics/export-excel", {
+        params,
+        responseType: "blob",
+    });
+    return response.data;
+}

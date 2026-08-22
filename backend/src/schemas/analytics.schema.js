@@ -11,3 +11,5 @@ export const getAnalyticsQuerySchema = z.object({
 export const exportAnalyticsPdfQuerySchema = getAnalyticsQuerySchema.extend({
     section: z.enum(["equipment", "livestock", "farm", "all"]).optional().default("all"),
 });
+
+export const exportAnalyticsExcelQuerySchema = exportAnalyticsPdfQuerySchema;

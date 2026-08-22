@@ -1,6 +1,7 @@
 import {
     getAnalyticsQuerySchema,
     exportAnalyticsPdfQuerySchema,
+    exportAnalyticsExcelQuerySchema,
 } from "../schemas/analytics.schema.js";
 
 const validateQuery = (schema) => (req, res, next) => {
@@ -25,3 +26,4 @@ const validateQuery = (schema) => (req, res, next) => {
 
 export const validateGetAnalyticsQuery = validateQuery(getAnalyticsQuerySchema);
 export const validateExportAnalyticsPdfQuery = validateQuery(exportAnalyticsPdfQuerySchema);
+export const validateExportAnalyticsExcelQuery = validateQuery(exportAnalyticsExcelQuerySchema);
