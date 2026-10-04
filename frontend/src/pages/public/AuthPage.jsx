@@ -10,6 +10,60 @@ import farmAsset from "@/assets/images/farm.jpg";
 import { registerSchema, loginSchema } from "@/schemas/auth.schema";
 import useAuth from "@/hooks/useAuth";
 
+/* Palette: brand #00A36C · forest #0F3D2E · harvest gold #E0A526 · mint #F1F8F3 */
+
+function FieldLines({ className = "" }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 400 200"
+      fill="none"
+      className={className}
+    >
+      {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+        <path
+          key={i}
+          d={`M-20 ${190 - i * 24} C 100 ${150 - i * 24}, 260 ${230 - i * 24}, 420 ${150 - i * 24}`}
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+      ))}
+    </svg>
+  );
+}
+
+function WheatStalk({ className = "" }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 60 160"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      className={className}
+    >
+      <path d="M30 158V30" />
+      {[34, 52, 70, 88].map((y) => (
+        <g key={y}>
+          <path
+            d={`M30 ${y} C 18 ${y - 4}, 12 ${y - 14}, 14 ${y - 22} C 24 ${y - 18}, 30 ${y - 10}, 30 ${y}`}
+          />
+          <path
+            d={`M30 ${y} C 42 ${y - 4}, 48 ${y - 14}, 46 ${y - 22} C 36 ${y - 18}, 30 ${y - 10}, 30 ${y}`}
+          />
+        </g>
+      ))}
+      <path d="M30 30 C 24 22, 24 12, 30 4 C 36 12, 36 22, 30 30Z" />
+    </svg>
+  );
+}
+
+const inputClass =
+  "rounded-[5px] border border-[#cfe0d5] bg-white px-3 py-2.5 text-[14px] text-[#0F3D2E] outline-none transition-colors placeholder:text-[#8a9a92] focus:border-[#00A36C] focus:ring-2 focus:ring-[#00A36C]/20";
+const labelClass =
+  "font-mono text-[10.5px] tracking-[0.16em] text-[#4c5a54] uppercase";
+
 export function AuthPage() {
   const [mode, setMode] = useState("signin");
   const [info, setInfo] = useState(null);
@@ -54,12 +108,15 @@ export function AuthPage() {
   }
 
   return (
-    <main className="relative min-h-[100svh] flex items-center justify-center overflow-hidden bg-canvas py-16 px-5">
+    <main className="relative flex min-h-[100svh] items-center justify-center overflow-hidden bg-[#0F3D2E] px-5 py-16">
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{ backgroundImage: `url(${farmAsset})` }}
       />
-      <div className="absolute inset-0 bg-black/55" />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#0F3D2E]/80 via-[#0F3D2E]/65 to-[#0a2a20]/90" />
+      <FieldLines className="pointer-events-none absolute inset-x-0 bottom-0 h-56 w-full text-white/10" />
+      <WheatStalk className="pointer-events-none absolute -left-2 bottom-0 hidden h-64 text-[#E0A526]/25 lg:block" />
+      <WheatStalk className="pointer-events-none absolute -right-2 bottom-0 hidden h-64 text-[#E0A526]/25 lg:block" />
 
       <motion.div
         initial={{ opacity: 0, y: 16 }}
@@ -67,31 +124,33 @@ export function AuthPage() {
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         className="relative z-10 w-full max-w-md"
       >
-        <div className="flex items-center justify-center mb-6">
+        <div className="mb-6 flex flex-col items-center gap-2">
           <Link
             to="/"
-            className="grid h-12 w-12 sm:h-14 sm:w-14 place-items-center bg-white/75 backdrop-blur-md rounded-[3px]"
+            className="grid h-12 w-12 place-items-center rounded-lg bg-white/85 backdrop-blur-md sm:h-14 sm:w-14"
           >
             <img
               src={logoAsset}
               alt="AgriCentral"
-              className="h-8 w-8 sm:h-10 sm:w-10 object-contain"
+              className="h-8 w-8 object-contain sm:h-10 sm:w-10"
             />
           </Link>
+          <span className="font-mono text-[10.5px] uppercase tracking-[0.16em] text-[#F3CC6B]">
+            AgriCentral · PAgriO Platform
+          </span>
         </div>
 
-        <div className="rounded-[6px] border border-zinc-200 bg-white p-7 shadow-xl">
-          <div className="inline-flex items-center gap-2 font-mono text-[11px] tracking-[0.16em] text-ink-muted uppercase">
-            <span className="text-ink">[</span>
-            {mode === "signin" ? "ACCOUNT ACCESS" : "CREATE ACCOUNT"}
-            <span className="text-ink">]</span>
+        <div className="rounded-xl bg-white p-7 shadow-xl">
+          <div className="inline-flex items-center gap-2.5 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4c5a54]">
+            <span className="h-[3px] w-6 rounded-full bg-[#E0A526]" />
+            {mode === "signin" ? "Account Access" : "Create Account"}
           </div>
-          <h1 className="mt-3 text-[1.5rem] leading-[1.15] tracking-[-0.02em] font-medium text-ink">
+          <h1 className="mt-3 text-[1.5rem] font-medium leading-[1.15] tracking-[-0.02em] text-[#0F3D2E]">
             {mode === "signin"
               ? "Sign in to AgriCentral"
               : "Create your account"}
           </h1>
-          <p className="mt-2 text-[0.92rem] leading-relaxed text-ink-muted">
+          <p className="mt-2 text-[0.92rem] leading-relaxed text-[#3F4B46]">
             {mode === "signin"
               ? "Access your operational dashboard and field data."
               : "Get started managing farms, livestock, and resources."}
@@ -103,10 +162,7 @@ export function AuthPage() {
           >
             {mode === "signup" && (
               <div className="flex flex-col gap-1.5">
-                <label
-                  htmlFor="fullname"
-                  className="font-mono text-[10.5px] tracking-[0.16em] text-ink-muted uppercase"
-                >
+                <label htmlFor="fullname" className={labelClass}>
                   Full Name
                 </label>
                 <input
@@ -114,7 +170,7 @@ export function AuthPage() {
                   type="text"
                   autoComplete="name"
                   {...register("fullname")}
-                  className="rounded-[5px] border border-zinc-300 bg-white px-3 py-2.5 text-[14px] text-ink outline-none focus:border-ink transition-colors"
+                  className={inputClass}
                   placeholder="Juan Dela Cruz"
                 />
                 {errors.fullname && (
@@ -126,10 +182,7 @@ export function AuthPage() {
             )}
 
             <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="email"
-                className="font-mono text-[10.5px] tracking-[0.16em] text-ink-muted uppercase"
-              >
+              <label htmlFor="email" className={labelClass}>
                 Email
               </label>
               <input
@@ -137,7 +190,7 @@ export function AuthPage() {
                 type="email"
                 autoComplete="email"
                 {...register("email")}
-                className="rounded-[5px] border border-zinc-300 bg-white px-3 py-2.5 text-[14px] text-ink outline-none focus:border-ink transition-colors"
+                className={inputClass}
                 placeholder="you@organization.org"
               />
               {errors.email && (
@@ -148,10 +201,7 @@ export function AuthPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="password"
-                className="font-mono text-[10.5px] tracking-[0.16em] text-ink-muted uppercase"
-              >
+              <label htmlFor="password" className={labelClass}>
                 Password
               </label>
               <div className="relative">
@@ -162,13 +212,13 @@ export function AuthPage() {
                     mode === "signin" ? "current-password" : "new-password"
                   }
                   {...register("password")}
-                  className="w-full rounded-[5px] border border-zinc-300 bg-white px-3 py-2.5 pr-10 text-[14px] text-ink outline-none focus:border-ink transition-colors"
+                  className={`w-full pr-10 ${inputClass}`}
                   placeholder="••••••••"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute inset-y-0 right-0 flex items-center px-3 text-ink-muted hover:text-ink transition-colors"
+                  className="absolute inset-y-0 right-0 flex items-center px-3 text-[#6b7a73] transition-colors hover:text-[#00A36C]"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                   tabIndex={-1}
                 >
@@ -187,7 +237,7 @@ export function AuthPage() {
             </div>
 
             {info && (
-              <div className="rounded-[5px] border border-amber-200 bg-amber-50 px-3 py-2 text-[12.5px] text-amber-800">
+              <div className="rounded-[5px] border border-[#ecd9a8] bg-[#FBF6E8] px-3 py-2 text-[12.5px] text-[#7a5600]">
                 {info}
               </div>
             )}
@@ -195,7 +245,7 @@ export function AuthPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="mt-1 inline-flex items-center justify-center gap-1.5 rounded-[5px] bg-ink px-3.5 py-2.5 text-[13.5px] font-medium text-white hover:bg-black transition-colors disabled:opacity-60"
+              className="mt-1 inline-flex items-center justify-center gap-1.5 rounded-[5px] bg-[#00A36C] px-3.5 py-2.5 text-[13.5px] font-medium text-white transition-colors hover:bg-[#008a5b] disabled:opacity-60"
             >
               {isSubmitting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -208,14 +258,14 @@ export function AuthPage() {
             </button>
           </form>
 
-          <div className="mt-6 pt-5 border-t border-zinc-200 text-center text-[13px] text-ink-muted">
+          <div className="mt-6 border-t border-[#d9e8de] pt-5 text-center text-[13px] text-[#4c5a54]">
             {mode === "signin" ? (
               <>
                 New to AgriCentral?{" "}
                 <button
                   type="button"
                   onClick={() => switchMode("signup")}
-                  className="text-ink font-medium hover:underline"
+                  className="font-medium text-[#00A36C] hover:underline"
                 >
                   Create an account
                 </button>
@@ -226,7 +276,7 @@ export function AuthPage() {
                 <button
                   type="button"
                   onClick={() => switchMode("signin")}
-                  className="text-ink font-medium hover:underline"
+                  className="font-medium text-[#00A36C] hover:underline"
                 >
                   Sign in
                 </button>
@@ -238,7 +288,7 @@ export function AuthPage() {
         <div className="mt-5 text-center">
           <Link
             to="/"
-            className="font-mono text-[11px] tracking-[0.16em] text-white/70 hover:text-white uppercase"
+            className="font-mono text-[11px] uppercase tracking-[0.16em] text-white/70 transition-colors hover:text-[#5be0ac]"
           >
             ← Back to home
           </Link>

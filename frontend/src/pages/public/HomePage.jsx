@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   Menu,
@@ -8,7 +8,6 @@ import {
   AlertTriangle,
   Tractor,
   MapPinned,
-  FileWarning,
   Users,
   Beef,
   ClipboardList,
@@ -23,7 +22,7 @@ import {
   Building2,
   LayoutDashboard,
   Clock3,
-  Circle,
+  Wheat,
 } from "lucide-react";
 import {
   FaFacebookF,
@@ -41,6 +40,8 @@ import farmAssetWebp from "@/assets/images/farm.webp";
 import fieldAssetWebp from "@/assets/images/field.webp";
 import farmerAssetWebp from "@/assets/images/farmer.webp";
 import livestockAssetWebp from "@/assets/images/livestock.webp";
+
+/* Palette: brand #00A36C · forest #0F3D2E · harvest gold #E0A526 · mint #F1F8F3 · wheat #FBF6E8 */
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
@@ -60,17 +61,66 @@ const links = [
   { label: "Reporting", to: "#reporting" },
 ];
 
-function SectionLabel({ children }) {
+/* ---------- Decorative SVGs (aria-hidden, low opacity) ---------- */
+function FieldLines({ className = "" }) {
   return (
-    <div className="inline-flex items-center gap-2 font-mono text-[11px] tracking-[0.16em] text-ink-muted uppercase">
-      <span className="text-ink">[</span>
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 400 200"
+      fill="none"
+      className={className}
+    >
+      {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+        <path
+          key={i}
+          d={`M-20 ${190 - i * 24} C 100 ${150 - i * 24}, 260 ${230 - i * 24}, 420 ${150 - i * 24}`}
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+      ))}
+    </svg>
+  );
+}
+
+function WheatStalk({ className = "" }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 60 160"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      className={className}
+    >
+      <path d="M30 158V30" />
+      {[34, 52, 70, 88].map((y) => (
+        <g key={y}>
+          <path
+            d={`M30 ${y} C 18 ${y - 4}, 12 ${y - 14}, 14 ${y - 22} C 24 ${y - 18}, 30 ${y - 10}, 30 ${y}`}
+          />
+          <path
+            d={`M30 ${y} C 42 ${y - 4}, 48 ${y - 14}, 46 ${y - 22} C 36 ${y - 18}, 30 ${y - 10}, 30 ${y}`}
+          />
+        </g>
+      ))}
+      <path d="M30 30 C 24 22, 24 12, 30 4 C 36 12, 36 22, 30 30Z" />
+    </svg>
+  );
+}
+
+function SectionLabel({ children, light = false }) {
+  return (
+    <div
+      className={`inline-flex items-center gap-2.5 font-mono text-[11px] tracking-[0.16em] uppercase ${light ? "text-white/75" : "text-[#4c5a54]"}`}
+    >
+      <span className="h-[3px] w-6 rounded-full bg-[#E0A526]" />
       {children}
-      <span className="text-ink">]</span>
     </div>
   );
 }
 
-function Brand() {
+function Brand({ light = false }) {
   return (
     <div className="flex items-center gap-2.5">
       <img
@@ -78,19 +128,27 @@ function Brand() {
         alt="AgriCentral"
         className="h-8 w-8 object-contain"
       />
-      <span className="text-[17px] font-semibold tracking-tight text-ink">
-        AgriCentral
-      </span>
+      <div className="leading-tight">
+        <span
+          className={`block text-[17px] font-semibold tracking-tight ${light ? "text-white" : "text-[#0F3D2E]"}`}
+        >
+          AgriCentral
+        </span>
+        <span
+          className={`block text-[9.5px] tracking-[0.12em] uppercase ${light ? "text-white/60" : "text-[#00A36C]"}`}
+        >
+          PAgriO Platform
+        </span>
+      </div>
     </div>
   );
 }
 
 function Navbar() {
   const [open, setOpen] = useState(false);
-
   return (
     <>
-      <header className="sticky top-0 z-50 w-full backdrop-blur-md bg-white/85 border-b border-zinc-200 transition-colors">
+      <header className="sticky top-0 z-50 w-full border-b border-[#d9e8de] bg-white/90 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 lg:px-8">
           <Brand />
           <nav className="hidden lg:flex items-center gap-8">
@@ -98,7 +156,7 @@ function Navbar() {
               <a
                 key={l.label}
                 href={l.to}
-                className="text-[13.5px] text-[#4c4e50] hover:text-ink transition-colors"
+                className="text-[13.5px] text-[#3b4a44] transition-colors hover:text-[#00A36C]"
               >
                 {l.label}
               </a>
@@ -107,13 +165,13 @@ function Navbar() {
           <div className="hidden lg:flex items-center gap-2">
             <Link
               to="/auth"
-              className="px-3 py-2 text-[13.5px] text-[#3F4448] hover:text-ink transition-colors"
+              className="px-3 py-2 text-[13.5px] text-[#3b4a44] transition-colors hover:text-[#00A36C]"
             >
               Login
             </Link>
             <Link
               to="/auth"
-              className="inline-flex items-center gap-1.5 rounded-[5px] bg-ink px-3.5 py-2 text-[13.5px] font-medium text-white hover:bg-black transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-[5px] bg-[#00A36C] px-3.5 py-2 text-[13.5px] font-medium text-white transition-colors hover:bg-[#008a5b]"
             >
               Get Started <ArrowRight className="h-3.5 w-3.5" />
             </Link>
@@ -121,9 +179,9 @@ function Navbar() {
           <button
             aria-label="Open menu"
             onClick={() => setOpen(true)}
-            className="lg:hidden grid h-9 w-9 place-items-center rounded-[5px] border border-zinc-200"
+            className="lg:hidden grid h-9 w-9 place-items-center rounded-[5px] border border-[#d9e8de]"
           >
-            <Menu className="h-4.5 w-4.5 text-ink" />
+            <Menu className="h-4.5 w-4.5 text-[#0F3D2E]" />
           </button>
         </div>
       </header>
@@ -132,39 +190,39 @@ function Navbar() {
         initial={false}
         animate={{ x: open ? 0 : "100%" }}
         transition={{ type: "tween", ease: [0.22, 1, 0.36, 1], duration: 0.32 }}
-        className="fixed inset-y-0 right-0 z-[60] w-[82%] max-w-sm bg-white border-l border-zinc-200 lg:hidden"
+        className="fixed inset-y-0 right-0 z-[60] w-[82%] max-w-sm border-l border-[#d9e8de] bg-white lg:hidden"
       >
-        <div className="flex items-center justify-between px-5 h-16 border-b border-zinc-200">
+        <div className="flex h-16 items-center justify-between border-b border-[#d9e8de] px-5">
           <Brand />
           <button
             aria-label="Close menu"
             onClick={() => setOpen(false)}
-            className="grid h-9 w-9 place-items-center rounded-[5px] border border-zinc-200"
+            className="grid h-9 w-9 place-items-center rounded-[5px] border border-[#d9e8de]"
           >
             <X className="h-4.5 w-4.5" />
           </button>
         </div>
-        <nav className="flex flex-col p-5 gap-1">
+        <nav className="flex flex-col gap-1 p-5">
           {links.map((l) => (
             <a
               key={l.label}
               href={l.to}
               onClick={() => setOpen(false)}
-              className="px-3 py-3 text-[15px] text-ink rounded-[5px] hover:bg-zinc-50"
+              className="rounded-[5px] px-3 py-3 text-[15px] text-[#0F3D2E] hover:bg-[#F1F8F3]"
             >
               {l.label}
             </a>
           ))}
-          <div className="h-px bg-zinc-200 my-3" />
+          <div className="my-3 h-px bg-[#d9e8de]" />
           <Link
             to="/auth"
-            className="px-3 py-3 text-[15px] text-ink rounded-[5px] hover:bg-zinc-50"
+            className="rounded-[5px] px-3 py-3 text-[15px] text-[#0F3D2E] hover:bg-[#F1F8F3]"
           >
             Login
           </Link>
           <Link
             to="/auth"
-            className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-[5px] bg-ink px-3.5 py-3 text-[14px] font-medium text-white"
+            className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-[5px] bg-[#00A36C] px-3.5 py-3 text-[14px] font-medium text-white"
           >
             Get Started <ArrowRight className="h-4 w-4" />
           </Link>
@@ -190,8 +248,14 @@ function Picture({ webp, jpg, alt = "", ...rest }) {
 }
 
 function Hero() {
+  const chips = [
+    { icon: Wheat, label: "Farms" },
+    { icon: Beef, label: "Livestock" },
+    { icon: Tractor, label: "Equipment" },
+    { icon: ShieldCheck, label: "Disaster Response" },
+  ];
   return (
-    <section className="relative min-h-[100svh] flex items-center pt-10 pb-20 overflow-hidden">
+    <section className="relative flex min-h-[100svh] items-center overflow-hidden pb-24 pt-10">
       <Picture
         webp={farmAssetWebp}
         jpg={farmAsset}
@@ -200,7 +264,9 @@ function Hero() {
         decoding="async"
         className="absolute inset-0 h-full w-full object-cover object-center"
       />
-      <div className="absolute inset-0 bg-black/55" />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#0F3D2E]/80 via-[#0F3D2E]/60 to-[#0a2a20]/85" />
+      <FieldLines className="pointer-events-none absolute inset-x-0 bottom-0 h-56 w-full text-white/10" />
+      <WheatStalk className="pointer-events-none absolute -right-2 bottom-0 hidden h-72 text-[#E0A526]/25 lg:block" />
       <div className="relative z-10 mx-auto w-full max-w-7xl px-5 lg:px-8">
         <motion.div
           variants={stagger}
@@ -209,20 +275,20 @@ function Hero() {
           className="mx-auto max-w-3xl text-center"
         >
           <motion.div variants={fadeUp}>
-            <span className="inline-flex items-center gap-2 font-mono text-[11px] tracking-[0.16em] text-white/70 uppercase">
-              <span className="text-white">[</span>AGRICULTURAL INTELLIGENCE
-              PLATFORM<span className="text-white">]</span>
+            <span className="inline-flex items-center gap-2 rounded-full border border-[#E0A526]/40 bg-[#E0A526]/10 px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-[#F3CC6B]">
+              <Sprout className="h-3.5 w-3.5" /> Agricultural Intelligence
+              Platform
             </span>
           </motion.div>
           <motion.h1
             variants={fadeUp}
-            className="mt-5 text-[2.25rem] leading-[1.08] tracking-[-0.02em] font-medium text-white sm:text-[2.75rem] lg:text-[3.5rem]"
+            className="mt-5 text-[2.25rem] font-medium leading-[1.08] tracking-[-0.02em] text-white sm:text-[2.75rem] lg:text-[3.5rem]"
           >
             Smarter Resource Allocation for Modern Agriculture
           </motion.h1>
           <motion.p
             variants={fadeUp}
-            className="mt-5 text-[0.95rem] sm:text-[1.02rem] leading-relaxed text-white/80 max-w-2xl mx-auto"
+            className="mx-auto mt-5 max-w-2xl text-[0.95rem] leading-relaxed text-white/85 sm:text-[1.02rem]"
           >
             AgriCentral helps agricultural offices, cooperatives, and farmer
             associations monitor farms, livestock, equipment, reports, and
@@ -230,25 +296,34 @@ function Hero() {
           </motion.p>
           <motion.div
             variants={fadeUp}
-            className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3"
+            className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row"
           >
             <a
               href="#get-started"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-[5px] bg-white px-5 py-3 text-[14px] font-medium text-ink hover:bg-white/90 transition-colors"
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-[5px] bg-[#00A36C] px-5 py-3 text-[14px] font-medium text-white transition-colors hover:bg-[#00b87a] sm:w-auto"
             >
               Get Started <ArrowRight className="h-4 w-4" />
             </a>
             <a
               href="#challenges"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-[5px] border border-white/30 bg-white/10 px-5 py-3 text-[14px] font-medium text-white hover:bg-white/20 transition-colors"
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-[5px] border border-white/30 bg-white/10 px-5 py-3 text-[14px] font-medium text-white transition-colors hover:bg-white/20 sm:w-auto"
             >
               Explore Platform
             </a>
           </motion.div>
           <motion.div
             variants={fadeUp}
-            className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 font-mono text-[10.5px] tracking-[0.14em] text-white/60 uppercase"
-          ></motion.div>
+            className="mt-10 flex flex-wrap items-center justify-center gap-2.5"
+          >
+            {chips.map(({ icon: Icon, label }) => (
+              <span
+                key={label}
+                className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-[12.5px] text-white/90 backdrop-blur-sm"
+              >
+                <Icon className="h-3.5 w-3.5 text-[#5be0ac]" /> {label}
+              </span>
+            ))}
+          </motion.div>
         </motion.div>
       </div>
     </section>
@@ -259,7 +334,7 @@ function Section({ id, label, title, description, children, className = "" }) {
   return (
     <section
       id={id}
-      className={`py-20 lg:py-32 border-t border-zinc-200 ${className}`}
+      className={`relative overflow-hidden border-t border-[#d9e8de] py-20 lg:py-28 ${className}`}
     >
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <motion.div
@@ -274,20 +349,20 @@ function Section({ id, label, title, description, children, className = "" }) {
           </motion.div>
           <motion.h2
             variants={fadeUp}
-            className="mt-4 text-[1.65rem] sm:text-[2.15rem] lg:text-[2.5rem] leading-[1.12] tracking-[-0.02em] font-medium text-ink"
+            className="mt-4 text-[1.65rem] font-medium leading-[1.12] tracking-[-0.02em] text-[#0F3D2E] sm:text-[2.15rem] lg:text-[2.5rem]"
           >
             {title}
           </motion.h2>
           {description && (
             <motion.p
               variants={fadeUp}
-              className="mt-4 text-[0.98rem] text-[#3F4448] leading-relaxed max-w-2xl"
+              className="mt-4 max-w-2xl text-[0.98rem] leading-relaxed text-[#3F4B46]"
             >
               {description}
             </motion.p>
           )}
         </motion.div>
-        <div className="mt-10 lg:mt-16">{children}</div>
+        <div className="mt-10 lg:mt-14">{children}</div>
       </div>
     </section>
   );
@@ -299,18 +374,18 @@ function ProblemCard({ icon: Icon, n, title, desc }) {
       variants={fadeUp}
       whileHover={{ y: -3 }}
       transition={{ duration: 0.2 }}
-      className="group rounded-[5px] border border-zinc-200 bg-white p-6 hover:border-zinc-300 hover:shadow-[0_12px_30px_-20px_rgba(15,17,18,0.15)] transition-all"
+      className="group rounded-lg border border-[#ecd9a8] border-t-[3px] border-t-[#E0A526] bg-white p-6 transition-shadow hover:shadow-[0_14px_32px_-20px_rgba(15,61,46,0.35)]"
     >
       <div className="flex items-center justify-between">
-        <div className="grid h-10 w-10 place-items-center rounded-[5px] bg-canvas border border-zinc-200">
-          <Icon className="h-4.5 w-4.5 text-ink" />
+        <div className="grid h-10 w-10 place-items-center rounded-lg bg-[#E0A526]/15">
+          <Icon className="h-4.5 w-4.5 text-[#9a6b00]" />
         </div>
-        <span className="font-mono text-[10px] tracking-[0.14em] text-ink-muted">
+        <span className="font-mono text-[10px] tracking-[0.14em] text-[#9a6b00]">
           0{n}
         </span>
       </div>
-      <h3 className="mt-5 text-[15px] font-semibold text-ink">{title}</h3>
-      <p className="mt-2 text-[13.5px] leading-relaxed text-[#3F4448]">
+      <h3 className="mt-5 text-[15px] font-semibold text-[#0F3D2E]">{title}</h3>
+      <p className="mt-2 text-[13.5px] leading-relaxed text-[#3F4B46]">
         {desc}
       </p>
     </motion.div>
@@ -321,18 +396,23 @@ function FeatureRow({ icon: Icon, title, desc, mono }) {
   return (
     <motion.div
       variants={fadeUp}
-      className="group p-6 border border-transparent hover:border-zinc-200 hover:bg-white rounded-[5px] transition-colors"
+      className="group rounded-lg border border-transparent p-6 transition-colors hover:bg-[#F1F8F3]"
     >
       <div className="flex items-start gap-4">
-        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-[3px] bg-ink">
-          <Icon className="h-4 w-4 text-accent-agri" strokeWidth={2.25} />
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[#00A36C]/10 transition-colors group-hover:bg-[#00A36C]">
+          <Icon
+            className="h-4.5 w-4.5 text-[#00A36C] transition-colors group-hover:text-white"
+            strokeWidth={2.25}
+          />
         </div>
         <div className="min-w-0">
-          <div className="font-mono text-[10px] tracking-[0.14em] text-ink-muted uppercase">
+          <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#00A36C]">
             {mono}
           </div>
-          <h3 className="mt-1 text-[15px] font-semibold text-ink">{title}</h3>
-          <p className="mt-1.5 text-[13.5px] leading-relaxed text-[#3F4448]">
+          <h3 className="mt-1 text-[15px] font-semibold text-[#0F3D2E]">
+            {title}
+          </h3>
+          <p className="mt-1.5 text-[13.5px] leading-relaxed text-[#3F4B46]">
             {desc}
           </p>
         </div>
@@ -345,38 +425,35 @@ function WorkflowStep({ icon: Icon, n, title, desc, last }) {
   return (
     <motion.div variants={fadeUp} className="relative flex-1">
       <div className="flex items-center">
-        <div className="relative z-10 grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white border border-zinc-300">
-          <Icon className="h-4 w-4 text-ink" />
+        <div className="relative z-10 grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#00A36C] shadow-[0_0_0_5px_rgba(0,163,108,0.14)]">
+          <Icon className="h-4 w-4 text-white" />
         </div>
         {!last && (
-          <div className="hidden lg:block flex-1 h-px bg-zinc-200 relative">
+          <div className="relative hidden h-px flex-1 bg-[#cfe3d6] lg:block">
             <motion.div
               initial={{ scaleX: 0 }}
               whileInView={{ scaleX: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: n * 0.08 }}
               style={{ transformOrigin: "left" }}
-              className="absolute inset-0 bg-ink"
+              className="absolute inset-0 bg-[#00A36C]"
             />
           </div>
         )}
       </div>
       <div className="mt-3 pr-2 lg:pr-4">
-        <div className="font-mono text-[10px] tracking-[0.14em] text-ink-muted">
+        <div className="font-mono text-[10px] tracking-[0.14em] text-[#9a6b00]">
           STEP 0{n}
         </div>
-        <div className="mt-1 text-[13.5px] font-medium text-ink leading-snug">
+        <div className="mt-1 text-[13.5px] font-medium leading-snug text-[#0F3D2E]">
           {title}
         </div>
         {desc && (
-          <p className="mt-1.5 text-[12px] leading-relaxed text-ink-muted">
+          <p className="mt-1.5 text-[12px] leading-relaxed text-[#5b6b64]">
             {desc}
           </p>
         )}
       </div>
-      {!last && (
-        <div className="md:hidden absolute left-5 top-10 w-px h-6 bg-zinc-200" />
-      )}
     </motion.div>
   );
 }
@@ -387,11 +464,13 @@ function ModuleCard({ icon: Icon, title, desc }) {
       variants={fadeUp}
       whileHover={{ y: -3 }}
       transition={{ duration: 0.2 }}
-      className="rounded-[5px] border border-zinc-200 bg-white p-5 hover:border-zinc-300 hover:shadow-[0_12px_30px_-20px_rgba(15,17,18,0.15)] transition-all"
+      className="group rounded-lg border border-[#d9e8de] border-b-[3px] border-b-transparent bg-white p-5 transition-all hover:border-b-[#00A36C] hover:shadow-[0_14px_32px_-20px_rgba(15,61,46,0.35)]"
     >
-      <Icon className="h-4.5 w-4.5 text-ink" />
-      <h3 className="mt-4 text-[14px] font-semibold text-ink">{title}</h3>
-      <p className="mt-1.5 text-[12.5px] leading-relaxed text-[#3F4448]">
+      <div className="grid h-9 w-9 place-items-center rounded-lg bg-[#00A36C]/10">
+        <Icon className="h-4.5 w-4.5 text-[#00A36C]" />
+      </div>
+      <h3 className="mt-4 text-[14px] font-semibold text-[#0F3D2E]">{title}</h3>
+      <p className="mt-1.5 text-[12.5px] leading-relaxed text-[#3F4B46]">
         {desc}
       </p>
     </motion.div>
@@ -402,9 +481,9 @@ function BenefitCard({ icon: Icon, n, title, desc, img, webp }) {
   return (
     <motion.div
       variants={fadeUp}
-      className="group rounded-[5px] border border-zinc-200 bg-white overflow-hidden hover:shadow-[0_18px_40px_-25px_rgba(15,17,18,0.2)] transition-shadow"
+      className="group overflow-hidden rounded-lg border border-[#d9e8de] bg-white transition-shadow hover:shadow-[0_18px_40px_-24px_rgba(15,61,46,0.45)]"
     >
-      <div className="aspect-[16/10] overflow-hidden bg-zinc-100">
+      <div className="relative aspect-[16/10] overflow-hidden bg-[#F1F8F3]">
         <Picture
           webp={webp}
           jpg={img}
@@ -413,18 +492,19 @@ function BenefitCard({ icon: Icon, n, title, desc, img, webp }) {
           decoding="async"
           className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
         />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0F3D2E]/55 via-transparent to-transparent" />
+        <span className="absolute bottom-3 left-4 rounded-full bg-[#E0A526] px-2.5 py-0.5 font-mono text-[10px] font-semibold tracking-[0.14em] text-[#3a2a00]">
+          0{n}
+        </span>
       </div>
       <div className="p-6">
-        <div className="flex items-center justify-between">
-          <div className="grid h-9 w-9 place-items-center rounded-[3px] bg-ink">
-            <Icon className="h-4 w-4 text-accent-agri" strokeWidth={2.25} />
-          </div>
-          <span className="font-mono text-[10px] tracking-[0.14em] text-ink-muted">
-            0{n}
-          </span>
+        <div className="grid h-9 w-9 place-items-center rounded-lg bg-[#00A36C]/10">
+          <Icon className="h-4 w-4 text-[#00A36C]" strokeWidth={2.25} />
         </div>
-        <h3 className="mt-4 text-[16px] font-semibold text-ink">{title}</h3>
-        <p className="mt-2 text-[13.5px] leading-relaxed text-[#3F4448]">
+        <h3 className="mt-4 text-[16px] font-semibold text-[#0F3D2E]">
+          {title}
+        </h3>
+        <p className="mt-2 text-[13.5px] leading-relaxed text-[#3F4B46]">
           {desc}
         </p>
       </div>
@@ -450,7 +530,7 @@ export function HomePage() {
       desc: "Finding farms that currently grow specific crops can be difficult and time-consuming.",
     },
     {
-      icon: FileWarning,
+      icon: ClipboardList,
       title: "Manual Reporting",
       desc: "Critical reports are often delayed, limiting timely decision-making.",
     },
@@ -605,25 +685,29 @@ export function HomePage() {
     },
   ];
 
-  return (
-    <div className="min-h-screen bg-canvas text-ink font-sans antialiased selection:bg-ink selection:text-white">
-      <Navbar />
+  const grid = (cls, amount = 0.15) => ({
+    variants: stagger,
+    initial: "hidden",
+    whileInView: "show",
+    viewport: { once: true, amount },
+    className: cls,
+  });
 
+  return (
+    <div className="min-h-screen bg-white font-sans text-ink antialiased selection:bg-[#00A36C] selection:text-white">
+      <Navbar />
       <main>
         <Hero />
 
         <Section
           id="challenges"
-          label="CHALLENGES"
+          label="Challenges"
+          className="bg-[#FBF6E8]"
           title="Challenges Facing Agricultural Communities"
           description="Many agricultural offices still rely on fragmented records and manual processes, making disaster response and resource allocation difficult."
         >
           <motion.div
-            variants={stagger}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, amount: 0.15 }}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+            {...grid("grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4")}
           >
             {problems.map((p, i) => (
               <ProblemCard key={p.title} {...p} n={i + 1} />
@@ -633,16 +717,11 @@ export function HomePage() {
 
         <Section
           id="solutions"
-          label="BENEFITS"
+          label="Benefits"
+          className="bg-white"
           title="Built for Faster Agricultural Operations"
         >
-          <motion.div
-            variants={stagger}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, amount: 0.1 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-5"
-          >
+          <motion.div {...grid("grid grid-cols-1 gap-5 md:grid-cols-3", 0.1)}>
             {benefits.map((b, i) => (
               <BenefitCard key={b.title} {...b} n={i + 1} />
             ))}
@@ -651,15 +730,15 @@ export function HomePage() {
 
         <Section
           id="features"
-          label="PLATFORM SOLUTION"
+          label="Platform Solution"
+          className="bg-[#F1F8F3]"
           title="One Platform. Complete Agricultural Visibility."
         >
+          <WheatStalk className="pointer-events-none absolute -right-4 top-10 hidden h-64 text-[#00A36C]/10 lg:block" />
           <motion.div
-            variants={stagger}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, amount: 0.15 }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1 border border-zinc-200 rounded-[5px] bg-white divide-y md:divide-y-0 md:divide-x divide-zinc-200"
+            {...grid(
+              "grid grid-cols-1 gap-1 divide-y divide-[#d9e8de] rounded-lg border border-[#d9e8de] bg-white md:grid-cols-2 md:divide-x md:divide-y-0 lg:grid-cols-3",
+            )}
           >
             {features.map((f) => (
               <FeatureRow key={f.title} {...f} />
@@ -669,24 +748,21 @@ export function HomePage() {
 
         <Section
           id="resource-tracking"
-          label="DISASTER RESPONSE"
+          label="Disaster Response"
+          className="bg-white"
           title="Prioritize Assistance with Data-Driven Decisions"
         >
           <motion.div
-            variants={stagger}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, amount: 0.15 }}
-            className="rounded-[5px] border border-zinc-200 bg-white p-6 lg:p-10"
+            {...grid(
+              "rounded-lg border border-[#d9e8de] bg-gradient-to-br from-white to-[#F1F8F3] p-6 lg:p-10",
+            )}
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:flex lg:flex-row gap-6 md:gap-6 lg:gap-0">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:flex lg:flex-row lg:gap-0">
               {workflow.map((s, i) => (
                 <WorkflowStep
                   key={s.title}
-                  icon={s.icon}
+                  {...s}
                   n={i + 1}
-                  title={s.title}
-                  desc={s.desc}
                   last={i === workflow.length - 1}
                 />
               ))}
@@ -696,15 +772,15 @@ export function HomePage() {
 
         <Section
           id="reporting"
-          label="PLATFORM MODULES"
+          label="Platform Modules"
+          className="bg-[#F1F8F3]"
           title="Everything Needed in One Platform"
         >
           <motion.div
-            variants={stagger}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, amount: 0.1 }}
-            className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3"
+            {...grid(
+              "grid grid-cols-1 gap-3 md:grid-cols-3 lg:grid-cols-5",
+              0.1,
+            )}
           >
             {modules.map((m) => (
               <ModuleCard key={m.title} {...m} />
@@ -714,7 +790,7 @@ export function HomePage() {
 
         <section
           id="get-started"
-          className="py-20 lg:py-32 border-t border-zinc-200"
+          className="border-t border-[#d9e8de] bg-white py-20 lg:py-28"
         >
           <div className="mx-auto max-w-7xl px-6 lg:px-8">
             <motion.div
@@ -722,90 +798,96 @@ export function HomePage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6 }}
-              className="rounded-[8px] border border-zinc-200 bg-white p-8 sm:p-12 lg:p-16 text-center"
+              className="relative overflow-hidden rounded-xl bg-gradient-to-br from-[#0F3D2E] via-[#12503b] to-[#00805a] p-8 text-center sm:p-12 lg:p-16"
             >
-              <SectionLabel>GET STARTED</SectionLabel>
-              <h2 className="mt-5 text-[1.65rem] sm:text-[2.15rem] lg:text-[2.5rem] leading-[1.12] tracking-[-0.02em] font-medium text-ink max-w-2xl mx-auto">
-                Transform Agricultural Resource Management
-              </h2>
-              <p className="mt-4 text-[0.98rem] leading-relaxed text-[#3F4448] max-w-xl mx-auto">
-                Give agricultural offices complete visibility over farms,
-                livestock, equipment, reports, and disaster response operations.
-              </p>
-              <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-                <a
-                  href="#demo"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-[5px] bg-ink px-5 py-3 text-[14px] font-medium text-white hover:bg-black transition-colors"
-                >
-                  Request Demo <ArrowRight className="h-4 w-4" />
-                </a>
-                <Link
-                  to="/auth"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-[5px] border border-zinc-200 bg-white px-5 py-3 text-[14px] font-medium text-ink hover:border-zinc-300 transition-colors"
-                >
-                  Get Started
-                </Link>
+              <FieldLines className="pointer-events-none absolute inset-x-0 bottom-0 h-48 w-full text-white/10" />
+              <WheatStalk className="pointer-events-none absolute -left-2 bottom-0 hidden h-56 text-[#E0A526]/25 md:block" />
+              <WheatStalk className="pointer-events-none absolute -right-2 bottom-0 hidden h-56 text-[#E0A526]/25 md:block" />
+              <div className="relative">
+                <SectionLabel light>Get Started</SectionLabel>
+                <h2 className="mx-auto mt-5 max-w-2xl text-[1.65rem] font-medium leading-[1.12] tracking-[-0.02em] text-white sm:text-[2.15rem] lg:text-[2.5rem]">
+                  Transform Agricultural Resource Management
+                </h2>
+                <p className="mx-auto mt-4 max-w-xl text-[0.98rem] leading-relaxed text-white/80">
+                  Give agricultural offices complete visibility over farms,
+                  livestock, equipment, reports, and disaster response
+                  operations.
+                </p>
+                <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                  <a
+                    href="#demo"
+                    className="inline-flex w-full items-center justify-center gap-1.5 rounded-[5px] bg-[#E0A526] px-5 py-3 text-[14px] font-semibold text-[#3a2a00] transition-colors hover:bg-[#f0b83a] sm:w-auto"
+                  >
+                    Request Demo <ArrowRight className="h-4 w-4" />
+                  </a>
+                  <Link
+                    to="/auth"
+                    className="inline-flex w-full items-center justify-center gap-1.5 rounded-[5px] border border-white/30 bg-white/10 px-5 py-3 text-[14px] font-medium text-white transition-colors hover:bg-white/20 sm:w-auto"
+                  >
+                    Get Started
+                  </Link>
+                </div>
               </div>
             </motion.div>
           </div>
         </section>
       </main>
 
-      <footer className="border-t border-zinc-200 bg-white">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8 py-14">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+      <footer className="bg-[#0F3D2E] text-white/70">
+        <div className="mx-auto max-w-7xl px-6 py-14 lg:px-8">
+          <div className="grid grid-cols-1 gap-10 md:grid-cols-3">
             <div>
-              <Brand />
-              <p className="mt-4 text-[13px] leading-relaxed text-[#3F4448] max-w-xs">
+              <Brand light />
+              <p className="mt-4 max-w-xs text-[13px] leading-relaxed text-white/65">
                 Agricultural intelligence platform for resource management and
                 disaster response.
               </p>
             </div>
-            <div className="md:justify-self-center text-ink-muted">
-              <div className="font-mono text-[10px] tracking-[0.14em] uppercase">
+            <div className="md:justify-self-center">
+              <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#F3CC6B]">
                 Navigation
               </div>
-              <nav className="flex flex-col p-5 gap-1">
+              <nav className="flex flex-col gap-1 p-5">
                 {links.map((l) => (
                   <a
                     href={l.to}
                     key={l.label}
-                    className="hover:text-ink transition-colors"
+                    className="transition-colors hover:text-[#5be0ac]"
                   >
                     {l.label}
                   </a>
                 ))}
               </nav>
             </div>
-            <div className="md:justify-self-end text-ink-muted">
-              <div className="font-mono text-[10px] tracking-[0.14em] uppercase">
+            <div className="md:justify-self-end">
+              <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#F3CC6B]">
                 Social
               </div>
               <nav className="flex gap-4 p-5">
-                <a href="https://facebook.com" target="_blank" rel="noreferrer">
-                  <FaFacebookF className="hover:text-ink transition-colors" />
-                </a>
-                <a
-                  href="https://instagram.com"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <FaInstagram className="hover:text-ink transition-colors" />
-                </a>
-                <a href="https://x.com" target="_blank" rel="noreferrer">
-                  <FaXTwitter className="hover:text-ink transition-colors" />
-                </a>
-                <a href="https://github.com" target="_blank" rel="noreferrer">
-                  <FaGithub className="hover:text-ink transition-colors" />
-                </a>
+                {[
+                  ["https://facebook.com", FaFacebookF, "Facebook"],
+                  ["https://instagram.com", FaInstagram, "Instagram"],
+                  ["https://x.com", FaXTwitter, "X"],
+                  ["https://github.com", FaGithub, "GitHub"],
+                ].map(([href, Icon, name]) => (
+                  <a
+                    key={name}
+                    href={href}
+                    aria-label={name}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <Icon className="transition-colors hover:text-[#5be0ac]" />
+                  </a>
+                ))}
               </nav>
             </div>
           </div>
-          <div className="mt-12 pt-6 border-t border-zinc-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <p className="font-mono text-[10.5px] tracking-[0.12em] text-ink-muted uppercase">
+          <div className="mt-12 flex flex-col items-start justify-between gap-3 border-t border-white/15 pt-6 sm:flex-row sm:items-center">
+            <p className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-white/50">
               © 2026 AgriCentral. All rights reserved.
             </p>
-            <p className="font-mono text-[10.5px] tracking-[0.12em] text-ink-muted uppercase">
+            <p className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-white/50">
               Build 2026.06 · Region 4B
             </p>
           </div>
