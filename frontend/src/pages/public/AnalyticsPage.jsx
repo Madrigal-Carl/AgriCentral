@@ -394,13 +394,29 @@ export function AnalyticsPage() {
         <>
           {/* KPI row */}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <StatCard label="Equipment" value={kpis.equipment} icon={Tractor} />
-            <StatCard label="Livestock" value={kpis.livestock} icon={Beef} />
-            <StatCard label="Farms" value={kpis.farm} icon={Wheat} />
+            <StatCard
+              label="Equipment"
+              value={kpis.equipment}
+              icon={Tractor}
+              color="blue"
+            />
+            <StatCard
+              label="Livestock"
+              value={kpis.livestock}
+              icon={Beef}
+              color="amber"
+            />
+            <StatCard
+              label="Farms"
+              value={kpis.farm}
+              icon={Wheat}
+              color="green"
+            />
             <StatCard
               label="Crop Yield"
               value={kpis.cropYield.toLocaleString()}
               icon={Leaf}
+              color="lime"
             />
           </div>
 

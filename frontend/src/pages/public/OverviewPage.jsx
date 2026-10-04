@@ -94,6 +94,7 @@ export function OverviewPage() {
                   isLoading ? "—" : overview.kpis.associations.toLocaleString()
                 }
                 icon={Building2}
+                color="purple"
               />
             )}
             <StatCard
@@ -104,6 +105,7 @@ export function OverviewPage() {
                   : (overview?.kpis?.farmers ?? 0).toLocaleString()
               }
               icon={Users}
+              color="teal"
             />
             <StatCard
               label="Total Farms"
@@ -111,6 +113,7 @@ export function OverviewPage() {
                 isLoading ? "—" : (overview?.kpis?.farms ?? 0).toLocaleString()
               }
               icon={Wheat}
+              color="green"
             />
             <StatCard
               label="Total Equipment"
@@ -120,6 +123,7 @@ export function OverviewPage() {
                   : (overview?.kpis?.equipment ?? 0).toLocaleString()
               }
               icon={Tractor}
+              color="blue"
             />
             <StatCard
               label="Total Livestock"
@@ -129,6 +133,7 @@ export function OverviewPage() {
                   : (overview?.kpis?.livestock ?? 0).toLocaleString()
               }
               icon={Beef}
+              color="amber"
             />
           </div>
 
