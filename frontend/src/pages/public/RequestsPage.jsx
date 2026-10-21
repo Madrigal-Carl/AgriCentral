@@ -32,6 +32,7 @@ import {
   useRequests,
 } from "@/hooks/useRequests";
 import useAuth from "@/hooks/useAuth";
+import { fmtPendingSince } from "@/utils/format";
 
 export function RequestsPage() {
   const can = usePermissions("requests");
@@ -69,10 +70,10 @@ export function RequestsPage() {
   const rows = data?.requests ?? [];
   const pagination = data?.pagination;
 
-  const { mutate: submitApproval } = useUpdateRequestApproval({
-    onSuccess: () => setReviewRow(null),
+  const { mutate: submitApproval, isPending: isReviewing, error: reviewError, reset: resetReview } = useUpdateRequestApproval({
+    onSuccess: () => { setReviewRow(null); setDrawer(null); },
   });
-  const { mutate: submitRelease, isPending: isReleasing } = useReleaseRequest({
+  const { mutate: submitRelease, isPending: isReleasing, error: releaseError, reset: resetRelease } = useReleaseRequest({
     onSuccess: () => setReviewRow(null),
   });
   const { mutate: removeRequest } = useDeleteRequest({
@@ -97,9 +98,9 @@ export function RequestsPage() {
     removeRequest(confirmDelete._id);
   };
 
-  const askApprove = (row) => setReviewRow({ row, action: "approve" });
-  const askDeny = (row) => setReviewRow({ row, action: "deny" });
-  const askRelease = (row) => setReviewRow({ row, action: "release" });
+  const askApprove = (row) => { resetReview(); setReviewRow({ row, action: "approve" }); };
+  const askDeny = (row) => { resetReview(); setReviewRow({ row, action: "deny" }); };
+  const askRelease = (row) => { resetRelease(); setReviewRow({ row, action: "release" }); };
 
   const confirmReview = (remarks) => {
     if (!reviewRow) return;
@@ -211,13 +212,18 @@ export function RequestsPage() {
             },
           },
           {
+            key: "pendingFor",
+            header: "Pending For",
+            cell: (r) => getDisplayStatus(r) === "pending" ? fmtPendingSince(r.createdAt) : "—",
+          },
+          {
             key: "actions",
             header: "",
             align: "right",
             cell: (r) => {
               const currentStage = getCurrentStage(r);
               const canReviewThis =
-                can.review && currentStage && role === currentStage;
+                can.review && currentStage && role === currentStage && getDisplayStatus(r) === "pending";
               const coordinatorReviewed =
                 r.approvalStatus?.coordinator?.status === "approved" ||
                 r.approvalStatus?.coordinator?.status === "denied";
@@ -256,7 +262,10 @@ export function RequestsPage() {
           onSave={handleSave}
         />
       )}
-      {drawer && <RequestDrawer row={drawer} onClose={() => setDrawer(null)} />}
+      {drawer && <RequestDrawer row={drawer} onClose={() => setDrawer(null)}
+        onApprove={can.review && role === getCurrentStage(drawer) && getDisplayStatus(drawer) === "pending" ? () => askApprove(drawer) : undefined}
+        onDeny={can.review && role === getCurrentStage(drawer) && getDisplayStatus(drawer) === "pending" ? () => askDeny(drawer) : undefined}
+      />}
       {confirmDelete && can.delete && (
         <DeleteConfirmModal
           id={confirmDelete._id}
@@ -274,6 +283,8 @@ export function RequestsPage() {
             action={reviewRow.action}
             onCancel={() => setReviewRow(null)}
             onConfirm={confirmReview}
+            busy={isReviewing || isReleasing}
+            submitError={(reviewRow.action === "release" ? releaseError : reviewError)?.response?.data?.message}
           />
         )}
     </div>

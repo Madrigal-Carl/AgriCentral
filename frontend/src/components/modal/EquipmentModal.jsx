@@ -6,6 +6,8 @@ import { ModalShell } from "./ModalShell";
 import { EQUIPMENT_CONDITION_OPTIONS } from "@/constants/data";
 import { useAssociations } from "@/hooks/useAssociations";
 import { useCreateEquipment, useUpdateEquipment } from "@/hooks/useEquipments";
+import { getErrorMessage } from "@/utils/getErrorMessage";
+import { assignmentReason } from "@/utils/assignment";
 import {
   equipmentFormSchema,
   equipmentUpdateSchema,
@@ -19,9 +21,15 @@ export function EquipmentModal({ mode, initial, onClose, onSave }) {
     register,
     handleSubmit,
     control,
+    setError,
     formState: { errors },
   } = useForm({
-    resolver: zodResolver(isEdit ? equipmentUpdateSchema : equipmentFormSchema),
+    resolver: zodResolver((isEdit ? equipmentUpdateSchema : equipmentFormSchema).superRefine((values, ctx) => {
+      const reason = assignmentReason("equipment", values.condition);
+      if (reason && values.associationId && (!isEdit || values.associationId !== initial.associationId)) {
+        ctx.addIssue({ code: "custom", message: reason, path: ["associationId"] });
+      }
+    })),
     defaultValues: {
       propertyNumber: initial.id,
       name: initial.name,
@@ -61,15 +69,8 @@ export function EquipmentModal({ mode, initial, onClose, onSave }) {
   const onSubmit = async (values) => {
     setSubmitError(null);
 
-    // This modal never touches assignment/status — it mirrors whatever
-    // the record already had so those refine rules on the backend
-    // (status <-> assignedFarmer) stay satisfied.
     const clearingAssociation = isEdit && !values.associationId;
-    const derivedStatus = clearingAssociation
-      ? "available"
-      : initial.farmer
-        ? "assigned"
-        : "available";
+    const derivedStatus = values.associationId ? "assigned" : "available";
 
     const payload = {
       propertyNumber: values.propertyNumber,
@@ -102,6 +103,10 @@ export function EquipmentModal({ mode, initial, onClose, onSave }) {
         onSave?.(equipment);
       }
     } catch (err) {
+      const message = getErrorMessage(err, "Failed to save equipment");
+      if (message === "Property number is already in use") {
+        setError("propertyNumber", { type: "server", message });
+      }
       setSubmitError(
         err?.response?.data?.message ||
           err?.message ||

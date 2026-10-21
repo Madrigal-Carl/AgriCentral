@@ -75,7 +75,7 @@ export function AssociationsPage() {
   };
 
   const handleSave = (values) => {
-    const payload = { name: values.name };
+    const payload = { name: values.name, municipality: values.municipality, barangay: values.barangay };
 
     if (modal.mode === "edit") {
       updateMutation.mutate({ id: modal.data._id, ...payload });

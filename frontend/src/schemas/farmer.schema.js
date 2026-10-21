@@ -31,10 +31,9 @@ const baseFarmerFormSchema = z.object({
         .max(50, "Middle name must not exceed 50 characters")
         .optional(),
     contact: z
-        .string({ required_error: "Contact number is required" })
+        .string({ error: "Contact number must be 11 digits and start with 09" })
         .trim()
-        .min(7, "Contact number is too short")
-        .max(20, "Contact number is too long"),
+        .regex(/^09\d{9}$/, "Contact number must be 11 digits and start with 09"),
     // Optional to mirror the backend, which does not require emailAddress.
     email: z
         .string()
@@ -62,7 +61,10 @@ const baseFarmerFormSchema = z.object({
     farms: z.array(z.any()).optional().default([]),
     livestock: z.array(z.any()).optional().default([]),
     equipment: z.array(z.any()).optional().default([]),
-    files: z.array(z.any()).optional().default([]),
+    profileImage: z.array(z.union([
+        z.object({ url: z.string().url(), publicId: z.string(), resourceType: z.literal("image").optional() }),
+        z.object({ file: z.instanceof(File).refine((file) => file.type.startsWith("image/"), "Select an image") }).passthrough(),
+    ])).max(1, "Select one profile image").optional().default([]),
 });
 
 // isFar is passed in from the caller (it comes from useAuth, not from the

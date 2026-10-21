@@ -14,6 +14,8 @@ const associationSchema = new mongoose.Schema(
             minlength: 2,
             maxlength: 100,
         },
+        municipality: { type: String, trim: true },
+        barangay: { type: String, trim: true },
         deletedAt: {
             type: Date,
             default: null,
@@ -22,6 +24,19 @@ const associationSchema = new mongoose.Schema(
     {
         timestamps: true,
     }
+);
+
+associationSchema.index(
+    { municipality: 1, barangay: 1 },
+    {
+        unique: true,
+        partialFilterExpression: {
+            deletedAt: null,
+            municipality: { $type: "string" },
+            barangay: { $type: "string" },
+        },
+        collation: { locale: "en", strength: 2 },
+    },
 );
 
 export default mongoose.model("Association", associationSchema);

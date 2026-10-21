@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isMeaningfulName, MEANINGFUL_NAME_ERROR } from "@/utils/meaningfulName";
 
 const SEVERITIES = ["low", "medium", "high", "critical"];
 const ENTITY_TYPES = ["farm", "livestock", "equipment"];
@@ -31,8 +32,8 @@ const baseReportForm = z.object({
     title: z
         .string({ required_error: "Title is required" })
         .trim()
-        .min(2, "Title must be at least 2 characters")
-        .max(100, "Title must not exceed 100 characters"),
+        .max(100, "Title must not exceed 100 characters")
+        .refine(isMeaningfulName, MEANINGFUL_NAME_ERROR),
     severity: z.enum(SEVERITIES).default("medium"),
     entityType: z.enum(ENTITY_TYPES, { required_error: "Select a type" }),
     farm: z.union([objectId("Select a farm"), z.literal("")]).optional(),

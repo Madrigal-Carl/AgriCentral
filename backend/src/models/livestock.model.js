@@ -56,6 +56,7 @@ const livestockSchema = new mongoose.Schema(
             ],
             default: "healthy",
         },
+        deceasedAt: { type: Date, default: null },
         status: {
             type: String,
             enum: [
@@ -82,6 +83,11 @@ const livestockSchema = new mongoose.Schema(
         timestamps: true,
     }
 );
+
+livestockSchema.pre("validate", function () {
+    this.status = this.association ? "assigned" : "available";
+    this.deceasedAt = this.condition === "deceased" ? this.deceasedAt ?? new Date() : null;
+});
 
 livestockSchema.index(
     { propertyNumber: 1 },

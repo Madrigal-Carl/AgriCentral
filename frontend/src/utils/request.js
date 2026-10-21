@@ -64,7 +64,7 @@ export const releaseStatusTone = {
 };
 
 export const releaseStatusLabel = {
-    pending: "Not Released",
+    pending: "Unreleased",
     partial: "Partially Released",
     released: "Released",
 };

@@ -84,6 +84,7 @@ const farmerSchema = new mongoose.Schema(
             default: "member",
         },
         attachments: [attachmentSchema],
+        profileImage: { type: attachmentSchema, default: null },
         status: {
             type: String,
             enum: ["active", "inactive"],
@@ -119,6 +120,18 @@ farmerSchema.methods.getFullName = function () {
 farmerSchema.virtual("fullName").get(function () {
     return this.constructor.buildFullName(this);
 });
+
+farmerSchema.index(
+    { association: 1, position: 1 },
+    {
+        unique: true,
+        partialFilterExpression: {
+            deletedAt: null,
+            association: { $type: "objectId" },
+            position: { $in: ["president", "vice_president", "secretary", "treasurer", "auditor", "pio", "project_manager"] },
+        },
+    },
+);
 
 const Farmer = mongoose.model("Farmer", farmerSchema);
 

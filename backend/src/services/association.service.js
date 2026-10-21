@@ -3,7 +3,23 @@ import Association from "../models/association.model.js";
 import Farmer from "../models/farmer.model.js";
 import User from "../models/user.model.js";
 
+async function checkLocation(municipality, barangay, id) {
+    if (!municipality || !barangay) return;
+    const existing = await Association.exists({
+        municipality: new RegExp(`^${escapeRegex(municipality.trim())}$`, "i"),
+        barangay: new RegExp(`^${escapeRegex(barangay.trim())}$`, "i"),
+        deletedAt: null,
+        ...(id ? { _id: { $ne: id } } : {}),
+    });
+    if (existing) {
+        const error = new Error("This municipality and barangay is already assigned to another association");
+        error.statusCode = 409;
+        throw error;
+    }
+}
+
 export const createAssociation = async (data) => {
+    await checkLocation(data.municipality, data.barangay);
     const existing = await Association.findOne({
         name: new RegExp(`^${escapeRegex(data.name.trim())}$`, "i"),
         deletedAt: null,
@@ -20,6 +36,8 @@ export const createAssociation = async (data) => {
 };
 
 export const updateAssociation = async (id, data) => {
+    const previous = await Association.findOne({ _id: id, deletedAt: null });
+    await checkLocation(data.municipality ?? previous?.municipality, data.barangay ?? previous?.barangay, id);
     const association = await Association.findOneAndUpdate(
         { _id: id, deletedAt: null },
         { $set: data },
@@ -79,6 +97,7 @@ export const restoreAssociation = async (id) => {
         throw conflictError;
     }
 
+    await checkLocation(toRestore.municipality, toRestore.barangay, id);
     toRestore.deletedAt = null;
     await toRestore.save();
     return toRestore;

@@ -76,9 +76,9 @@ export function useCreateFarmer(options = {}) {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({ files, ...formValues }) => {
-            const attachments = await resolveAttachments(files);
-            return createFarmer({ ...formValues, attachments });
+        mutationFn: async ({ profileImage, ...formValues }) => {
+            const images = await resolveAttachments(profileImage);
+            return createFarmer({ ...formValues, profileImage: images[0] ?? null });
         },
         onSuccess: (data, variables, context) => {
             queryClient.invalidateQueries({ queryKey: farmerKeys.lists() });
@@ -92,9 +92,9 @@ export function useUpdateFarmer(options = {}) {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({ id, files, ...formValues }) => {
-            const attachments = await resolveAttachments(files);
-            return updateFarmer(id, { ...formValues, attachments });
+        mutationFn: async ({ id, profileImage, ...formValues }) => {
+            const images = profileImage === undefined ? undefined : await resolveAttachments(profileImage);
+            return updateFarmer(id, { ...formValues, ...(images ? { profileImage: images[0] ?? null } : {}) });
         },
         onSuccess: (data, variables, context) => {
             queryClient.invalidateQueries({ queryKey: farmerKeys.lists() });

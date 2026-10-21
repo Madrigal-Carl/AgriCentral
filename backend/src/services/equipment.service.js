@@ -3,6 +3,7 @@ import Farmer from "../models/farmer.model.js";
 import User from "../models/user.model.js";
 import Association from "../models/association.model.js";
 import { createLog, getLogsForEntities } from "./log.service.js";
+import { assertAssignable } from "../utils/assignment.js";
 
 const ASSOCIATION_POPULATE = { path: "association", select: "name" };
 
@@ -24,7 +25,9 @@ export const createEquipment = async (data, authenticatedUserId) => {
     const existing = await Equipment.findOne({ propertyNumber: equipmentData.propertyNumber, deletedAt: null });
 
     if (existing) {
-        throw new Error("Equipment with this property number already exists");
+        const error = new Error("Property number is already in use");
+        error.statusCode = 409;
+        throw error;
     }
 
     const resolvedAssociationId = await resolveAssociationId(
@@ -32,9 +35,11 @@ export const createEquipment = async (data, authenticatedUserId) => {
         authenticatedUserId,
     );
 
+    if (resolvedAssociationId || equipmentData.assignedFarmer) assertAssignable("equipment", equipmentData.condition);
     const equipment = await Equipment.create({
         ...equipmentData,
         association: resolvedAssociationId || undefined,
+        status: resolvedAssociationId ? "assigned" : "available",
     });
 
     await createLog({
@@ -96,20 +101,21 @@ export const updateEquipment = async (id, data) => {
         });
 
         if (existing) {
-            throw new Error("Equipment with this property number already exists");
+            const error = new Error("Property number is already in use");
+            error.statusCode = 409;
+            throw error;
         }
     }
 
-    const needsPrevious =
-        equipmentData.assignedFarmer !== undefined ||
-        equipmentData.condition !== undefined ||
-        equipmentData.association !== undefined;
-    const previousEquipment = needsPrevious
-        ? await Equipment.findOne({ _id: id, deletedAt: null }).select("assignedFarmer condition name propertyNumber association")
-        : null;
-
-    if (equipmentData.assignedFarmer !== undefined && equipmentData.status === undefined) {
-        equipmentData.status = equipmentData.assignedFarmer ? "assigned" : "available";
+    const previousEquipment = await Equipment.findOne({ _id: id, deletedAt: null }).select("assignedFarmer condition name propertyNumber association");
+    const association = equipmentData.association !== undefined ? equipmentData.association : previousEquipment?.association;
+    equipmentData.status = association ? "assigned" : "available";
+    if ((equipmentData.association && String(equipmentData.association) !== String(previousEquipment?.association ?? "")) ||
+        (equipmentData.assignedFarmer && String(equipmentData.assignedFarmer) !== String(previousEquipment?.assignedFarmer ?? ""))) {
+        assertAssignable("equipment", equipmentData.condition ?? previousEquipment?.condition);
+    }
+    if (equipmentData.association === null) {
+        equipmentData.assignedFarmer = null;
     }
 
     const update = { ...equipmentData };
@@ -277,6 +283,7 @@ const attachHistory = async (equipments, associationId) => {
         const key = obj._id.toString();
         return {
             ...obj,
+            status: obj.association ? "assigned" : "available",
             history: logsByEquipmentId.get(key) ?? [],
         };
     });
@@ -287,7 +294,6 @@ export const getAvailableEquipments = async () => {
         deletedAt: null,
         association: null,
         assignedFarmer: null,
-        status: "available",
     })
         .select("propertyNumber name condition status")
         .sort({ propertyNumber: 1 });
@@ -307,7 +313,7 @@ export const getEquipments = async ({
 }) => {
     const filter = includeDeleted ? {} : { deletedAt: null };
     if (condition) filter.condition = condition;
-    if (status) filter.status = status;
+    if (status) filter.$and = [{ association: status === "assigned" ? { $ne: null } : null }];
     if (associationId) filter.association = associationId;
 
     if (search) {

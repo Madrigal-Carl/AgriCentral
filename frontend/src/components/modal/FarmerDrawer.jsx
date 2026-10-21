@@ -48,7 +48,9 @@ export function FarmerDrawer({ row, onClose }) {
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex items-start gap-3">
               <div className="grid h-12 w-12 shrink-0 place-items-center bg-accent-soft rounded-full font-display text-base text-accent">
-                {row.fullName?.[0]}
+                {row.profileImage?.url ? (
+                  <img src={row.profileImage.url} alt={row.fullName} className="h-12 w-12 rounded-full" />
+                ) : row.fullName?.[0]}
               </div>
               <div className="min-w-0">
                 <div className="label-eyebrow mb-1">Farmer</div>

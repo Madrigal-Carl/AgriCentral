@@ -18,6 +18,7 @@ import {
 } from "@/schemas/farmer.schema";
 import { useCreateFarmer, useUpdateFarmer } from "@/hooks/useFarmers";
 import { useAssociations } from "@/hooks/useAssociations";
+import { getErrorMessage } from "@/utils/getErrorMessage";
 
 const STATUS_OPTIONS = [
   { value: "active", label: "Active" },
@@ -40,7 +41,7 @@ function toFormShape(farmer, extra = {}) {
     address: farmer.address,
     position: farmer.position,
     status: farmer.status,
-    files: farmer.attachments || [],
+    profileImage: farmer.profileImage ? [farmer.profileImage] : [],
     association: farmer.association?._id ?? farmer.association,
     ...extra,
   };
@@ -88,6 +89,7 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
     handleSubmit,
     control,
     reset,
+    setError,
     formState: { errors },
   } = useForm({
     resolver,
@@ -142,7 +144,7 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
         birthDate: values.dob,
         address: values.address,
         position: values.position,
-        files: values.files, // hook resolves this into `attachments`
+        profileImage: values.profileImage,
         ...(!isFar && values.association
           ? { associationId: values.association }
           : {}),
@@ -172,6 +174,10 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
         );
       }
     } catch (err) {
+      const message = getErrorMessage(err, "Failed to save farmer");
+      if (message === "This position is already taken in this association") {
+        setError("position", { type: "server", message });
+      }
       setSubmitError(
         err?.response?.data?.message || err?.message || "Failed to save farmer",
       );
@@ -216,16 +222,16 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Last Name" error={errors.lastName?.message}>
-            <TextInput {...register("lastName")} placeholder="Doe" />
+            <TextInput {...register("lastName")} placeholder="Dela Cruz" />
           </Field>
           <Field label="First Name" error={errors.firstName?.message}>
-            <TextInput {...register("firstName")} placeholder="Jane" />
+            <TextInput {...register("firstName")} placeholder="Juan" />
           </Field>
           <Field
             label="Middle Name (Optional)"
             error={errors.middleName?.message}
           >
-            <TextInput {...register("middleName")} placeholder="Reyes" />
+            <TextInput {...register("middleName")} placeholder="Recto" />
           </Field>
 
           <Field label="Email Address (Optional)" error={errors.email?.message}>
@@ -239,7 +245,13 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
           <Field label="Contact Number" full error={errors.contact?.message}>
             <TextInput
               {...register("contact")}
-              placeholder="+254 700 000 000"
+              onChange={(e) => {
+                e.target.value = e.target.value.replace(/\D/g, "").slice(0, 11);
+                register("contact").onChange(e);
+              }}
+              inputMode="numeric"
+              maxLength={11}
+              placeholder="09123456789"
             />
           </Field>
 
@@ -300,7 +312,7 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
             </Field>
           )}
 
-          <Field label="Position" full>
+          <Field label="Position" full error={errors.position?.message}>
             <Controller
               name="position"
               control={control}
@@ -315,12 +327,12 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
             />
           </Field>
 
-          <Field label="RSBSA Form" full>
+          <Field label="Profile Image" full error={errors.profileImage?.message}>
             <Controller
-              name="files"
+              name="profileImage"
               control={control}
               render={({ field }) => (
-                <FileUploader value={field.value} onChange={field.onChange} />
+                <FileUploader value={field.value} onChange={field.onChange} accept="image/*" multiple={false} />
               )}
             />
           </Field>

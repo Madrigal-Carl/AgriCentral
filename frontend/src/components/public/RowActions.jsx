@@ -2,7 +2,7 @@ import { IconButton } from "@/components/ui";
 import {
   Eye,
   Pencil,
-  Trash2,
+  Archive,
   Check,
   X as XIcon,
   PackageCheck,
@@ -64,8 +64,8 @@ export function RowActions({
       )}
       {onDelete && (
         <IconButton
-          icon={Trash2}
-          label="Delete"
+          icon={Archive}
+          label="Archive"
           tone="danger"
           onClick={onDelete}
         />

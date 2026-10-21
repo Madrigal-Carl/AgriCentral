@@ -17,6 +17,8 @@ import { Button } from "@/components/ui";
 import { statusTone, positionLabel } from "@/constants/data";
 import { usePermissions } from "@/constants/permissions";
 import { useFarmers, useDeleteFarmer } from "@/hooks/useFarmers";
+import { useAssociations } from "@/hooks/useAssociations";
+import useAuth from "@/hooks/useAuth";
 
 const STATUS_OPTIONS = [
   { value: "active", label: "Active" },
@@ -38,12 +40,15 @@ const blankForm = {
   farms: [],
   livestock: [],
   equipment: [],
-  files: [],
+  profileImage: [],
 };
 
 /* ---------------- Page ---------------- */
 export function FarmersPage() {
   const can = usePermissions("farmers");
+  const { role } = useAuth();
+  const [associationId, setAssociationId] = useState("");
+  const { data: associationsData } = useAssociations({ all: true }, { enabled: role !== "far" });
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
@@ -55,6 +60,7 @@ export function FarmersPage() {
     limit,
     ...(status ? { status } : {}),
     ...(search ? { search } : {}),
+    ...(role !== "far" && associationId ? { associationId } : {}),
   };
 
   const { data, isLoading, isError, error } = useFarmers(filters);
@@ -105,7 +111,7 @@ export function FarmersPage() {
         association: row.association?._id ?? row.association ?? "",
         position: row.position,
         status: row.status,
-        files: row.attachments || [],
+        profileImage: row.profileImage ? [row.profileImage] : [],
         farms: row.farms || [],
         livestock: row.livestock || [],
         equipment: row.equipment || [],
@@ -156,6 +162,13 @@ export function FarmersPage() {
         loading={isLoading}
         data={rows}
         filters={[
+          ...(role !== "far" ? [{
+            key: "association",
+            label: "Associations",
+            options: (associationsData?.associations ?? []).map((a) => ({ value: a._id, label: a.name })),
+            value: associationId,
+            onChange: (v) => { setPage(1); setAssociationId(v); },
+          }] : []),
           {
             key: "status",
             label: "Status",

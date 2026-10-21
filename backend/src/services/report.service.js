@@ -361,6 +361,8 @@ function buildSubmittedByRoleFilter(stage) {
 }
 
 export const getReports = async ({
+    date,
+    timezoneOffset = 0,
     status,
     severity,
     entityType,
@@ -373,6 +375,11 @@ export const getReports = async ({
     includeDeleted = false,
 }) => {
     const filter = includeDeleted ? {} : { deletedAt: null };
+
+    if (date) {
+        const start = new Date(new Date(`${date}T00:00:00Z`).getTime() + timezoneOffset * 60000);
+        filter.createdAt = { $gte: start, $lt: new Date(start.getTime() + 86400000) };
+    }
 
     if (severity) filter.severity = severity;
     if (entityType) filter.entityType = entityType;

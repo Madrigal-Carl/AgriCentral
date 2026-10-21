@@ -46,7 +46,7 @@ export async function getEquipmentRows({ associationId, start, end }) {
         propertyNumber: e.propertyNumber,
         name: e.name,
         condition: e.condition,
-        status: e.status,
+        status: e.association ? "assigned" : "available",
         association: e.association?.name ?? "",
         assignedFarmer: e.assignedFarmer
             ? `${e.assignedFarmer.firstName} ${e.assignedFarmer.lastName}`
@@ -70,7 +70,7 @@ export async function getLivestockRows({ associationId, start, end }) {
         color: l.color,
         weight: l.weight,
         condition: l.condition,
-        status: l.status,
+        status: l.association ? "assigned" : "available",
         association: l.association?.name ?? "",
         assignedFarmer: l.assignedFarmer
             ? `${l.assignedFarmer.firstName} ${l.assignedFarmer.lastName}`

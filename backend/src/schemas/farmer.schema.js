@@ -41,10 +41,9 @@ export const createFarmerSchema = z.object({
         .max(50, "Middle name must not exceed 50 characters")
         .optional(),
     contactNumber: z
-        .string({ required_error: "Contact number is required" })
+        .string({ error: "Contact number must be 11 digits and start with 09" })
         .trim()
-        .min(7, "Contact number is too short")
-        .max(20, "Contact number is too long"),
+        .regex(/^09\d{9}$/, "Contact number must be 11 digits and start with 09"),
     emailAddress: z
         .string()
         .trim()
@@ -64,11 +63,14 @@ export const createFarmerSchema = z.object({
         .min(2, "Address must be at least 2 characters"),
     position: z.enum(POSITIONS).optional().default("member"),
     attachments: z.array(attachmentSchema).optional().default([]),
+    profileImage: attachmentSchema.extend({ resourceType: z.literal("image").default("image") }).nullable().optional(),
 });
 
 export const updateFarmerSchema = createFarmerSchema
     .extend({
         status: z.enum(STATUSES).optional(),
+        position: z.enum(POSITIONS).optional(),
+        attachments: z.array(attachmentSchema).optional(),
     })
     .partial()
     .refine((data) => Object.keys(data).length > 0, {

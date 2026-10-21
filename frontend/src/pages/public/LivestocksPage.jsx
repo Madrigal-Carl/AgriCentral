@@ -29,6 +29,7 @@ import {
   useDeleteLivestock,
 } from "@/hooks/useLivestocks";
 import { useFarmersByAssociationId } from "@/hooks/useFarmers";
+import { fmtDate } from "@/utils/format";
 
 export function LivestocksPage() {
   const can = usePermissions("livestocks");
@@ -275,6 +276,11 @@ export function LivestocksPage() {
             cell: (r) => (
               <StatusPill tone={statusTone[r.status]}>{r.status}</StatusPill>
             ),
+          },
+          {
+            key: "mortality",
+            header: "Mortality",
+            cell: (r) => r.condition === "deceased" ? `Deceased (${r.deceasedAt ? fmtDate(r.deceasedAt) : "Date unknown"})` : "Alive",
           },
           {
             key: "actions",

@@ -56,7 +56,7 @@ export function LivestockDrawer({ row, onClose }) {
                 ["Animal", row.animal],
                 ["Breed", row.breed || "—"],
                 ["Gender", row.gender === "male" ? "Male" : "Female"],
-                ["Date of Birth", row.birthDate ? fmtDate(row.birthDate) : "—"],
+                ["Release Date", row.birthDate ? fmtDate(row.birthDate) : "—"],
                 ["Color", row.color || "—"],
                 ["Weight", row.weight ? `${row.weight} kg` : "—"],
               ]}

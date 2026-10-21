@@ -1,11 +1,14 @@
 import { z } from "zod";
+import { isMeaningfulName, MEANINGFUL_NAME_ERROR } from "../utils/meaningfulName.js";
 
 export const createAssociationSchema = z.object({
     name: z
         .string({ required_error: "Association name is required" })
         .trim()
-        .min(2, "Name must be at least 2 characters")
-        .max(100, "Name must not exceed 100 characters"),
+        .max(100, "Name must not exceed 100 characters")
+        .refine(isMeaningfulName, MEANINGFUL_NAME_ERROR),
+    municipality: z.string().trim().min(1, "Municipality is required"),
+    barangay: z.string().trim().min(1, "Barangay is required"),
 });
 
 export const updateAssociationSchema = createAssociationSchema

@@ -24,6 +24,9 @@ import {
   ChevronDown,
   Check,
   Loader2,
+  LayoutGrid,
+  FileSpreadsheet,
+  FileText,
 } from "lucide-react";
 import { PageHeader, StatCard, ExportDropdown } from "@/components/public";
 import { Button, Select } from "@/components/ui";
@@ -33,12 +36,25 @@ import {
   downloadAnalyticsExcel,
 } from "@/hooks/useAnalytics";
 import { useAssociations } from "@/hooks/useAssociations";
+import { ModalShell } from "@/components/modal/ModalShell";
 import {
   ANALYTICS_CHART_COLORS,
   ANALYTICS_PERIOD_OPTIONS,
   ANALYTICS_MONTH_LABELS,
   ALL_ASSOCIATIONS_OPTION,
 } from "@/constants/data";
+
+const EXPORT_SECTIONS = [
+  { value: "all", label: "All", icon: LayoutGrid },
+  { value: "equipment", label: "Equipment", icon: Tractor },
+  { value: "livestock", label: "Livestock", icon: Beef },
+  { value: "farm", label: "Crop", icon: Wheat },
+];
+
+const EXPORT_FORMATS = [
+  { value: "xlsx", label: "Excel", icon: FileSpreadsheet },
+  { value: "pdf", label: "PDF", icon: FileText },
+];
 
 /* ---------------- Helpers ---------------- */
 function capitalize(str) {
@@ -212,7 +228,7 @@ function SectionHeader({ icon: Icon, title, onExport, isExporting }) {
       </div>
       {onExport && (
         <ExportDropdown
-          label="Export"
+          label="Generate Detailed Report"
           variant="outline"
           onExport={onExport}
           isExporting={isExporting}
@@ -239,7 +255,7 @@ function DualSectionHeader({ left, right }) {
           </div>
           {section.onExport && (
             <ExportDropdown
-              label="Export"
+              label="Generate Detailed Report"
               variant="outline"
               onExport={section.onExport}
               isExporting={section.isExporting}
@@ -255,6 +271,9 @@ function DualSectionHeader({ left, right }) {
 export function AnalyticsPage() {
   const [period, setPeriod] = useState("month");
   const [associationId, setAssociationId] = useState(null); // null = All Associations
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportSection, setExportSection] = useState(null);
+  const [exportError, setExportError] = useState(null);
 
   // Tracks which section's PDF is currently rendering — null when none is.
   // "all" | "equipment" | "livestock" | "farm" | null
@@ -330,16 +349,20 @@ export function AnalyticsPage() {
   // Single handler for every export button — section and format decide which
   // file the backend builds. Guards against double-clicks while one is running.
   const handleExport = async (section, format = "pdf") => {
-    if (exportingSection) return;
+    if (exportingSection) return false;
     setExportingSection(section);
+    setExportError(null);
     try {
       if (format === "xlsx") {
         await downloadAnalyticsExcel(filters, section);
       } else {
         await downloadAnalyticsPdf(filters, section);
       }
+      return true;
     } catch (err) {
       console.error(`Failed to export ${format}:`, err);
+      setExportError("Failed to export report. Please try again.");
+      return false;
     } finally {
       setExportingSection(null);
     }
@@ -365,13 +388,18 @@ export function AnalyticsPage() {
         title="Analytics"
         subtitle="Consolidated report across equipment, livestock, farms, and crops."
         action={
-          <ExportDropdown
-            label="Export Report"
+          <Button
             variant="accent"
-            onExport={(format) => handleExport("all", format)}
             disabled={isLoading || !!exportingSection}
-            isExporting={exportingSection === "all"}
-          />
+            onClick={() => {
+              setExportSection(null);
+              setExportError(null);
+              setExportModalOpen(true);
+            }}
+          >
+            {exportingSection ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            {exportingSection ? "Exporting…" : "Export Report"}
+          </Button>
         }
       />
 
@@ -588,6 +616,54 @@ export function AnalyticsPage() {
             </ChartCard>
           </div>
         </>
+      )}
+      {exportModalOpen && (
+        <ModalShell
+          title={exportSection ? "Select Export Format" : "Export Report"}
+          eyebrow={exportSection ? EXPORT_SECTIONS.find((section) => section.value === exportSection)?.label : "Analytics"}
+          maxWidth="max-w-md"
+          onClose={() => { if (!exportingSection) setExportModalOpen(false); }}
+          footer={
+            <Button
+              variant="outline"
+              disabled={!!exportingSection}
+              onClick={() => {
+                if (exportSection) {
+                  setExportSection(null);
+                  setExportError(null);
+                } else {
+                  setExportModalOpen(false);
+                }
+              }}
+            >
+              {exportSection ? "Back" : "Cancel"}
+            </Button>
+          }
+        >
+          <p className="text-sm text-secondary mb-4">
+            {exportSection ? "Choose Excel or PDF to export your report." : "Choose which data to include in your report."}
+          </p>
+          {exportError && <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{exportError}</p>}
+          <div className="grid grid-cols-2 gap-3">
+            {exportSection ? EXPORT_FORMATS.map(({ value, label, icon: Icon }) => (
+              <Button
+                key={value}
+                type="button"
+                variant="outline"
+                disabled={!!exportingSection}
+                onClick={async () => {
+                  if (await handleExport(exportSection, value)) setExportModalOpen(false);
+                }}
+              >
+                <Icon className="h-4 w-4" /> {label}
+              </Button>
+            )) : EXPORT_SECTIONS.map(({ value, label, icon: Icon }) => (
+              <Button key={value} type="button" variant="outline" onClick={() => setExportSection(value)}>
+                <Icon className="h-4 w-4" /> {label}
+              </Button>
+            ))}
+          </div>
+        </ModalShell>
       )}
     </div>
   );

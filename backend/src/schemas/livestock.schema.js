@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { BLOCKED_CONDITIONS } from "../utils/assignment.js";
 
 const CONDITIONS = ["healthy", "pregnant", "sick", "injured", "deceased"];
 const STATUSES = ["assigned", "available"];
@@ -27,7 +28,7 @@ export const createLivestockSchema = z
             .min(2, "Breed must be at least 2 characters")
             .max(100, "Breed must not exceed 100 characters"),
         gender: z.enum(GENDERS, { required_error: "Gender is required" }),
-        birthDate: z.coerce.date({ required_error: "Birth date is required" }),
+        birthDate: z.coerce.date({ error: "Invalid release date" }),
         color: z
             .string({ required_error: "Color is required" })
             .trim()
@@ -41,9 +42,9 @@ export const createLivestockSchema = z
         status: z.enum(STATUSES).optional().default("available"),
         assignedFarmer: objectId("Invalid farmer id").optional(),
     })
-    .refine((data) => data.status !== "assigned" || !!data.assignedFarmer, {
-        message: "assignedFarmer is required when status is 'assigned'",
-        path: ["assignedFarmer"],
+    .refine((data) => !(data.associationId || data.assignedFarmer) || !BLOCKED_CONDITIONS.livestock.includes(data.condition), {
+        message: "Not assignable: livestock is deceased, injured, or sick",
+        path: ["associationId"],
     });
 
 export const updateLivestockSchema = z
@@ -69,7 +70,7 @@ export const updateLivestockSchema = z
             .max(100, "Breed must not exceed 100 characters")
             .optional(),
         gender: z.enum(GENDERS).optional(),
-        birthDate: z.coerce.date().optional(),
+        birthDate: z.coerce.date({ error: "Invalid release date" }).optional(),
         color: z
             .string()
             .trim()
@@ -85,26 +86,7 @@ export const updateLivestockSchema = z
     })
     .refine((data) => Object.keys(data).length > 0, {
         message: "At least one field must be provided",
-    })
-    .refine(
-        (data) =>
-            data.status !== "assigned" ||
-            (data.assignedFarmer !== undefined && data.assignedFarmer !== null),
-        {
-            message: "assignedFarmer is required when setting status to 'assigned'",
-            path: ["assignedFarmer"],
-        },
-    )
-    .refine(
-        (data) =>
-            data.status !== "available" ||
-            data.assignedFarmer === undefined ||
-            data.assignedFarmer === null,
-        {
-            message: "assignedFarmer must be cleared when setting status to 'available'",
-            path: ["assignedFarmer"],
-        },
-    );
+    });
 
 export const livestockIdParamSchema = z.object({
     id: objectId("Invalid livestock id"),

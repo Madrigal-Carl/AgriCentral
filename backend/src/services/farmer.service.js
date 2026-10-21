@@ -20,6 +20,16 @@ const resolveAssociationId = async (associationId, authenticatedUserId) => {
     return association?._id ?? undefined;
 };
 
+async function checkPosition(association, position, id) {
+    if (!association || !["president", "vice_president", "secretary", "treasurer", "auditor", "pio", "project_manager"].includes(position)) return;
+    const existing = await Farmer.exists({ association, position, deletedAt: null, ...(id ? { _id: { $ne: id } } : {}) });
+    if (existing) {
+        const error = new Error("This position is already taken in this association");
+        error.statusCode = 409;
+        throw error;
+    }
+}
+
 export const createFarmer = async (data, authenticatedUserId) => {
     const { associationId, ...farmerData } = data;
 
@@ -36,6 +46,7 @@ export const createFarmer = async (data, authenticatedUserId) => {
         authenticatedUserId,
     );
 
+    await checkPosition(resolvedAssociationId, farmerData.position);
     const farmer = await Farmer.create({
         ...farmerData,
         association: resolvedAssociationId || undefined,
@@ -86,6 +97,17 @@ export const updateFarmer = async (id, data) => {
         ? await Farmer.findOne({ _id: id, deletedAt: null }).select("association position")
         : null;
 
+    if (needsPrevious) {
+        await checkPosition(
+            farmerData.association !== undefined ? farmerData.association : previousFarmer?.association,
+            farmerData.position ?? previousFarmer?.position,
+            id,
+        );
+    }
+
+    const previousImage = farmerData.profileImage !== undefined
+        ? (await Farmer.findOne({ _id: id, deletedAt: null }).select("profileImage"))?.profileImage
+        : null;
     let removedAttachments = [];
     if (farmerData.attachments) {
         const existingFarmer = await Farmer.findOne({ _id: id, deletedAt: null }).select("attachments");
@@ -113,6 +135,9 @@ export const updateFarmer = async (id, data) => {
 
     if (removedAttachments.length) {
         await deleteCloudinaryAttachments(removedAttachments);
+    }
+    if (previousImage && previousImage.publicId !== farmer.profileImage?.publicId) {
+        await deleteCloudinaryAttachments([previousImage]);
     }
 
     if (
@@ -196,6 +221,7 @@ export const restoreFarmer = async (id) => {
         }
     }
 
+    await checkPosition(toRestore.association, toRestore.position, id);
     toRestore.deletedAt = null;
     await toRestore.save();
     return toRestore;
@@ -226,7 +252,7 @@ const attachRelatedRecords = async (farmers, associationId) => {
     const livestocks = await Livestock.find({
         assignedFarmer: { $in: farmerIds },
         deletedAt: null,
-    }).select("propertyNumber animal breed condition status assignedFarmer");
+    }).select("propertyNumber animal breed condition status assignedFarmer association");
 
     const livestockByFarmerId = new Map();
     for (const livestock of livestocks) {
@@ -238,14 +264,14 @@ const attachRelatedRecords = async (farmers, associationId) => {
             animal: livestock.animal,
             breed: livestock.breed,
             condition: livestock.condition,
-            status: livestock.status,
+            status: livestock.association ? "assigned" : "available",
         });
     }
 
     const equipments = await Equipment.find({
         assignedFarmer: { $in: farmerIds },
         deletedAt: null,
-    }).select("propertyNumber name condition status assignedFarmer");
+    }).select("propertyNumber name condition status assignedFarmer association");
 
     const equipmentByFarmerId = new Map();
     for (const equipment of equipments) {
@@ -256,7 +282,7 @@ const attachRelatedRecords = async (farmers, associationId) => {
             propertyNumber: equipment.propertyNumber,
             name: equipment.name,
             condition: equipment.condition,
-            status: equipment.status,
+            status: equipment.association ? "assigned" : "available",
         });
     }
 

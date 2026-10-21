@@ -17,6 +17,7 @@ import {
 import { useCreateRequest, useUpdateRequest } from "@/hooks/useRequests";
 import { useAvailableLivestocks } from "@/hooks/useLivestocks";
 import { useAvailableEquipments } from "@/hooks/useEquipments";
+import { assignmentReason } from "@/utils/assignment";
 
 function toFormShape(request) {
   return {
@@ -34,6 +35,8 @@ function toFormShape(request) {
 export function RequestModal({ mode, initial, onClose, onSave }) {
   const [submitError, setSubmitError] = useState(null);
   const isEdit = mode === "edit";
+  const { data: livestockData } = useAvailableLivestocks();
+  const { data: equipmentData } = useAvailableEquipments();
 
   const normalizedInitial = useMemo(
     () => (initial ? toFormShape(initial) : initial),
@@ -43,9 +46,16 @@ export function RequestModal({ mode, initial, onClose, onSave }) {
   const resolver = useMemo(
     () =>
       zodResolver(
-        isEdit ? createRequestUpdateSchema() : createRequestFormSchema(),
+        (isEdit ? createRequestUpdateSchema() : createRequestFormSchema()).refine(
+          (values) => !(values.entityIds ?? []).some((id) => {
+            const type = values.entityType ?? normalizedInitial?.entityType;
+            const items = type === "equipment" ? equipmentData?.equipments : livestockData?.livestocks;
+            return !!assignmentReason(type, items?.find((item) => item._id === id)?.condition);
+          }),
+          { message: "Select only assignable items", path: ["entityIds"] },
+        ),
       ),
-    [isEdit],
+    [isEdit, normalizedInitial, equipmentData, livestockData],
   );
 
   const {
@@ -81,22 +91,19 @@ export function RequestModal({ mode, initial, onClose, onSave }) {
   const entityType = watch("entityType");
   const entityIds = watch("entityIds") || [];
 
-  const { data: livestockData } = useAvailableLivestocks({
-    enabled: entityType === "livestock",
-  });
-  const { data: equipmentData } = useAvailableEquipments({
-    enabled: entityType === "equipment",
-  });
-
   const itemOptions =
     entityType === "equipment"
       ? (equipmentData?.equipments ?? []).map((e) => ({
           value: e._id,
-          label: `${e.propertyNumber} · ${e.name}`,
+          label: e.name + (assignmentReason("equipment", e.condition) ? ` — ${assignmentReason("equipment", e.condition)}` : ""),
+          disabled: !!assignmentReason("equipment", e.condition),
+          reason: assignmentReason("equipment", e.condition),
         }))
       : (livestockData?.livestocks ?? []).map((l) => ({
           value: l._id,
-          label: `${l.propertyNumber} · ${l.animal}`,
+          label: l.animal + (assignmentReason("livestock", l.condition) ? ` — ${assignmentReason("livestock", l.condition)}` : ""),
+          disabled: !!assignmentReason("livestock", l.condition),
+          reason: assignmentReason("livestock", l.condition),
         }));
 
   // Switching type invalidates the previous selection since livestock and

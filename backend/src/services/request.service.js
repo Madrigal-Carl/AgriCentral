@@ -6,6 +6,7 @@ import Association from "../models/association.model.js";
 import { createLog, getLogsForEntities, humanize } from "./log.service.js";
 import emailQueue from "../queues/email.queue.js";
 import { EMAIL_JOBS } from "../queues/email.jobs.js";
+import { assertAssignable, BLOCKED_CONDITIONS } from "../utils/assignment.js";
 
 const STAGE_ORDER = ["coordinator", "governor", "head"];
 
@@ -189,6 +190,7 @@ export const createRequest = async (data, authenticatedUserId) => {
         error.statusCode = 404;
         throw error;
     }
+    await checkRequestConditions(data.entityType, data.entityIds);
 
     const request = await Request.create({
         ...data,
@@ -217,6 +219,10 @@ export const createRequest = async (data, authenticatedUserId) => {
 };
 
 export const updateRequest = async (id, data) => {
+    if (data.entityIds || data.entityType) {
+        const previous = await Request.findOne({ _id: id, deletedAt: null });
+        if (previous) await checkRequestConditions(data.entityType ?? previous.entityType, data.entityIds ?? previous.entityIds);
+    }
     const request = await Request.findOneAndUpdate(
         { _id: id, deletedAt: null },
         { $set: data },
@@ -312,6 +318,7 @@ export const updateRequestApproval = async (id, { status, remarks }, actingUser)
 
 async function reserveRequestItems(request) {
     const EntityModel = ENTITY_MODELS[request.entityType];
+    await checkRequestConditions(request.entityType, request.entityIds);
 
     await EntityModel.updateMany(
         {
@@ -319,6 +326,7 @@ async function reserveRequestItems(request) {
             deletedAt: null,
             association: null,
             reservedBy: null,
+            condition: { $nin: BLOCKED_CONDITIONS[request.entityType] },
         },
         { $set: { reservedBy: request._id } }
     );
@@ -346,6 +354,7 @@ export const releaseRequest = async (id) => {
     }
 
     const EntityModel = ENTITY_MODELS[request.entityType];
+    await checkRequestConditions(request.entityType, request.entityIds);
 
     // Select the display fields for this entity type up front (not just
     // _id) — needed below to write a readable per-item log once release
@@ -373,6 +382,7 @@ export const releaseRequest = async (id) => {
         {
             $set: {
                 association: request.association,
+                status: request.association ? "assigned" : "available",
             },
             $unset: { reservedBy: "" },
         }
@@ -453,6 +463,11 @@ export const deleteRequest = async (id) => {
 
     return request;
 };
+
+async function checkRequestConditions(type, ids) {
+    const docs = await ENTITY_MODELS[type].find({ _id: { $in: ids }, deletedAt: null }).select("condition");
+    for (const doc of docs) assertAssignable(type, doc.condition);
+}
 
 function buildOverallStatusFilter(status) {
     const DENIED_AT_ANY_STAGE = [

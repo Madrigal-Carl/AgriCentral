@@ -3,6 +3,7 @@ import Farmer from "../models/farmer.model.js";
 import User from "../models/user.model.js";
 import Association from "../models/association.model.js";
 import { createLog, getLogsForEntities } from "./log.service.js";
+import { assertAssignable } from "../utils/assignment.js";
 
 const ASSOCIATION_POPULATE = { path: "association", select: "name" };
 
@@ -24,7 +25,9 @@ export const createLivestock = async (data, authenticatedUserId) => {
     const existing = await Livestock.findOne({ propertyNumber: livestockData.propertyNumber, deletedAt: null });
 
     if (existing) {
-        throw new Error("Livestock with this property number already exists");
+        const error = new Error("Property number is already in use");
+        error.statusCode = 409;
+        throw error;
     }
 
     const resolvedAssociationId = await resolveAssociationId(
@@ -32,9 +35,12 @@ export const createLivestock = async (data, authenticatedUserId) => {
         authenticatedUserId,
     );
 
+    if (resolvedAssociationId || livestockData.assignedFarmer) assertAssignable("livestock", livestockData.condition);
     const livestock = await Livestock.create({
         ...livestockData,
         association: resolvedAssociationId || undefined,
+        status: resolvedAssociationId ? "assigned" : "available",
+        deceasedAt: livestockData.condition === "deceased" ? new Date() : null,
     });
 
     await createLog({
@@ -95,24 +101,28 @@ export const updateLivestock = async (id, data) => {
         });
 
         if (existing) {
-            throw new Error("Livestock with this property number already exists");
+            const error = new Error("Property number is already in use");
+            error.statusCode = 409;
+            throw error;
         }
     }
 
-    const needsPrevious =
-        livestockData.assignedFarmer !== undefined ||
-        livestockData.condition !== undefined ||
-        livestockData.association !== undefined;
-    const previousLivestock = needsPrevious
-        ? await Livestock.findOne({ _id: id, deletedAt: null }).select("assignedFarmer condition animal propertyNumber association")
-        : null;
+    const previousLivestock = await Livestock.findOne({ _id: id, deletedAt: null }).select("assignedFarmer condition animal propertyNumber association deceasedAt");
 
-    if (livestockData.association === null && livestockData.assignedFarmer === undefined) {
+    if (livestockData.association === null) {
         livestockData.assignedFarmer = null;
     }
 
-    if (livestockData.assignedFarmer !== undefined && livestockData.status === undefined) {
-        livestockData.status = livestockData.assignedFarmer ? "assigned" : "available";
+    const association = livestockData.association !== undefined ? livestockData.association : previousLivestock?.association;
+    livestockData.status = association ? "assigned" : "available";
+    if ((livestockData.association && String(livestockData.association) !== String(previousLivestock?.association ?? "")) ||
+        (livestockData.assignedFarmer && String(livestockData.assignedFarmer) !== String(previousLivestock?.assignedFarmer ?? ""))) {
+        assertAssignable("livestock", livestockData.condition ?? previousLivestock?.condition);
+    }
+    if (livestockData.condition !== undefined) {
+        livestockData.deceasedAt = livestockData.condition === "deceased"
+            ? previousLivestock?.deceasedAt ?? new Date()
+            : null;
     }
 
     const update = { ...livestockData };
@@ -280,6 +290,7 @@ const attachHistory = async (livestocks, associationId) => {
         const key = obj._id.toString();
         return {
             ...obj,
+            status: obj.association ? "assigned" : "available",
             history: logsByLivestockId.get(key) ?? [],
         };
     });
@@ -290,7 +301,6 @@ export const getAvailableLivestocks = async () => {
         deletedAt: null,
         association: null,
         assignedFarmer: null,
-        status: "available",
     })
         .select("propertyNumber animal breed condition status")
         .sort({ propertyNumber: 1 });
@@ -310,7 +320,7 @@ export const getLivestocks = async ({
 }) => {
     const filter = includeDeleted ? {} : { deletedAt: null };
     if (condition) filter.condition = condition;
-    if (status) filter.status = status;
+    if (status) filter.$and = [{ association: status === "assigned" ? { $ne: null } : null }];
     if (associationId) filter.association = associationId;
 
     if (search) {

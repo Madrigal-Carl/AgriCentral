@@ -55,6 +55,10 @@ const equipmentSchema = new mongoose.Schema(
     }
 );
 
+equipmentSchema.pre("validate", function () {
+    this.status = this.association ? "assigned" : "available";
+});
+
 equipmentSchema.index(
     { propertyNumber: 1 },
     { unique: true, partialFilterExpression: { deletedAt: null } }

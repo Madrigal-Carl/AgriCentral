@@ -80,7 +80,7 @@ function UploadingRow({ name, size, progress, onRemove }) {
   );
 }
 
-export function FileUploader({ value = [], onChange }) {
+export function FileUploader({ value = [], onChange, accept, multiple = true }) {
   const files = Array.isArray(value) ? value : [];
   const filesRef = useRef(files);
 
@@ -130,7 +130,7 @@ export function FileUploader({ value = [], onChange }) {
       progress: 0,
       status: "uploading",
     }));
-    setFiles((prev) => [...prev, ...mapped]);
+    setFiles((prev) => multiple ? [...prev, ...mapped] : mapped.slice(0, 1));
     mapped.forEach((m) => startUpload(m.id));
     e.target.value = "";
   };
@@ -138,7 +138,7 @@ export function FileUploader({ value = [], onChange }) {
   const remove = (idOrUrl) => {
     setFiles((prev) =>
       prev.filter((f) =>
-        typeof f === "string" ? f !== idOrUrl : f.id !== idOrUrl,
+        typeof f === "string" ? f !== idOrUrl : (f.id ?? f.url) !== idOrUrl,
       ),
     );
   };
@@ -152,14 +152,15 @@ export function FileUploader({ value = [], onChange }) {
       >
         <Upload className="h-5 w-5" />
         <span className="font-medium text-foreground">
-          Click to upload files
+          {multiple ? "Click to upload files" : "Click to upload image"}
         </span>
-        <span className="text-xs">You can select multiple files</span>
+        <span className="text-xs">{multiple ? "You can select multiple files" : "You can select one image"}</span>
       </button>
       <input
         ref={inputRef}
         type="file"
-        multiple
+        multiple={multiple}
+        accept={accept}
         className="hidden"
         onChange={onPick}
       />

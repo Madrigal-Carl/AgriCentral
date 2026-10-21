@@ -10,8 +10,9 @@ import {
   releaseStatusLabel,
 } from "@/utils/request";
 import { fmtDate } from "@/utils/format";
+import { Button } from "@/components/ui";
 
-export function RequestDrawer({ row, onClose }) {
+export function RequestDrawer({ row, onClose, onApprove, onDeny }) {
   const displayStatus = getDisplayStatus(row);
   const entities = row.entities ?? [];
   const history = row.history ?? [];
@@ -125,6 +126,12 @@ export function RequestDrawer({ row, onClose }) {
             )}
           </Section>
         </div>
+        {(onApprove || onDeny) && (
+          <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-muted-40 px-6 py-4">
+            {onApprove && <Button variant="accent" onClick={onApprove}>Approve</Button>}
+            {onDeny && <Button variant="danger" onClick={onDeny}>Disapprove</Button>}
+          </div>
+        )}
       </aside>
     </div>
   );

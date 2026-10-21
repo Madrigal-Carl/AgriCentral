@@ -19,3 +19,14 @@ export function fmtCoord(n, pos, neg) {
     const dir = n >= 0 ? pos : neg;
     return `${Math.abs(n).toFixed(4)}° ${dir}`;
 }
+
+export function fmtPendingSince(value, now = Date.now()) {
+    const submitted = new Date(value).getTime();
+    if (!value || !Number.isFinite(submitted)) return "—";
+    const minutes = Math.max(0, Math.floor((now - submitted) / 60000));
+    if (minutes < 1) return "just now";
+    const hours = Math.floor(minutes / 60);
+    if (hours >= 24) return `${Math.floor(hours / 24)}d ${hours % 24}h`;
+    if (hours) return `${hours}h ${minutes % 60}m`;
+    return `${minutes}m`;
+}

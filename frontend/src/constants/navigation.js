@@ -7,7 +7,7 @@ export const farNavSections = [
         items: [{ to: "/far/overview", label: "Overview", icon: LayoutGrid, exact: true }],
     },
     {
-        label: "Management",
+        label: "Farmer Management",
         items: [
             { to: "/far/farmers", label: "Farmer", icon: Users },
             { to: "/far/farms", label: "Farm", icon: Wheat },
@@ -40,8 +40,8 @@ export const farNavSections = [
 
 const farBreadcrumbs = {
     "/far/overview": { group: "Dashboard", label: "Overview" },
-    "/far/farmers": { group: "Management", label: "Farmer" },
-    "/far/farms": { group: "Management", label: "Farm" },
+    "/far/farmers": { group: "Farmer Management", label: "Farmer" },
+    "/far/farms": { group: "Farmer Management", label: "Farm" },
     "/far/equipments": { group: "Resources", label: "Equipment" },
     "/far/livestocks": { group: "Resources", label: "Livestock" },
     "/far/crops": { group: "Resources", label: "Crop" },
@@ -64,7 +64,7 @@ export const aewNavSections = [
         ],
     },
     {
-        label: "Management",
+        label: "Farmer Management",
         items: [
             { to: "/aew/farms", label: "Farm", icon: Wheat },
             { to: "/aew/farmers", label: "Farmer", icon: Users },
@@ -95,10 +95,10 @@ export const aewNavSections = [
 
 const aewBreadcrumbs = {
     "/aew/overview": { group: "Dashboard", label: "Overview" },
-    "/aew/farms": { group: "Management", label: "Farm" },
-    "/aew/farmers": { group: "Management", label: "Farmer" },
+    "/aew/farms": { group: "Farmer Management", label: "Farm" },
+    "/aew/farmers": { group: "Farmer Management", label: "Farmer" },
     "/aew/associations": {
-        group: "Management",
+        group: "Farmer Management",
         label: "Association",
     },
     "/aew/equipments": { group: "Resources", label: "Equipment" },
@@ -123,7 +123,7 @@ export const coordinatorNavSections = [
         ],
     },
     {
-        label: "Management",
+        label: "Farmer Management",
         items: [
             {
                 to: "/coordinator/farmers",
@@ -187,11 +187,11 @@ export const coordinatorBreadcrumbs = {
         label: "Overview",
     },
     "/coordinator/farmers": {
-        group: "Management",
+        group: "Farmer Management",
         label: "Farmer",
     },
     "/coordinator/associations": {
-        group: "Management",
+        group: "Farmer Management",
         label: "Association",
     },
     "/coordinator/equipments": {
@@ -329,7 +329,7 @@ export const headNavSections = [
         ],
     },
     {
-        label: "Management",
+        label: "Farmer Management",
         items: [
             {
                 to: "/head/farms",
@@ -389,7 +389,7 @@ export const headBreadcrumbs = {
         label: "Analytic",
     },
     "/head/farms": {
-        group: "Management",
+        group: "Farmer Management",
         label: "Farm",
     },
     "/head/equipments": { group: "Resources", label: "Equipment" },
@@ -418,8 +418,13 @@ export const adminNavSections = [
         ],
     },
     {
-        label: "Management",
+        label: "Farmer Management",
         items: [
+            {
+                to: "/admin/users",
+                label: "User",
+                icon: UserCog,
+            },
             {
                 to: "/admin/farms",
                 label: "Farm",
@@ -434,11 +439,6 @@ export const adminNavSections = [
                 to: "/admin/associations",
                 label: "Association",
                 icon: Building2,
-            },
-            {
-                to: "/admin/users",
-                label: "User",
-                icon: UserCog,
             },
         ],
     },
@@ -501,19 +501,19 @@ export const adminBreadcrumbs = {
         label: "Overview",
     },
     "/admin/farms": {
-        group: "Management",
+        group: "Farmer Management",
         label: "Farm",
     },
     "/admin/farmers": {
-        group: "Management",
+        group: "Farmer Management",
         label: "Farmer",
     },
     "/admin/associations": {
-        group: "Management",
+        group: "Farmer Management",
         label: "Association",
     },
     "/admin/users": {
-        group: "Management",
+        group: "Farmer Management",
         label: "User",
     },
     "/admin/equipments": {

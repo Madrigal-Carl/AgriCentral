@@ -6,8 +6,8 @@ import {
   RowActions,
   StatusPill,
 } from "@/components/public";
-import { Button } from "@/components/ui";
-import { typeLabel, typeTone, sevTone, sevLabel } from "@/constants/data";
+import { Button, TextInput } from "@/components/ui";
+import { typeLabel, typeTone, sevTone, sevLabel, SEVERITY_OPTIONS } from "@/constants/data";
 import { usePermissions } from "@/constants/permissions";
 import {
   DeleteConfirmModal,
@@ -28,7 +28,12 @@ import {
   useDeleteReport,
 } from "@/hooks/useReports";
 import useAuth from "@/hooks/useAuth";
-import { fmtDate } from "@/utils/format";
+
+const REPORT_TYPE_OPTIONS = [
+  { value: "farm", label: "Crop" },
+  { value: "equipment", label: "Equipment" },
+  { value: "livestock", label: "Livestock" },
+];
 
 export function ReportsPage() {
   const can = usePermissions("reports");
@@ -37,6 +42,9 @@ export function ReportsPage() {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
+  const [entityType, setEntityType] = useState("");
+  const [date, setDate] = useState("");
+  const [severity, setSeverity] = useState("");
   const [page, setPage] = useState(1);
   const limit = 10;
 
@@ -54,20 +62,24 @@ export function ReportsPage() {
   // Reset to page 1 whenever filters change
   useEffect(() => {
     setPage(1);
-  }, [search, status]);
+  }, [search, status, entityType, date, severity]);
 
   const { data, isLoading } = useReports({
     page,
     limit,
     search: search || undefined,
     status: status || undefined,
+    entityType: entityType || undefined,
+    date: date || undefined,
+    timezoneOffset: date ? new Date(`${date}T00:00:00`).getTimezoneOffset() : undefined,
+    severity: severity || undefined,
   });
 
   const rows = data?.reports ?? [];
   const pagination = data?.pagination;
 
-  const { mutate: submitApproval } = useUpdateReportApproval({
-    onSuccess: () => setReviewRow(null),
+  const { mutate: submitApproval, isPending: isReviewing, error: reviewError, reset: resetReview } = useUpdateReportApproval({
+    onSuccess: () => { setReviewRow(null); setDrawer(null); },
   });
   const { mutate: removeReport } = useDeleteReport({
     onSuccess: () => setConfirmDelete(null),
@@ -91,8 +103,8 @@ export function ReportsPage() {
     removeReport(confirmDelete._id);
   };
 
-  const askApprove = (row) => setReviewRow({ row, action: "approve" });
-  const askDeny = (row) => setReviewRow({ row, action: "deny" });
+  const askApprove = (row) => { resetReview(); setReviewRow({ row, action: "approve" }); };
+  const askDeny = (row) => { resetReview(); setReviewRow({ row, action: "deny" }); };
 
   const confirmReview = (remarks) => {
     if (!reviewRow) return;
@@ -129,6 +141,11 @@ export function ReportsPage() {
         search={searchInput}
         onSearchChange={setSearchInput}
         searchPlaceholder="Search report…"
+        rightAction={
+          <div className="w-full sm:w-44">
+            <TextInput type="date" aria-label="Report date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </div>
+        }
         filters={[
           {
             key: "status",
@@ -137,6 +154,8 @@ export function ReportsPage() {
             value: status,
             onChange: setStatus,
           },
+          { key: "entityType", label: "Type", allLabel: "All type", options: REPORT_TYPE_OPTIONS, value: entityType, onChange: setEntityType },
+          { key: "severity", label: "Severity", options: SEVERITY_OPTIONS, value: severity, onChange: setSeverity },
         ]}
         pagination={
           pagination
@@ -169,6 +188,11 @@ export function ReportsPage() {
             key: "quantity",
             header: "Items",
             cell: (r) => r.items?.length ?? r.itemIds?.length ?? 0,
+          },
+          {
+            key: "condition",
+            header: "Condition",
+            cell: (r) => r.condition ?? "—",
           },
           {
             key: "severity",
@@ -230,7 +254,10 @@ export function ReportsPage() {
           onSave={handleSave}
         />
       )}
-      {drawer && <ReportDrawer row={drawer} onClose={() => setDrawer(null)} />}
+      {drawer && <ReportDrawer row={drawer} onClose={() => setDrawer(null)}
+        onApprove={can.review && role === getReviewerRole(drawer) && getReportStatus(drawer) === "pending" ? () => askApprove(drawer) : undefined}
+        onDeny={can.review && role === getReviewerRole(drawer) && getReportStatus(drawer) === "pending" ? () => askDeny(drawer) : undefined}
+      />}
       {confirmDelete && can.delete && (
         <DeleteConfirmModal
           id={confirmDelete._id}
@@ -245,6 +272,8 @@ export function ReportsPage() {
           action={reviewRow.action}
           onCancel={() => setReviewRow(null)}
           onConfirm={confirmReview}
+          busy={isReviewing}
+          submitError={reviewError?.response?.data?.message}
         />
       )}
     </div>

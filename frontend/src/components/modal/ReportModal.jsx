@@ -410,21 +410,6 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
             )}
           </Field>
 
-          <Field label="Severity" error={errors.severity?.message}>
-            <Controller
-              name="severity"
-              control={control}
-              render={({ field }) => (
-                <FullSelect
-                  value={field.value}
-                  onChange={field.onChange}
-                  options={SEVERITY_OPTIONS}
-                  defaultValue="medium"
-                />
-              )}
-            />
-          </Field>
-
           <Field label="Condition" error={errors.condition?.message}>
             <Controller
               name="condition"
@@ -435,6 +420,21 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
                   onChange={field.onChange}
                   options={conditionOptions}
                   placeholder="Select condition…"
+                />
+              )}
+            />
+          </Field>
+
+          <Field label="Severity" error={errors.severity?.message}>
+            <Controller
+              name="severity"
+              control={control}
+              render={({ field }) => (
+                <FullSelect
+                  value={field.value}
+                  onChange={field.onChange}
+                  options={SEVERITY_OPTIONS}
+                  defaultValue="medium"
                 />
               )}
             />

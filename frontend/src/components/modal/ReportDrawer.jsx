@@ -4,6 +4,7 @@ import { StatusPill } from "@/components/public";
 import { fmtDate } from "@/utils/format";
 import { typeTone, typeLabel, sevTone, sevLabel } from "@/constants/data";
 import { getReportStatus, statusTone, statusLabel } from "@/utils/report";
+import { Button } from "@/components/ui";
 
 // Attachments are { url, publicId, resourceType } objects — there's no
 // stored name/size, so derive a readable name from the url instead
@@ -42,7 +43,7 @@ function submittedByRole(row) {
   return null;
 }
 
-export function ReportDrawer({ row, onClose }) {
+export function ReportDrawer({ row, onClose, onApprove, onDeny }) {
   const reportStatus = getReportStatus(row);
   const items = row.items ?? [];
   const files = row.attachments ?? row.files ?? [];
@@ -102,8 +103,8 @@ export function ReportDrawer({ row, onClose }) {
                 ],
                 ["Title", row.title],
                 ["Type", typeLabel[row.entityType] ?? row.entityType],
-                ["Severity", sevLabel[row.severity]],
                 ["Condition", row.condition ?? "—"],
+                ["Severity", sevLabel[row.severity]],
                 ["Status", statusLabel[reportStatus]],
                 ...(row.entityType === "farm" && row.parent
                   ? [["Farm", `${row.parent.tag} — ${row.parent.address}`]]
@@ -198,6 +199,12 @@ export function ReportDrawer({ row, onClose }) {
             )}
           </Section>
         </div>
+        {(onApprove || onDeny) && (
+          <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-muted-40 px-6 py-4">
+            {onApprove && <Button variant="accent" onClick={onApprove}>Approve</Button>}
+            {onDeny && <Button variant="danger" onClick={onDeny}>Disapprove</Button>}
+          </div>
+        )}
       </aside>
     </div>
   );

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { BLOCKED_CONDITIONS } from "../utils/assignment.js";
 
 const CONDITIONS = ["good", "excellent", "damaged", "unusable", "maintenance"];
 const STATUSES = ["assigned", "available"];
@@ -24,9 +25,9 @@ export const createEquipmentSchema = z
         status: z.enum(STATUSES).optional().default("available"),
         assignedFarmer: objectId("Invalid farmer id").optional(),
     })
-    .refine((data) => data.status !== "assigned" || !!data.assignedFarmer, {
-        message: "assignedFarmer is required when status is 'assigned'",
-        path: ["assignedFarmer"],
+    .refine((data) => !(data.associationId || data.assignedFarmer) || !BLOCKED_CONDITIONS.equipment.includes(data.condition), {
+        message: "Not assignable: equipment is damaged, unusable, or under maintenance",
+        path: ["associationId"],
     });
 
 export const updateEquipmentSchema = z
@@ -53,26 +54,7 @@ export const updateEquipmentSchema = z
     })
     .refine((data) => Object.keys(data).length > 0, {
         message: "At least one field must be provided",
-    })
-    .refine(
-        (data) =>
-            data.status !== "assigned" ||
-            (data.assignedFarmer !== undefined && data.assignedFarmer !== null),
-        {
-            message: "assignedFarmer is required when setting status to 'assigned'",
-            path: ["assignedFarmer"],
-        },
-    )
-    .refine(
-        (data) =>
-            data.status !== "available" ||
-            data.assignedFarmer === undefined ||
-            data.assignedFarmer === null,
-        {
-            message: "assignedFarmer must be cleared when setting status to 'available'",
-            path: ["assignedFarmer"],
-        },
-    );
+    });
 
 export const equipmentIdParamSchema = z.object({
     id: objectId("Invalid equipment id"),

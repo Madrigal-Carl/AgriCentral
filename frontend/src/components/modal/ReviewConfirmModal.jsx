@@ -30,7 +30,7 @@ const VARIANTS = {
   },
 };
 
-export function ReviewConfirmModal({ row, action, onCancel, onConfirm }) {
+export function ReviewConfirmModal({ row, action, onCancel, onConfirm, busy, submitError }) {
   const variant = VARIANTS[action] ?? VARIANTS.approve;
   const Icon = variant.icon;
   const isDeny = action === "deny";
@@ -85,19 +85,27 @@ export function ReviewConfirmModal({ row, action, onCancel, onConfirm }) {
                   setRemarks(e.target.value);
                   if (error) setError(null);
                 }}
-                placeholder="Explain why this request is being denied…"
+                placeholder="e.g., Out of Stock"
                 rows={3}
                 className="w-full border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-secondary focus:border-foreground resize-y"
               />
             </Field>
+            <div className="flex flex-wrap items-center gap-2">
+              {["Out of Stock", "Item Under Maintenance", "Incomplete Requirements", "Not Eligible"].map((reason) => (
+                <Button key={reason} type="button" variant="outline" onClick={() => { setRemarks(reason); setError(null); }}>
+                  {reason}
+                </Button>
+              ))}
+            </div>
           </div>
         )}
 
+        {submitError && <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{submitError}</p>}
         <div className="flex items-center justify-center gap-2">
-          <Button variant="outline" onClick={onCancel}>
+          <Button variant="outline" onClick={onCancel} disabled={busy}>
             Cancel
           </Button>
-          <Button variant={variant.buttonVariant} onClick={handleConfirm}>
+          <Button variant={variant.buttonVariant} onClick={handleConfirm} disabled={busy}>
             {variant.buttonLabel}
           </Button>
         </div>

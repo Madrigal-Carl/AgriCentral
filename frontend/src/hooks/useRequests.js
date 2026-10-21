@@ -7,6 +7,8 @@ import {
     releaseRequest,
     deleteRequest,
 } from "@/services/request.service";
+import { equipmentKeys } from "@/hooks/useEquipments";
+import { livestockKeys } from "@/hooks/useLivestocks";
 
 /* ---------------- Query Keys ---------------- */
 export const requestKeys = {
@@ -63,6 +65,8 @@ export function useUpdateRequestApproval(options = {}) {
     return useMutation({
         mutationFn: ({ id, ...data }) => updateRequestApproval(id, data),
         onSuccess: (data, variables, context) => {
+            queryClient.invalidateQueries({ queryKey: equipmentKeys.all });
+            queryClient.invalidateQueries({ queryKey: livestockKeys.all });
             queryClient.invalidateQueries({ queryKey: requestKeys.lists() });
             queryClient.invalidateQueries({
                 queryKey: requestKeys.detail(variables.id),
@@ -79,6 +83,8 @@ export function useReleaseRequest(options = {}) {
     return useMutation({
         mutationFn: (id) => releaseRequest(id),
         onSuccess: (data, variables, context) => {
+            queryClient.invalidateQueries({ queryKey: equipmentKeys.all });
+            queryClient.invalidateQueries({ queryKey: livestockKeys.all });
             queryClient.invalidateQueries({ queryKey: requestKeys.lists() });
             queryClient.invalidateQueries({
                 queryKey: requestKeys.detail(variables),

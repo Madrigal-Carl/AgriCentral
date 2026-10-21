@@ -24,9 +24,9 @@ export const livestockFormSchema = z.object({
     gender: z.enum(GENDERS),
     health: z.enum(HEALTH_STATUSES),
     dob: z
-        .string({ required_error: "Date of birth is required" })
+        .string({ error: "Release date is required" })
         .trim()
-        .min(1, "Date of birth is required"),
+        .min(1, "Release date is required"),
     color: z
         .string({ required_error: "Color is required" })
         .trim()

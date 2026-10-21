@@ -27,6 +27,8 @@ export function AssociationModal({
     ),
     defaultValues: {
       name: initial?.name ?? "",
+      municipality: initial?.municipality ?? "",
+      barangay: initial?.barangay ?? "",
     },
   });
 
@@ -73,6 +75,12 @@ export function AssociationModal({
             {...register("name")}
             placeholder="e.g. Boac, Marinduque"
           />
+        </Field>
+        <Field label="Municipality" error={errors.municipality?.message || (submitError?.includes("municipality and barangay") ? submitError : undefined)}>
+          <TextInput {...register("municipality")} placeholder="Municipality" />
+        </Field>
+        <Field label="Barangay" error={errors.barangay?.message}>
+          <TextInput {...register("barangay")} placeholder="Barangay" />
         </Field>
       </form>
     </ModalShell>

@@ -43,6 +43,7 @@ export function MultiSelect({
     allowCreate && trimmed.length > 0 && filtered.length === 0 && !exactMatch;
 
   const toggle = (o) => {
+    if (o.disabled) return;
     if (values.includes(o.value)) onChange(values.filter((v) => v !== o.value));
     else onChange([...values, o.value]);
   };
@@ -120,6 +121,8 @@ export function MultiSelect({
                   <li key={o.value}>
                     <button
                       type="button"
+                      disabled={o.disabled}
+                      title={o.reason}
                       onClick={() => toggle(o)}
                       className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted ${
                         selected ? "bg-accent-soft font-semibold" : ""
