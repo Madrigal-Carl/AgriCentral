@@ -5,7 +5,7 @@ const GENDERS = GENDER_OPTIONS.map((o) => o.value);
 const HEALTH_STATUSES = LIVESTOCK_HEALTH_OPTIONS.map((o) => o.value);
 const objectId = (message) => z.string().regex(/^[0-9a-fA-F]{24}$/, message);
 
-export const livestockFormSchema = z.object({
+const baseLivestockFormSchema = z.object({
     propertyNumber: z
         .string({ required_error: "Property number is required" })
         .trim()
@@ -52,6 +52,15 @@ export const livestockFormSchema = z.object({
         return num;
     }),
     associationId: z.union([objectId("Invalid association id"), z.literal("")]).optional(),
+    isOffspring: z.boolean().optional().default(false),
+    mother: z.union([objectId("Select a valid mother"), z.literal("")]).nullable().optional(),
 });
 
-export const livestockUpdateSchema = livestockFormSchema.partial();
+function validateMother(data, ctx) {
+    if (data.isOffspring && !data.mother) {
+        ctx.addIssue({ code: "custom", path: ["mother"], message: "Select a mother when Offspring is enabled" });
+    }
+}
+
+export const livestockFormSchema = baseLivestockFormSchema.superRefine(validateMother);
+export const livestockUpdateSchema = baseLivestockFormSchema.partial().superRefine(validateMother);

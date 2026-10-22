@@ -30,6 +30,7 @@ import {
 } from "@/hooks/useLivestocks";
 import { useFarmersByAssociationId } from "@/hooks/useFarmers";
 import { fmtDate } from "@/utils/format";
+import { useSearchParams } from "react-router-dom";
 
 export function LivestocksPage() {
   const can = usePermissions("livestocks");
@@ -46,7 +47,10 @@ export function LivestocksPage() {
   const [assignRow, setAssignRow] = useState(null);
   const [statusRow, setStatusRow] = useState(null);
   const [deleteRow, setDeleteRow] = useState(null);
-  const [drawer, setDrawer] = useState(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const drawerId = searchParams.get("livestock");
+  const openView = (row) => setSearchParams((params) => { const next = new URLSearchParams(params); next.set("livestock", row._id); return next; });
+  const closeView = () => setSearchParams((params) => { const next = new URLSearchParams(params); next.delete("livestock"); return next; });
 
   const [search, setSearch] = useState("");
   const [health, setHealth] = useState("");
@@ -130,6 +134,7 @@ export function LivestocksPage() {
         farmer: row.assignedFarmer?._id,
         associationId: row.association?._id ?? row.association,
         reservedBy: row.reservedBy || null,
+        mother: row.mother ?? null,
       },
     });
   };
@@ -289,7 +294,7 @@ export function LivestocksPage() {
             cell: (r) =>
               isManagerRole ? (
                 <RowActions
-                  onView={() => setDrawer(r)}
+                  onView={() => openView(r)}
                   onEdit={can.edit ? () => openCoordEdit(r) : undefined}
                   onDelete={can.delete ? () => openDelete(r) : undefined}
                 />
@@ -298,7 +303,7 @@ export function LivestocksPage() {
                   <IconButton
                     icon={Eye}
                     label="View"
-                    onClick={() => setDrawer(r)}
+                    onClick={() => openView(r)}
                   />
                   {can.edit && (
                     <IconButton
@@ -355,8 +360,8 @@ export function LivestocksPage() {
           onConfirm={handleDelete}
         />
       )}
-      {drawer && (
-        <LivestockDrawer row={drawer} onClose={() => setDrawer(null)} />
+      {drawerId && (
+        <LivestockDrawer key={drawerId} row={rows.find((row) => row._id === drawerId) ?? { _id: drawerId }} onClose={closeView} />
       )}
     </div>
   );

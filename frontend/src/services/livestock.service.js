@@ -24,3 +24,13 @@ export async function getAvailableLivestocks() {
     const response = await api.get("/livestocks/available");
     return response.data;
 }
+
+export async function getLivestock(id) {
+    const response = await api.get(`/livestocks/${id}`);
+    return response.data;
+}
+
+export async function getLivestockMothers(params) {
+    const response = await api.get("/livestocks/mothers", { params });
+    return response.data;
+}

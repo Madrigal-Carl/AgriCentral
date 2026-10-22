@@ -5,6 +5,8 @@ import {
     createLivestock,
     updateLivestock,
     deleteLivestock,
+    getLivestock,
+    getLivestockMothers,
 } from "@/services/livestock.service";
 
 /* ---------------- Query Keys ---------------- */
@@ -15,6 +17,7 @@ export const livestockKeys = {
     details: () => [...livestockKeys.all, "detail"],
     detail: (id) => [...livestockKeys.details(), id],
     available: () => [...livestockKeys.all, "available"],
+    mothers: (filters) => [...livestockKeys.all, "mothers", filters],
 };
 
 /* ---------------- Queries ---------------- */
@@ -36,13 +39,30 @@ export function useAvailableLivestocks(options = {}) {
 }
 
 /* ---------------- Mutations ---------------- */
+export function useLivestock(id, options = {}) {
+    return useQuery({
+        queryKey: livestockKeys.detail(id),
+        queryFn: () => getLivestock(id),
+        enabled: !!id,
+        ...options,
+    });
+}
+
+export function useLivestockMothers(filters, options = {}) {
+    return useQuery({
+        queryKey: livestockKeys.mothers(filters),
+        queryFn: () => getLivestockMothers(filters),
+        ...options,
+    });
+}
+
 export function useCreateLivestock(options = {}) {
     const queryClient = useQueryClient();
 
     return useMutation({
         mutationFn: (data) => createLivestock(data),
         onSuccess: (data, variables, context) => {
-            queryClient.invalidateQueries({ queryKey: livestockKeys.lists() });
+            queryClient.invalidateQueries({ queryKey: livestockKeys.all });
             options.onSuccess?.(data, variables, context);
         },
         onError: options.onError,
@@ -55,10 +75,7 @@ export function useUpdateLivestock(options = {}) {
     return useMutation({
         mutationFn: ({ id, ...data }) => updateLivestock(id, data),
         onSuccess: (data, variables, context) => {
-            queryClient.invalidateQueries({ queryKey: livestockKeys.lists() });
-            queryClient.invalidateQueries({
-                queryKey: livestockKeys.detail(variables.id),
-            });
+            queryClient.invalidateQueries({ queryKey: livestockKeys.all });
             options.onSuccess?.(data, variables, context);
         },
         onError: options.onError,
@@ -71,7 +88,7 @@ export function useDeleteLivestock(options = {}) {
     return useMutation({
         mutationFn: (id) => deleteLivestock(id),
         onSuccess: (data, variables, context) => {
-            queryClient.invalidateQueries({ queryKey: livestockKeys.lists() });
+            queryClient.invalidateQueries({ queryKey: livestockKeys.all });
             queryClient.removeQueries({ queryKey: livestockKeys.detail(variables) });
             options.onSuccess?.(data, variables, context);
         },

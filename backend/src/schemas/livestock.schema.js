@@ -41,6 +41,7 @@ export const createLivestockSchema = z
         condition: z.enum(CONDITIONS).optional().default("healthy"),
         status: z.enum(STATUSES).optional().default("available"),
         assignedFarmer: objectId("Invalid farmer id").optional(),
+        mother: objectId("Invalid mother id").nullable().optional(),
     })
     .refine((data) => !(data.associationId || data.assignedFarmer) || !BLOCKED_CONDITIONS.livestock.includes(data.condition), {
         message: "Not assignable: livestock is deceased, injured, or sick",
@@ -83,6 +84,7 @@ export const updateLivestockSchema = z
         // null clears the assignment (return to available); a string
         // assigns/reassigns; omitted leaves it untouched.
         assignedFarmer: objectId("Invalid farmer id").nullable().optional(),
+        mother: objectId("Invalid mother id").nullable().optional(),
     })
     .refine((data) => Object.keys(data).length > 0, {
         message: "At least one field must be provided",
@@ -103,4 +105,11 @@ export const getLivestocksQuerySchema = z.object({
         .transform((v) => v === "true"),
     page: z.coerce.number().int().positive().optional().default(1),
     limit: z.coerce.number().int().positive().optional().default(10),
+});
+
+export const getLivestockMothersQuerySchema = z.object({
+    animal: z.string().trim().min(2, "Enter an animal type").max(100),
+    associationId: objectId("Invalid association id").optional(),
+    assignedFarmer: objectId("Invalid farmer id").optional(),
+    excludeId: objectId("Invalid livestock id").optional(),
 });

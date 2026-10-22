@@ -1,13 +1,14 @@
-import { useState } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useEffect, useState } from "react";
+import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button, Field, FullSelect, TextInput } from "@/components/ui";
+import { Button, Field, FullSelect, TextInput, SingleSelect } from "@/components/ui";
 import { ModalShell } from "./ModalShell";
 import { GENDER_OPTIONS, LIVESTOCK_HEALTH_OPTIONS } from "@/constants/data";
 import { useAssociations } from "@/hooks/useAssociations";
-import { useCreateLivestock, useUpdateLivestock } from "@/hooks/useLivestocks";
+import { useCreateLivestock, useUpdateLivestock, useLivestockMothers } from "@/hooks/useLivestocks";
 import { getErrorMessage } from "@/utils/getErrorMessage";
 import { assignmentReason } from "@/utils/assignment";
+import useAuth from "@/hooks/useAuth";
 import {
   livestockFormSchema,
   livestockUpdateSchema,
@@ -15,6 +16,7 @@ import {
 
 export function LivestockModal({ mode, initial, onClose, onSave }) {
   const isEdit = mode === "edit";
+  const { role } = useAuth();
   const [submitError, setSubmitError] = useState(null);
 
   const {
@@ -22,6 +24,7 @@ export function LivestockModal({ mode, initial, onClose, onSave }) {
     handleSubmit,
     control,
     setError,
+    setValue,
     formState: { errors },
   } = useForm({
     resolver: zodResolver((isEdit ? livestockUpdateSchema : livestockFormSchema).superRefine((values, ctx) => {
@@ -40,8 +43,27 @@ export function LivestockModal({ mode, initial, onClose, onSave }) {
       color: initial.color,
       weight: initial.weight,
       associationId: initial.associationId || "",
+      isOffspring: !!initial.mother,
+      mother: initial.mother?._id ?? initial.mother ?? "",
     },
   });
+
+  const animal = useWatch({ control, name: "animal" }) ?? "";
+  const associationId = useWatch({ control, name: "associationId" });
+  const isOffspring = useWatch({ control, name: "isOffspring" });
+  const mother = useWatch({ control, name: "mother" });
+  const { data: mothersData, isFetching: mothersLoading, isError: mothersFailed, error: mothersError, refetch: reloadMothers } = useLivestockMothers({
+    animal: animal.trim(),
+    ...(role === "far" ? { associationId: associationId || undefined, assignedFarmer: associationId ? initial.farmer || undefined : undefined } : {}),
+    excludeId: isEdit ? initial._id : undefined,
+  }, { enabled: !!isOffspring && animal.trim().length >= 2 });
+  const motherOptions = (mothersData?.livestocks ?? []).map((record) => ({ value: record._id, label: `${record.propertyNumber} · ${record.animal} · ${record.breed}` }));
+
+  useEffect(() => {
+    if (isOffspring && mother && mothersData && !mothersLoading && !mothersFailed && !mothersData.livestocks.some((record) => record._id === mother)) {
+      setValue("mother", "", { shouldValidate: true });
+    }
+  }, [isOffspring, mother, mothersData, mothersLoading, mothersFailed, setValue]);
 
   const { data: associationsData } = useAssociations({ all: true });
 
@@ -87,6 +109,7 @@ export function LivestockModal({ mode, initial, onClose, onSave }) {
       color: values.color,
       weight: values.weight,
       status: derivedStatus,
+      mother: values.isOffspring ? values.mother : null,
       ...(isEdit
         ? { associationId: values.associationId || null }
         : values.associationId
@@ -117,6 +140,8 @@ export function LivestockModal({ mode, initial, onClose, onSave }) {
       if (message === "Property number is already in use") {
         setError("propertyNumber", { type: "server", message });
       }
+      const field = err?.response?.data?.field;
+      if (["mother", "animal", "gender", "associationId"].includes(field)) setError(field, { type: "server", message });
       setSubmitError(
         err?.response?.data?.message ||
           err?.message ||
@@ -145,7 +170,7 @@ export function LivestockModal({ mode, initial, onClose, onSave }) {
             variant="accent"
             type="submit"
             form="livestock-form"
-            disabled={busy}
+            disabled={busy || (isOffspring && (mothersLoading || mothersFailed))}
           >
             {busy
               ? "Saving…"
@@ -179,6 +204,10 @@ export function LivestockModal({ mode, initial, onClose, onSave }) {
         <Field label="Animal Type" error={errors.animal?.message} full>
           <TextInput
             {...register("animal")}
+            onChange={(event) => {
+              if (event.target.value.trim().toLowerCase() !== animal.trim().toLowerCase()) setValue("mother", "");
+              register("animal").onChange(event);
+            }}
             placeholder="e.g. Cow, Goat, Sheep"
           />
         </Field>
@@ -237,12 +266,56 @@ export function LivestockModal({ mode, initial, onClose, onSave }) {
               render={({ field }) => (
                 <FullSelect
                   value={field.value}
-                  onChange={field.onChange}
                   options={associationOptions}
+                  onChange={(value) => {
+                    if (role === "far" && value !== field.value) setValue("mother", "");
+                    field.onChange(value);
+                  }}
                   defaultValue=""
                 />
               )}
             />
+          </Field>
+        )}
+        <Field label="Offspring" full error={errors.isOffspring?.message}>
+          <Controller
+            name="isOffspring"
+            control={control}
+            render={({ field }) => (
+              <FullSelect
+                value={field.value}
+                onChange={(value) => {
+                  field.onChange(value);
+                  if (!value) setValue("mother", "", { shouldValidate: true });
+                }}
+                options={[{ value: false, label: "No" }, { value: true, label: "Yes" }]}
+              />
+            )}
+          />
+        </Field>
+        {isOffspring && (
+          <Field label="Select Mother" full error={errors.mother?.message || (mothersFailed ? getErrorMessage(mothersError, "Failed to load eligible mothers") : undefined)}>
+            {animal.trim().length < 2 || mothersLoading ? (
+              <div className="w-full border border-border bg-muted px-3 py-2.5 text-sm text-secondary">
+                {animal.trim().length < 2 ? "Enter an animal type first…" : "Loading eligible mothers…"}
+              </div>
+            ) : mothersFailed ? (
+              <Button type="button" variant="outline" onClick={() => reloadMothers()}>Retry</Button>
+            ) : (
+              <Controller
+                name="mother"
+                control={control}
+                render={({ field }) => (
+                  <SingleSelect
+                    value={field.value}
+                    onChange={field.onChange}
+                    options={motherOptions}
+                    placeholder={motherOptions.length ? "Select mother…" : "No eligible mothers for this animal"}
+                    searchPlaceholder="Search mother…"
+                  />
+                )}
+              />
+            )}
           </Field>
         )}
       </form>

@@ -69,6 +69,11 @@ const livestockSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "Farmer",
         },
+        mother: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Livestock",
+            default: null,
+        },
         deletedAt: {
             type: Date,
             default: null,
@@ -88,6 +93,10 @@ livestockSchema.pre("validate", function () {
     this.status = this.association ? "assigned" : "available";
     this.deceasedAt = this.condition === "deceased" ? this.deceasedAt ?? new Date() : null;
 });
+
+livestockSchema.index(
+    { mother: 1, deletedAt: 1 }
+);
 
 livestockSchema.index(
     { propertyNumber: 1 },

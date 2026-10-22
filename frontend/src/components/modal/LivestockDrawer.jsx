@@ -1,10 +1,21 @@
-import { X, Info, User, Activity, Calendar } from "lucide-react";
+import { X, Info, User, Activity, Calendar, Beef } from "lucide-react";
 import { StatusPill } from "@/components/public";
 import { fmtDate } from "@/utils/format";
 import { DefList, Section } from "@/components/drawer";
 import { healthTone, statusTone } from "@/constants/data";
+import { useLivestock } from "@/hooks/useLivestocks";
+import { getErrorMessage } from "@/utils/getErrorMessage";
+import { Link, useLocation } from "react-router-dom";
 
-export function LivestockDrawer({ row, onClose }) {
+export function LivestockDrawer({ row: initialRow, onClose }) {
+  const { data, isLoading, isError, error } = useLivestock(initialRow._id);
+  const row = data?.livestock ?? initialRow;
+  const location = useLocation();
+  const detailsHref = (id) => {
+    const params = new URLSearchParams(location.search);
+    params.set("livestock", id);
+    return `${location.pathname}?${params}`;
+  };
   return (
     <div className="fixed inset-0 z-50" onClick={onClose}>
       <div className="absolute inset-0 bg-foreground-40" />
@@ -46,6 +57,8 @@ export function LivestockDrawer({ row, onClose }) {
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+          {isLoading && <div className="text-sm text-secondary">Loading livestock…</div>}
+          {isError && <div className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{getErrorMessage(error, "Failed to load livestock details")}</div>}
           <Section icon={Info} title="Basic Information">
             <DefList
               items={[
@@ -55,13 +68,31 @@ export function LivestockDrawer({ row, onClose }) {
                 ["Association", row.association?.name || "—"],
                 ["Animal", row.animal],
                 ["Breed", row.breed || "—"],
-                ["Gender", row.gender === "male" ? "Male" : "Female"],
+                ["Gender", row.gender ? (row.gender === "male" ? "Male" : "Female") : "—"],
+                ["Mother", row.mother ? <Link to={detailsHref(row.mother._id)} className="text-sm font-medium text-foreground hover:underline">{row.mother.propertyNumber} · {row.mother.animal}</Link> : "—"],
                 ["Release Date", row.birthDate ? fmtDate(row.birthDate) : "—"],
                 ["Color", row.color || "—"],
                 ["Weight", row.weight ? `${row.weight} kg` : "—"],
               ]}
             />
           </Section>
+
+          {data?.livestock?.offspring?.length > 0 && (
+            <Section icon={Beef} title="Offspring">
+              <div className="space-y-2">
+                {data.livestock.offspring.map((child) => (
+                  <Link key={child._id} to={detailsHref(child._id)} className="flex items-center justify-between gap-3 border border-border bg-muted-30 p-3">
+                    <div className="min-w-0">
+                      <div className="font-semibold text-foreground truncate">{child.propertyNumber}</div>
+                      <div className="text-xs text-secondary">{child.animal} · {child.gender === "female" ? "Female" : "Male"}{child.breed ? ` · ${child.breed}` : ""}</div>
+                      {child.birthDate && <div className="text-xs text-secondary">Release Date: {fmtDate(child.birthDate)}</div>}
+                    </div>
+                    <StatusPill tone={statusTone[child.status]}>{child.status}</StatusPill>
+                  </Link>
+                ))}
+              </div>
+            </Section>
+          )}
 
           <Section icon={User} title="Assigned Farmer">
             {row.assignedFarmer ? (

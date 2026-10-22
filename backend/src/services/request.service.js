@@ -385,6 +385,7 @@ export const releaseRequest = async (id) => {
                 status: request.association ? "assigned" : "available",
             },
             $unset: { reservedBy: "" },
+            ...(request.entityType === "livestock" ? { $inc: { __v: 1 } } : {}),
         }
     );
 

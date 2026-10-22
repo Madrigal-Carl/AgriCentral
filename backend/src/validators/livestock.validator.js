@@ -3,6 +3,7 @@ import {
     updateLivestockSchema,
     livestockIdParamSchema,
     getLivestocksQuerySchema,
+    getLivestockMothersQuerySchema,
 } from "../schemas/livestock.schema.js";
 
 const validate = (schema) => (req, res, next) => {
@@ -57,3 +58,4 @@ export const validateCreateLivestock = validate(createLivestockSchema);
 export const validateUpdateLivestock = validate(updateLivestockSchema);
 export const validateLivestockIdParam = validateParams(livestockIdParamSchema);
 export const validateGetLivestocksQuery = validateQuery(getLivestocksQuerySchema);
+export const validateGetLivestockMothersQuery = validateQuery(getLivestockMothersQuerySchema);
