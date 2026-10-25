@@ -13,7 +13,7 @@ import {
   useUpdateFarm,
   useDeleteFarm,
 } from "@/hooks/useFarms";
-import { useCrops } from "@/hooks/useCrops";
+import { useLookups, lookupOptions } from "@/hooks/useLookups";
 
 const getRemainingQuantity = (quantities) => {
   const q = quantities ?? {};
@@ -24,7 +24,9 @@ const getRemainingQuantity = (quantities) => {
 
 const blankForm = {
   id: "",
-  address: "",
+  municipality: "",
+  barangay: "",
+  street: "",
   size: "",
   latitude: "",
   longitude: "",
@@ -55,14 +57,8 @@ export function FarmsPage() {
   const rows = data?.farms ?? [];
   const pagination = data?.pagination;
 
-  // Used to build the crop filter's dropdown options. `all: true` skips
-  // pagination on the crops endpoint since we just need distinct names,
-  // not a paged list — dedupe client-side in case multiple crop docs
-  // share the same name.
-  const { data: cropsData } = useCrops({ all: true });
-  const cropOptions = Array.from(
-    new Set((cropsData?.crops ?? []).map((c) => c.name)),
-  ).map((name) => ({ value: name, label: name }));
+  const { data: lookups } = useLookups();
+  const cropOptions = lookupOptions(lookups?.crops);
 
   const [modal, setModal] = useState(null);
   const [drawer, setDrawer] = useState(null);
@@ -112,6 +108,9 @@ export function FarmsPage() {
       mode: "edit",
       data: {
         id: row._id,
+        municipality: row.municipality,
+        barangay: row.barangay,
+        street: row.street,
         tag: row.tag,
         address: row.address,
         size: row.size,
@@ -138,7 +137,9 @@ export function FarmsPage() {
     setSubmitError(null);
     try {
       const payload = {
-        address: values.address,
+        municipality: values.municipality,
+        barangay: values.barangay,
+        street: values.street,
         size: Number(values.size),
         latitude: Number(values.latitude),
         longitude: Number(values.longitude),

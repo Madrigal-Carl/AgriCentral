@@ -134,7 +134,17 @@ export function AssociationsPage() {
             ),
           },
           {
-            key: "far",
+            key: "municipality",
+            header: "Municipality",
+            cell: (r) => r.municipality?.name ?? "—",
+          },
+          {
+            key: "barangay",
+            header: "Barangay",
+            cell: (r) => r.barangay?.name ?? "—",
+          },
+          {
+            key: "representative",
             header: "Farmers Representative",
             cell: (r) => r.far || "—",
           },

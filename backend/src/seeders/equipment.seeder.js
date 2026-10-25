@@ -1,4 +1,5 @@
 import Equipment from "../models/equipment.model.js";
+import EquipmentType from "../models/equipmentType.model.js";
 
 const EQUIPMENT_TO_SEED = [
     { propertyNumber: "EQP-001", name: "Hand Tractor", condition: "good" },
@@ -39,9 +40,11 @@ export const seedEquipments = async ({ farmers } = {}) => {
     for (let i = 0; i < EQUIPMENT_TO_SEED.length; i++) {
         const data = EQUIPMENT_TO_SEED[i];
         const farmer = farmers[i % farmers.length];
+        const equipmentType = await EquipmentType.findOneAndUpdate({ name: data.name, deletedAt: null }, { $setOnInsert: { name: data.name, deletedAt: null } }, { upsert: true, new: true, collation: { locale: "en", strength: 2 } });
 
         const equipment = await Equipment.create({
             ...data,
+            equipmentType: equipmentType._id,
             association: farmer.association,
             assignedFarmer: farmer._id,
             status: "assigned",
@@ -52,8 +55,10 @@ export const seedEquipments = async ({ farmers } = {}) => {
     }
 
     for (const data of UNASSIGNED_EQUIPMENT_TO_SEED) {
+        const equipmentType = await EquipmentType.findOneAndUpdate({ name: data.name, deletedAt: null }, { $setOnInsert: { name: data.name, deletedAt: null } }, { upsert: true, new: true, collation: { locale: "en", strength: 2 } });
         const equipment = await Equipment.create({
             ...data,
+            equipmentType: equipmentType._id,
             association: null,
             assignedFarmer: null,
             status: "available",

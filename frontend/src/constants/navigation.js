@@ -1,4 +1,4 @@
-import { LayoutGrid, Users, Wheat, Tractor, Beef, Map, FileText, UserCircle2, Settings, ClipboardList, UserCog, BarChart3, Building2, Carrot } from "lucide-react";
+import { LayoutGrid, Users, Wheat, Tractor, Beef, Map, FileText, UserCircle2, Settings, Settings2, ClipboardList, UserCog, BarChart3, Building2, Carrot } from "lucide-react";
 
 /* ---------------- FAR ---------------- */
 export const farNavSections = [
@@ -486,6 +486,7 @@ export const adminNavSections = [
     {
         label: "Settings",
         items: [
+            { to: "/admin/maintenance", label: "Maintenance", icon: Settings2 },
             {
                 to: "/admin/settings",
                 label: "Settings",
@@ -496,6 +497,7 @@ export const adminNavSections = [
 ];
 
 export const adminBreadcrumbs = {
+    "/admin/maintenance": { group: "Settings", label: "Maintenance" },
     "/admin/overview": {
         group: "Dashboard",
         label: "Overview",

@@ -2,12 +2,13 @@ import mongoose from "mongoose";
 import Association from "../models/association.model.js";
 import Farmer from "../models/farmer.model.js";
 import User from "../models/user.model.js";
+import { validateLocation, LOCATION_POPULATE } from "../utils/maintenanceLinks.js";
 
 async function checkLocation(municipality, barangay, id) {
     if (!municipality || !barangay) return;
     const existing = await Association.exists({
-        municipality: new RegExp(`^${escapeRegex(municipality.trim())}$`, "i"),
-        barangay: new RegExp(`^${escapeRegex(barangay.trim())}$`, "i"),
+        municipality,
+        barangay,
         deletedAt: null,
         ...(id ? { _id: { $ne: id } } : {}),
     });
@@ -19,6 +20,7 @@ async function checkLocation(municipality, barangay, id) {
 }
 
 export const createAssociation = async (data) => {
+    await validateLocation(data);
     await checkLocation(data.municipality, data.barangay);
     const existing = await Association.findOne({
         name: new RegExp(`^${escapeRegex(data.name.trim())}$`, "i"),
@@ -32,11 +34,12 @@ export const createAssociation = async (data) => {
     }
 
     const association = await Association.create(data);
-    return association;
+    return association.populate(LOCATION_POPULATE);
 };
 
 export const updateAssociation = async (id, data) => {
     const previous = await Association.findOne({ _id: id, deletedAt: null });
+    await validateLocation(data, previous ?? {});
     await checkLocation(data.municipality ?? previous?.municipality, data.barangay ?? previous?.barangay, id);
     const association = await Association.findOneAndUpdate(
         { _id: id, deletedAt: null },
@@ -50,7 +53,7 @@ export const updateAssociation = async (id, data) => {
         throw notFoundError;
     }
 
-    return association;
+    return association.populate(LOCATION_POPULATE);
 };
 
 export const deleteAssociation = async (id) => {
@@ -172,7 +175,7 @@ export const getAssociations = async ({ search, all, page, limit, includeDeleted
     }
 
     if (all) {
-        const associations = await Association.find(filter).sort({ createdAt: -1 });
+        const associations = await Association.find(filter).populate(LOCATION_POPULATE).sort({ createdAt: -1 });
         return {
             associations: await attachMembers(associations),
             pagination: null,
@@ -182,7 +185,7 @@ export const getAssociations = async ({ search, all, page, limit, includeDeleted
     const skip = (page - 1) * limit;
 
     const [associations, total] = await Promise.all([
-        Association.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+        Association.find(filter).populate(LOCATION_POPULATE).sort({ createdAt: -1 }).skip(skip).limit(limit),
         Association.countDocuments(filter),
     ]);
 
@@ -208,7 +211,7 @@ export const getAvailableAssociations = async ({ includeId } = {}) => {
         ],
     };
 
-    return Association.find(filter).sort({ name: 1 });
+    return Association.find(filter).populate(LOCATION_POPULATE).sort({ name: 1 });
 };
 
 function escapeRegex(str) {

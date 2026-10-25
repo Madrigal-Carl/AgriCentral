@@ -3,6 +3,8 @@ import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, Field, FullSelect, TextInput, SingleSelect } from "@/components/ui";
 import { ModalShell } from "./ModalShell";
+import { LookupSelect } from "@/components/ui/LookupSelect";
+import { referenceId } from "@/hooks/useLookups";
 import { GENDER_OPTIONS, LIVESTOCK_HEALTH_OPTIONS } from "@/constants/data";
 import { useAssociations } from "@/hooks/useAssociations";
 import { useCreateLivestock, useUpdateLivestock, useLivestockMothers } from "@/hooks/useLivestocks";
@@ -35,12 +37,12 @@ export function LivestockModal({ mode, initial, onClose, onSave }) {
     })),
     defaultValues: {
       propertyNumber: initial.propertyNumber,
-      animal: initial.animal,
-      breed: initial.breed,
+      animalType: referenceId(initial.animalType),
+      breed: referenceId(initial.breed),
       gender: initial.gender,
       health: initial.health,
       dob: initial.dob?.slice(0, 10),
-      color: initial.color,
+      color: referenceId(initial.color),
       weight: initial.weight,
       associationId: initial.associationId || "",
       isOffspring: !!initial.mother,
@@ -48,16 +50,16 @@ export function LivestockModal({ mode, initial, onClose, onSave }) {
     },
   });
 
-  const animal = useWatch({ control, name: "animal" }) ?? "";
+  const animal = useWatch({ control, name: "animalType" }) ?? "";
   const associationId = useWatch({ control, name: "associationId" });
   const isOffspring = useWatch({ control, name: "isOffspring" });
   const mother = useWatch({ control, name: "mother" });
   const { data: mothersData, isFetching: mothersLoading, isError: mothersFailed, error: mothersError, refetch: reloadMothers } = useLivestockMothers({
-    animal: animal.trim(),
+    animalType: animal,
     ...(role === "far" ? { associationId: associationId || undefined, assignedFarmer: associationId ? initial.farmer || undefined : undefined } : {}),
     excludeId: isEdit ? initial._id : undefined,
   }, { enabled: !!isOffspring && animal.trim().length >= 2 });
-  const motherOptions = (mothersData?.livestocks ?? []).map((record) => ({ value: record._id, label: `${record.propertyNumber} · ${record.animal} · ${record.breed}` }));
+  const motherOptions = (mothersData?.livestocks ?? []).map((record) => ({ value: record._id, label: `${record.propertyNumber} · ${record.animalType?.name ?? record.animal} · ${record.breed?.name ?? "—"}` }));
 
   useEffect(() => {
     if (isOffspring && mother && mothersData && !mothersLoading && !mothersFailed && !mothersData.livestocks.some((record) => record._id === mother)) {
@@ -101,7 +103,7 @@ export function LivestockModal({ mode, initial, onClose, onSave }) {
 
     const payload = {
       propertyNumber: values.propertyNumber,
-      animal: values.animal,
+      animalType: values.animalType,
       breed: values.breed,
       gender: values.gender,
       condition: values.health,
@@ -201,25 +203,9 @@ export function LivestockModal({ mode, initial, onClose, onSave }) {
             placeholder="e.g. LVS-001"
           />
         </Field>
-        <Field label="Animal Type" error={errors.animal?.message} full>
-          <TextInput
-            {...register("animal")}
-            onChange={(event) => {
-              if (event.target.value.trim().toLowerCase() !== animal.trim().toLowerCase()) setValue("mother", "");
-              register("animal").onChange(event);
-            }}
-            placeholder="e.g. Cow, Goat, Sheep"
-          />
-        </Field>
-        <Field label="Breed Type" error={errors.breed?.message}>
-          <TextInput
-            {...register("breed")}
-            placeholder="e.g. Hereford, Angus"
-          />
-        </Field>
-        <Field label="Color" error={errors.color?.message}>
-          <TextInput {...register("color")} placeholder="e.g. Brown & White" />
-        </Field>
+        <LookupSelect control={control} name="animalType" type="animals" label="Animal" saved={initial.animalType} error={errors.animalType?.message} full onChange={() => { setValue("breed", "", { shouldValidate: true }); setValue("mother", ""); }} />
+        <LookupSelect control={control} name="breed" type="breeds" label="Breed" saved={animal === referenceId(initial.animalType) ? initial.breed : undefined} parent={animal} disabled={!animal} error={errors.breed?.message} />
+        <LookupSelect control={control} name="color" type="colors" label="Color" saved={initial.color} error={errors.color?.message} />
         <Field label="Gender" error={errors.gender?.message}>
           <Controller
             name="gender"
@@ -297,7 +283,7 @@ export function LivestockModal({ mode, initial, onClose, onSave }) {
           <Field label="Select Mother" full error={errors.mother?.message || (mothersFailed ? getErrorMessage(mothersError, "Failed to load eligible mothers") : undefined)}>
             {animal.trim().length < 2 || mothersLoading ? (
               <div className="w-full border border-border bg-muted px-3 py-2.5 text-sm text-secondary">
-                {animal.trim().length < 2 ? "Enter an animal type first…" : "Loading eligible mothers…"}
+                {animal.trim().length < 2 ? "Select an animal first…" : "Loading eligible mothers…"}
               </div>
             ) : mothersFailed ? (
               <Button type="button" variant="outline" onClick={() => reloadMothers()}>Retry</Button>

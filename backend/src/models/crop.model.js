@@ -6,11 +6,10 @@ const cropSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "Association",
         },
+        cropType: { type: mongoose.Schema.Types.ObjectId, ref: "CropType", required: true },
         name: {
             type: String,
-            required: true,
             trim: true,
-            minlength: 2,
             maxlength: 100,
         },
         quantity: {

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { referenceIdSchema } from "./maintenance.schema.js";
 
 export const CROP_STATUSES = [
     "planted",
@@ -86,10 +87,9 @@ const sizeSchema = z
     .refine((num) => num === undefined || num >= 0, "Size must not be negative");
 
 export const farmFormSchema = z.object({
-    address: z
-        .string({ required_error: "Address is required" })
-        .trim()
-        .min(2, "Address must be at least 2 characters"),
+    municipality: referenceIdSchema,
+    barangay: referenceIdSchema,
+    street: z.string().trim().max(200).optional(),
     size: sizeSchema,
     assignedFarmers: z.array(farmFarmerSchema).optional().default([]),
     association: z.string().optional().default(""),

@@ -20,6 +20,7 @@ import { useLivestockAvailability } from "@/hooks/useLivestocks";
 import { useEquipmentAvailability } from "@/hooks/useEquipments";
 import { getRequestLines } from "@/utils/request";
 import { getErrorMessage } from "@/utils/getErrorMessage";
+import { useLookups } from "@/hooks/useLookups";
 
 function toFormShape(request) {
   return {
@@ -34,6 +35,7 @@ function toFormShape(request) {
 export function RequestModal({ mode, initial, onClose, onSave }) {
   const [submitError, setSubmitError] = useState(null);
   const isEdit = mode === "edit";
+  const lookups = useLookups();
   const { data: livestockData, isPending: livestockLoading, error: livestockError } = useLivestockAvailability();
   const { data: equipmentData, isPending: equipmentLoading, error: equipmentError } = useEquipmentAvailability();
 
@@ -45,9 +47,9 @@ export function RequestModal({ mode, initial, onClose, onSave }) {
   const resolver = useMemo(
     () =>
       zodResolver(
-        (isEdit ? createRequestUpdateSchema : createRequestFormSchema)({ equipment: equipmentData, livestock: livestockData }),
+        (isEdit ? createRequestUpdateSchema : createRequestFormSchema)({ equipment: equipmentData, livestock: livestockData }, isEdit ? initial : undefined),
       ),
-    [isEdit, equipmentData, livestockData],
+    [isEdit, equipmentData, livestockData, initial],
   );
 
   const {
@@ -86,11 +88,13 @@ export function RequestModal({ mode, initial, onClose, onSave }) {
   const loadingStock = entityType === "equipment" ? equipmentLoading : livestockLoading;
   const stockError = entityType === "equipment" ? equipmentError : livestockError;
   const ItemIcon = entityType === "equipment" ? Wrench : Beef;
-  const itemOptions = stock.map((entry) => ({
-    value: entry.name ?? entry.animal,
-    label: `${entry.name ?? entry.animal} — ${entry.available} available`,
-    disabled: entry.available === 0,
-  }));
+  const itemOptions = (lookups.data?.[entityType === "equipment" ? "equipments" : "animals"] ?? []).map((entry) => {
+    const available = stock.find((item) => item.key === entry._id)?.available ?? 0;
+    return { value: entry._id, label: `${entry.name} — ${available} available`, disabled: available === 0 };
+  });
+  if (isEdit && entityType === initial.entityType) for (const line of initial.lines ?? []) {
+    if (lines.some((item) => item.key === line.key) && !itemOptions.some((item) => item.value === line.key)) itemOptions.push({ value: line.key, label: `${line.name ?? "Saved item"}${line.deletedAt ? " (archived)" : ""}`, disabled: true });
+  }
   const onLinesChange = (keys) => setValue("lines", keys.map((key) =>
     lines.find((line) => line.key === key) ?? { key, quantity: 1 },
   ), { shouldValidate: true, shouldDirty: true });
@@ -142,7 +146,7 @@ export function RequestModal({ mode, initial, onClose, onSave }) {
     }
   };
 
-  const busy = isCreating || isUpdating || loadingStock || !!stockError;
+  const busy = isCreating || isUpdating || loadingStock || !!stockError || lookups.isPending || lookups.isError;
 
   return (
     <ModalShell
@@ -210,7 +214,7 @@ export function RequestModal({ mode, initial, onClose, onSave }) {
           <Field
             label={entityType === "equipment" ? "Equipment" : "Livestock"}
             full
-            error={errors.lines?.message || stockError?.message}
+            error={errors.lines?.message || stockError?.message || (lookups.isError ? getErrorMessage(lookups.error) : undefined)}
           >
             <Controller
               name="lines"
@@ -230,12 +234,15 @@ export function RequestModal({ mode, initial, onClose, onSave }) {
           {lines.length > 0 && (
             <div className="sm:col-span-2 space-y-2">
               {lines.map((line, index) => {
-                const available = stock.find((entry) => (entry.name ?? entry.animal) === line.key)?.available ?? 0;
-                const quantityError = errors.lines?.[index]?.quantity?.message || (line.quantity > available ? `Only ${available} available` : undefined);
+                const stockItem = stock.find((entry) => entry.key === line.key);
+                const saved = isEdit && entityType === initial.entityType ? initial.lines?.find((item) => item.key === line.key) : undefined;
+                const unchanged = saved?.quantity === line.quantity;
+                const available = Math.max(stockItem?.available ?? 0, unchanged ? line.quantity : 0);
+                const quantityError = errors.lines?.[index]?.quantity?.message || (!unchanged && line.quantity > available ? `Only ${available} available` : undefined);
                 return (
                   <div key={line.key} className="flex items-center justify-between gap-3 w-full bg-surface border border-border px-3 py-2 flex-wrap">
                     <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                      <ItemIcon className="h-4 w-4 text-accent" />{line.key}
+                      <ItemIcon className="h-4 w-4 text-accent" />{stockItem?.name ?? line.name ?? saved?.name ?? "Unavailable item"}{saved?.deletedAt ? " (archived)" : ""}
                     </div>
                     <div className="w-full sm:w-auto">
                       <div className="flex items-center gap-3">

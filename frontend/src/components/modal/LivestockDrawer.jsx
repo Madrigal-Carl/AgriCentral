@@ -31,7 +31,7 @@ export function LivestockDrawer({ row: initialRow, onClose }) {
                 Livestock · {row.propertyNumber}
               </div>
               <h2 className="font-display text-xl tracking-tight text-foreground truncate">
-                {row.animal} · {row.breed}
+                {row.animalType?.name ?? row.animal} · {row.breed?.name ?? "—"}
               </h2>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 border border-border bg-muted px-2.5 py-1 text-xs font-semibold text-foreground">
@@ -67,11 +67,11 @@ export function LivestockDrawer({ row: initialRow, onClose }) {
                 // (or absent) — display the name, not the object itself.
                 ["Association", row.association?.name || "—"],
                 ["Animal", row.animal],
-                ["Breed", row.breed || "—"],
+                ["Breed", row.breed?.name || "—"],
                 ["Gender", row.gender ? (row.gender === "male" ? "Male" : "Female") : "—"],
                 ["Mother", row.mother ? <Link to={detailsHref(row.mother._id)} className="text-sm font-medium text-foreground hover:underline">{row.mother.propertyNumber} · {row.mother.animal}</Link> : "—"],
                 ["Release Date", row.birthDate ? fmtDate(row.birthDate) : "—"],
-                ["Color", row.color || "—"],
+                ["Color", row.color?.name || "—"],
                 ["Weight", row.weight ? `${row.weight} kg` : "—"],
               ]}
             />
@@ -84,7 +84,7 @@ export function LivestockDrawer({ row: initialRow, onClose }) {
                   <Link key={child._id} to={detailsHref(child._id)} className="flex items-center justify-between gap-3 border border-border bg-muted-30 p-3">
                     <div className="min-w-0">
                       <div className="font-semibold text-foreground truncate">{child.propertyNumber}</div>
-                      <div className="text-xs text-secondary">{child.animal} · {child.gender === "female" ? "Female" : "Male"}{child.breed ? ` · ${child.breed}` : ""}</div>
+                      <div className="text-xs text-secondary">{child.animalType?.name ?? child.animal} · {child.gender === "female" ? "Female" : "Male"}{child.breed?.name ? ` · ${child.breed.name}` : ""}</div>
                       {child.birthDate && <div className="text-xs text-secondary">Release Date: {fmtDate(child.birthDate)}</div>}
                     </div>
                     <StatusPill tone={statusTone[child.status]}>{child.status}</StatusPill>

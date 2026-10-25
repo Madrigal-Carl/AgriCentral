@@ -1,7 +1,7 @@
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui";
 
-export function DeleteConfirmModal({ name, error, busy, onCancel, onConfirm }) {
+export function DeleteConfirmModal({ name, error, busy, onCancel, onConfirm, description }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-foreground-40 p-4"
@@ -19,8 +19,7 @@ export function DeleteConfirmModal({ name, error, busy, onCancel, onConfirm }) {
         </h3>
         <p className="text-sm text-secondary mb-4">
           Are you sure you want to archive{" "}
-          <strong className="text-foreground">{name}</strong>? This action
-          cannot be undone.
+          <strong className="text-foreground">{name}</strong>? {description ?? "This record will be archived."}
         </p>
         {error && (
           <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">

@@ -2,6 +2,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, Field, TextInput } from "@/components/ui";
 import { ModalShell } from "./ModalShell";
+import { LocationFields } from "./LocationFields";
+import { referenceId } from "@/hooks/useLookups";
 import {
   associationFormSchema,
   associationUpdateSchema,
@@ -20,6 +22,8 @@ export function AssociationModal({
   const {
     register,
     handleSubmit,
+    control,
+    setValue,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(
@@ -27,8 +31,8 @@ export function AssociationModal({
     ),
     defaultValues: {
       name: initial?.name ?? "",
-      municipality: initial?.municipality ?? "",
-      barangay: initial?.barangay ?? "",
+      municipality: referenceId(initial?.municipality),
+      barangay: referenceId(initial?.barangay),
     },
   });
 
@@ -62,9 +66,9 @@ export function AssociationModal({
         </>
       }
     >
-      <form id="association-form" onSubmit={handleSubmit(onSubmit)}>
+      <form id="association-form" onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 gap-4">
         {submitError && (
-          <div className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+          <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
             {submitError}
           </div>
         )}
@@ -73,15 +77,10 @@ export function AssociationModal({
           <TextInput
             autoFocus
             {...register("name")}
-            placeholder="e.g. Boac, Marinduque"
+            placeholder="Association name"
           />
         </Field>
-        <Field label="Municipality" error={errors.municipality?.message || (submitError?.includes("municipality and barangay") ? submitError : undefined)}>
-          <TextInput {...register("municipality")} placeholder="Municipality" />
-        </Field>
-        <Field label="Barangay" error={errors.barangay?.message}>
-          <TextInput {...register("barangay")} placeholder="Barangay" />
-        </Field>
+        <LocationFields control={control} setValue={setValue} register={register} initial={initial} errors={errors} />
       </form>
     </ModalShell>
   );

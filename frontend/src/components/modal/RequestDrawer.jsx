@@ -81,7 +81,7 @@ export function RequestDrawer({ row, onClose, onApprove, onDeny, onChangeDecisio
             title={`Requested ${typeLabel[row.entityType]}`}
           >
             <ul className="mb-3 space-y-1 text-sm font-medium text-foreground">
-              {getRequestLines(row).map((line) => <li key={line.key}>{line.quantity} × {line.key}</li>)}
+              {getRequestLines(row).map((line) => <li key={line.key}>{line.quantity} × {line.name ?? "Unknown item"}</li>)}
             </ul>
             {entities.length > 0 && <p className="mb-2 text-xs text-secondary">Assigned units</p>}
             {entities.length ? (

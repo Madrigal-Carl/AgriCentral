@@ -12,16 +12,13 @@ const livestockSchema = new mongoose.Schema(
             trim: true,
             uppercase: true,
         },
+        animalType: { type: mongoose.Schema.Types.ObjectId, ref: "AnimalType", required: true },
         animal: {
             type: String,
-            required: true,
             trim: true,
         },
-        breed: {
-            type: String,
-            required: true,
-            trim: true,
-        },
+        breed: { type: mongoose.Schema.Types.ObjectId, ref: "Breed", required: true },
+        legacyMaintenance: { type: mongoose.Schema.Types.Mixed, select: false },
         gender: {
             type: String,
             enum: [
@@ -34,11 +31,7 @@ const livestockSchema = new mongoose.Schema(
             type: Date,
             required: true,
         },
-        color: {
-            type: String,
-            required: true,
-            trim: true,
-        },
+        color: { type: mongoose.Schema.Types.ObjectId, ref: "Color", required: true },
         weight: {
             type: Number,
             required: true,

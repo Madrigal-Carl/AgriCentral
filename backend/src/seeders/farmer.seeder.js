@@ -9,7 +9,6 @@ const FARMERS_TO_SEED = [
         emailAddress: "ramon.delacruz@gmail.com",
         gender: "male",
         birthDate: "1972-02-14",
-        address: "Sitio Malabaybay, Brgy. Agot, Boac, Marinduque",
         position: "president",
     },
     {
@@ -20,7 +19,6 @@ const FARMERS_TO_SEED = [
         emailAddress: "liza.manalo@gmail.com",
         gender: "female",
         birthDate: "1988-06-21",
-        address: "Sitio Kanluran, Brgy. Isok I, Boac, Marinduque",
         position: "secretary",
     },
     {
@@ -30,7 +28,6 @@ const FARMERS_TO_SEED = [
         emailAddress: "bayani.reyes@gmail.com",
         gender: "male",
         birthDate: "1980-11-03",
-        address: "Sitio Dulong Bayan, Brgy. Laylay, Boac, Marinduque",
         position: "treasurer",
     },
     {
@@ -41,7 +38,6 @@ const FARMERS_TO_SEED = [
         emailAddress: "corazon.villanueva@gmail.com",
         gender: "female",
         birthDate: "1993-09-17",
-        address: "Sitio Ibaba, Brgy. Mansiwat, Boac, Marinduque",
         position: "member",
     },
     {
@@ -52,7 +48,6 @@ const FARMERS_TO_SEED = [
         emailAddress: "eduardo.santos@gmail.com",
         gender: "male",
         birthDate: "1975-05-09",
-        address: "Sitio Look, Brgy. Tumagabok, Boac, Marinduque",
         position: "vice_president",
     },
     {
@@ -62,7 +57,6 @@ const FARMERS_TO_SEED = [
         emailAddress: "teresita.marasigan@gmail.com",
         gender: "female",
         birthDate: "1984-12-30",
-        address: "Sitio Wawa, Brgy. Balimbing, Boac, Marinduque",
         position: "member",
     },
     {
@@ -73,7 +67,6 @@ const FARMERS_TO_SEED = [
         emailAddress: "fernando.morales@gmail.com",
         gender: "male",
         birthDate: "1969-07-25",
-        address: "Sitio Pulo, Brgy. Boi, Boac, Marinduque",
         position: "auditor",
     },
     {
@@ -84,7 +77,6 @@ const FARMERS_TO_SEED = [
         emailAddress: "rosario.aguilar@gmail.com",
         gender: "female",
         birthDate: "1991-03-11",
-        address: "Sitio Kanto, Brgy. Catubugan, Boac, Marinduque",
         position: "member",
     },
     {
@@ -94,7 +86,6 @@ const FARMERS_TO_SEED = [
         emailAddress: "danilo.castillo@gmail.com",
         gender: "male",
         birthDate: "1978-10-08",
-        address: "Sitio Baybayin, Brgy. Poctoy, Boac, Marinduque",
         position: "pio",
     },
     {
@@ -105,7 +96,6 @@ const FARMERS_TO_SEED = [
         emailAddress: "imelda.navarro@gmail.com",
         gender: "female",
         birthDate: "1996-01-19",
-        address: "Sitio Bundok, Brgy. Mataas na Bayan, Boac, Marinduque",
         position: "member",
     },
     {
@@ -116,7 +106,6 @@ const FARMERS_TO_SEED = [
         emailAddress: "antonio.ramos@gmail.com",
         gender: "male",
         birthDate: "1987-08-04",
-        address: "Sitio Ilaya, Brgy. Tabi, Boac, Marinduque",
         position: "member",
     },
     {
@@ -126,7 +115,6 @@ const FARMERS_TO_SEED = [
         emailAddress: "josefina.cruz@gmail.com",
         gender: "female",
         birthDate: "1982-04-27",
-        address: "Sitio Bagumbayan, Brgy. Daig, Boac, Marinduque",
         position: "project_manager",
     },
     {
@@ -137,7 +125,6 @@ const FARMERS_TO_SEED = [
         emailAddress: "rogelio.torres@gmail.com",
         gender: "male",
         birthDate: "1965-12-02",
-        address: "Sitio Dulong Bayan, Brgy. Laylay, Boac, Marinduque",
         position: "member",
     },
     {
@@ -148,7 +135,6 @@ const FARMERS_TO_SEED = [
         emailAddress: "marilou.bautista@gmail.com",
         gender: "female",
         birthDate: "1990-02-06",
-        address: "Sitio Ibaba, Brgy. Mansiwat, Boac, Marinduque",
         position: "director",
     },
 ];
@@ -160,7 +146,8 @@ export const wipeFarmers = async () => {
 
 // Requires associations to already exist (context.associations) so every
 // farmer's `association` FK points at a real document.
-export const seedFarmers = async ({ associations } = {}) => {
+export const seedFarmers = async ({ associations, maintenance } = {}) => {
+    if (!maintenance?.municipalities?.length || !maintenance?.barangays?.length) throw new Error("seedFarmers requires Maintenance to already be seeded");
     if (!associations?.length) {
         throw new Error("seedFarmers requires associations to already be seeded");
     }
@@ -171,9 +158,16 @@ export const seedFarmers = async ({ associations } = {}) => {
         const data = FARMERS_TO_SEED[i];
         // Distribute farmers across the seeded associations round-robin.
         const association = associations[i % associations.length];
+        const municipality = maintenance.municipalities.find((item) => String(item._id) === String(association.municipality));
+        const barangay = maintenance.barangays.find((item) => String(item._id) === String(association.barangay));
+        if (!municipality || !barangay || String(barangay.municipality) !== String(municipality._id)) throw new Error(`seedFarmers: invalid location for ${association.name}`);
 
         const farmer = await Farmer.create({
             ...data,
+            municipality: municipality._id,
+            barangay: barangay._id,
+            street: "",
+            address: `${barangay.name}, ${municipality.name}`,
             association: association._id,
         });
 

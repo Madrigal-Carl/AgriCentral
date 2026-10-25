@@ -63,6 +63,9 @@ const AnalyticsPage = lazy(() =>
 const AssociationsPage = lazy(() =>
   import("@/pages/public/AssociationsPage").then((m) => ({ default: m.AssociationsPage })),
 );
+const MaintenancePage = lazy(() =>
+  import("@/pages/public/MaintenancePage").then((m) => ({ default: m.MaintenancePage })),
+);
 
 function PageLoader() {
   return <FullScreenLoader />;
@@ -165,6 +168,7 @@ export default function AppRouter() {
           {/* ADMIN ONLY */}
           <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN]} />}>
             <Route path="/admin" element={<DashboardLayout />}>
+              <Route path="maintenance" element={<MaintenancePage />} />
               <Route path="overview" element={<OverviewPage />} />
               <Route path="farmers" element={<FarmersPage />} />
               <Route path="users" element={<UsersPage />} />

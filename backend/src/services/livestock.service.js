@@ -2,6 +2,7 @@ import Livestock from "../models/livestock.model.js";
 import Farmer from "../models/farmer.model.js";
 import User from "../models/user.model.js";
 import Association from "../models/association.model.js";
+import { validateInventoryLinks, ANIMAL_POPULATE } from "../utils/maintenanceLinks.js";
 import { createLog, getLogsForEntities } from "./log.service.js";
 import { assertAssignable } from "../utils/assignment.js";
 import { LIVESTOCK_RELATION_FIELDS, MOTHER_POPULATE, livestockAccessFilter, lineageChanged, lineageError, validateLivestockLineage, withLivestockLineageTransaction } from "./livestockLineage.service.js";
@@ -22,6 +23,7 @@ const resolveAssociationId = async (associationId, authenticatedUserId) => {
 
 export const createLivestock = async (data, authenticatedUserId, actingUser) => {
     const { associationId, ...livestockData } = data;
+    await validateInventoryLinks("livestock", livestockData);
 
     const existing = await Livestock.findOne({ propertyNumber: livestockData.propertyNumber, deletedAt: null });
 
@@ -89,7 +91,7 @@ export const createLivestock = async (data, authenticatedUserId, actingUser) => 
         });
     }
 
-    await livestock.populate(["assignedFarmer", ASSOCIATION_POPULATE, MOTHER_POPULATE].map((p) =>
+    await livestock.populate(["assignedFarmer", ASSOCIATION_POPULATE, MOTHER_POPULATE, ...ANIMAL_POPULATE].map((p) =>
         p === "assignedFarmer" ? { path: "assignedFarmer", select: "firstName lastName" } : p
     ));
 
@@ -117,8 +119,9 @@ export const updateLivestock = async (id, data, actingUser) => {
         }
     }
 
-    const previousLivestock = await Livestock.findOne({ _id: id, deletedAt: null, ...access }).select("assignedFarmer condition animal propertyNumber association deceasedAt gender mother __v");
+    const previousLivestock = await Livestock.findOne({ _id: id, deletedAt: null, ...access }).select("assignedFarmer condition animal animalType breed color propertyNumber association deceasedAt gender mother __v");
     if (!previousLivestock) throw lineageError("Livestock not found", "mother", 404);
+    if (["animalType", "breed", "color"].some((key) => livestockData[key] !== undefined)) await validateInventoryLinks("livestock", livestockData, previousLivestock);
     if (actingUser?.role === "far" && associationId !== undefined && String(associationId ?? "").toLowerCase() !== String(previousLivestock.association ?? "").toLowerCase()) {
         throw lineageError("You cannot move livestock outside your association", "associationId", 403);
     }
@@ -171,7 +174,7 @@ export const updateLivestock = async (id, data, actingUser) => {
                 ...(Object.keys(unset).length ? { $unset: unset } : {}),
             },
             { new: true, runValidators: true, ...(session ? { session } : {}) },
-        ).populate([{ path: "assignedFarmer", select: "firstName lastName" }, ASSOCIATION_POPULATE, { ...MOTHER_POPULATE, match: { deletedAt: null, ...access } }]);
+        ).populate([{ path: "assignedFarmer", select: "firstName lastName" }, ASSOCIATION_POPULATE, ...ANIMAL_POPULATE, { ...MOTHER_POPULATE, match: { deletedAt: null, ...access } }]);
     };
     const livestock = changesLineage ? await withLivestockLineageTransaction(persist) : await persist();
     if (changesLineage && livestock) livestock.$session(null);
@@ -323,6 +326,7 @@ const attachHistory = async (livestocks, associationId) => {
         const key = obj._id.toString();
         return {
             ...obj,
+            animal: obj.animalType?.name ?? obj.animal,
             status: obj.association ? "assigned" : "available",
             history: logsByLivestockId.get(key) ?? [],
         };
@@ -335,7 +339,7 @@ export const getAvailableLivestocks = async () => {
         association: null,
         assignedFarmer: null,
     })
-        .select("propertyNumber animal breed condition status")
+        .select("propertyNumber animal animalType breed color condition status").populate(ANIMAL_POPULATE)
         .sort({ propertyNumber: 1 });
 
     return livestocks;
@@ -364,7 +368,7 @@ export const getLivestocks = async ({
 
     if (all) {
         const livestocks = await Livestock.find(filter)
-            .populate([{ path: "assignedFarmer", select: "firstName lastName" }, ASSOCIATION_POPULATE, motherPopulate])
+            .populate([{ path: "assignedFarmer", select: "firstName lastName" }, ASSOCIATION_POPULATE, motherPopulate, ...ANIMAL_POPULATE])
             .sort({ createdAt: -1 });
 
         return {
@@ -377,7 +381,7 @@ export const getLivestocks = async ({
 
     const [livestocks, total] = await Promise.all([
         Livestock.find(filter)
-            .populate([{ path: "assignedFarmer", select: "firstName lastName" }, ASSOCIATION_POPULATE, motherPopulate])
+            .populate([{ path: "assignedFarmer", select: "firstName lastName" }, ASSOCIATION_POPULATE, motherPopulate, ...ANIMAL_POPULATE])
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit),
@@ -398,11 +402,11 @@ export const getLivestocks = async ({
 export const getLivestock = async (id, actingUser) => {
     const access = await livestockAccessFilter(actingUser);
     const livestock = await Livestock.findOne({ _id: id, deletedAt: null, ...access })
-        .populate([{ path: "assignedFarmer", select: "firstName lastName" }, ASSOCIATION_POPULATE, { ...MOTHER_POPULATE, match: { deletedAt: null, ...access } }]);
+        .populate([{ path: "assignedFarmer", select: "firstName lastName" }, ASSOCIATION_POPULATE, ...ANIMAL_POPULATE, { ...MOTHER_POPULATE, match: { deletedAt: null, ...access } }]);
     if (!livestock) throw lineageError("Livestock not found", "mother", 404);
     const [record] = await attachHistory([livestock], livestock.association?._id ?? livestock.association);
     const offspring = await Livestock.find({ mother: id, deletedAt: null, ...access })
-        .select(LIVESTOCK_RELATION_FIELDS).sort({ birthDate: -1, propertyNumber: 1 }).lean();
+        .select(LIVESTOCK_RELATION_FIELDS).populate(ANIMAL_POPULATE).sort({ birthDate: -1, propertyNumber: 1 }).lean();
     return { ...record, mother: record.mother ?? null, offspring: offspring.map((child) => ({ ...child, status: child.association ? "assigned" : "available" })) };
 };
 

@@ -5,6 +5,7 @@ import Equipment from "../models/equipment.model.js";
 import Crop from "../models/crop.model.js";
 import User from "../models/user.model.js";
 import Association from "../models/association.model.js";
+import { validateLocation, LOCATION_POPULATE, ANIMAL_POPULATE, CROP_TYPE_POPULATE, EQUIPMENT_TYPE_POPULATE } from "../utils/maintenanceLinks.js";
 import cloudinary from "../config/cloudinary.js";
 import { createLog, getLogsForEntities, humanize } from "./log.service.js";
 
@@ -32,6 +33,7 @@ async function checkPosition(association, position, id) {
 
 export const createFarmer = async (data, authenticatedUserId) => {
     const { associationId, ...farmerData } = data;
+    await validateLocation(farmerData);
 
     if (farmerData.emailAddress) {
         const existing = await Farmer.findOne({ emailAddress: farmerData.emailAddress, deletedAt: null });
@@ -70,11 +72,12 @@ export const createFarmer = async (data, authenticatedUserId) => {
         });
     }
 
-    return farmer;
+    return farmer.populate(LOCATION_POPULATE);
 };
 
 export const updateFarmer = async (id, data) => {
     const { associationId, ...farmerData } = data;
+    if (["municipality", "barangay", "street"].some((key) => data[key] !== undefined)) await validateLocation(farmerData, await Farmer.findById(id) ?? {});
     if (associationId !== undefined) {
         farmerData.association = associationId;
     }
@@ -179,7 +182,7 @@ export const updateFarmer = async (id, data) => {
         });
     }
 
-    return farmer;
+    return farmer.populate(LOCATION_POPULATE);
 };
 
 export const deleteFarmer = async (id) => {
@@ -252,7 +255,7 @@ const attachRelatedRecords = async (farmers, associationId) => {
     const livestocks = await Livestock.find({
         assignedFarmer: { $in: farmerIds },
         deletedAt: null,
-    }).select("propertyNumber animal breed condition status assignedFarmer association");
+    }).select("propertyNumber animal animalType breed color condition status assignedFarmer association").populate(ANIMAL_POPULATE);
 
     const livestockByFarmerId = new Map();
     for (const livestock of livestocks) {
@@ -271,7 +274,7 @@ const attachRelatedRecords = async (farmers, associationId) => {
     const equipments = await Equipment.find({
         assignedFarmer: { $in: farmerIds },
         deletedAt: null,
-    }).select("propertyNumber name condition status assignedFarmer association");
+    }).select("propertyNumber name equipmentType condition status assignedFarmer association").populate(EQUIPMENT_TYPE_POPULATE);
 
     const equipmentByFarmerId = new Map();
     for (const equipment of equipments) {
@@ -304,7 +307,7 @@ const attachRelatedRecords = async (farmers, associationId) => {
 export const getFarmersByAssociationId = async (associationId) => {
     const farmers = await Farmer.find({ association: associationId, deletedAt: null })
         .sort({ createdAt: -1 })
-        .populate("association", "name");
+        .populate("association", "name").populate(LOCATION_POPULATE);
     return attachRelatedRecords(farmers, associationId);
 };
 
@@ -323,7 +326,7 @@ export const getCropsByFarmerId = async (farmerId) => {
         isDistributed: true,
         unplanted: { $gt: 0 },
     })
-        .populate("association", "name")
+        .populate("association", "name").populate(CROP_TYPE_POPULATE)
         .sort({ createdAt: -1 });
 
     return crops;
@@ -346,7 +349,7 @@ export const getFarmers = async ({ status, search, associationId, all, page, lim
     if (all) {
         const farmers = await Farmer.find(filter)
             .sort({ createdAt: -1 })
-            .populate("association", "name");
+            .populate("association", "name").populate(LOCATION_POPULATE);
         return {
             farmers: await attachRelatedRecords(farmers, associationId),
             pagination: null,
@@ -360,7 +363,7 @@ export const getFarmers = async ({ status, search, associationId, all, page, lim
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
-            .populate("association", "name"),
+            .populate("association", "name").populate(LOCATION_POPULATE),
         Farmer.countDocuments(filter),
     ]);
 

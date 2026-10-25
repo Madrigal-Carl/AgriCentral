@@ -9,6 +9,7 @@ import emailQueue from "../queues/email.queue.js";
 import { EMAIL_JOBS } from "../queues/email.jobs.js";
 import { assertAssignable, BLOCKED_CONDITIONS } from "../utils/assignment.js";
 import { availabilityFilter, inventoryKey, validateRequestAvailability } from "./availability.service.js";
+import { maintenanceModels, ANIMAL_POPULATE, EQUIPMENT_TYPE_POPULATE } from "../utils/maintenanceLinks.js";
 
 const STAGE_ORDER = ["coordinator", "governor", "head"];
 
@@ -18,8 +19,8 @@ const ENTITY_MODELS = {
 };
 
 const ENTITY_SELECT = {
-    livestock: "propertyNumber animal",
-    equipment: "propertyNumber name",
+    livestock: "propertyNumber animal animalType breed color",
+    equipment: "propertyNumber name equipmentType",
 };
 
 const ASSOCIATION_POPULATE = { path: "association", select: "name" };
@@ -51,7 +52,7 @@ async function withRequestLock(id, action) {
 }
 
 const describeLines = (request) => request.lines?.length
-    ? request.lines.map((line) => `${line.quantity} × ${line.key}`).join(", ")
+    ? request.lines.map((line) => `${line.quantity} × ${line.name ?? "inventory item"}`).join(", ")
     : `${request.entityIds.length} ${request.entityType} item(s)`;
 
 async function ensureRequestLines(request) {
@@ -60,7 +61,7 @@ async function ensureRequestLines(request) {
     if (docs.length !== request.entityIds.length || !docs.length) fail("Legacy request contains missing units; migrate/repair it before approval");
     const grouped = new Map();
     for (const doc of docs) {
-        const key = doc[inventoryKey(request.entityType)];
+        const key = String(doc[inventoryKey(request.entityType)]);
         grouped.set(key, (grouped.get(key) ?? 0) + 1);
     }
     request.lines = [...grouped].map(([key, quantity]) => ({ key, quantity }));
@@ -75,6 +76,8 @@ function assertEarlierStagesApproved(request, role) {
 }
 
 async function populateEntities(requests) {
+    const referenceDocs = await Promise.all([maintenanceModels.animals.find({}).select("name deletedAt").lean(), maintenanceModels.equipments.find({}).select("name deletedAt").lean()]);
+    const names = new Map(referenceDocs.flat().map((item) => [String(item._id), item]));
     const idsByType = { livestock: new Set(), equipment: new Set() };
 
     for (const r of requests) {
@@ -89,11 +92,13 @@ async function populateEntities(requests) {
         idsByType.livestock.size
             ? Livestock.find({ _id: { $in: [...idsByType.livestock] } })
                 .select(ENTITY_SELECT.livestock)
+                .populate(ANIMAL_POPULATE)
                 .lean()
             : [],
         idsByType.equipment.size
             ? Equipment.find({ _id: { $in: [...idsByType.equipment] } })
                 .select(ENTITY_SELECT.equipment)
+                .populate(EQUIPMENT_TYPE_POPULATE)
                 .lean()
             : [],
     ]);
@@ -106,10 +111,11 @@ async function populateEntities(requests) {
         const entities = r.entityIds.map((id) => entityMap.get(String(id))).filter(Boolean);
         const grouped = new Map();
         for (const doc of entities) {
-            const key = doc[inventoryKey(r.entityType)];
+            const key = String(doc[inventoryKey(r.entityType)]);
             grouped.set(key, (grouped.get(key) ?? 0) + 1);
         }
-        return { ...r, entities, lines: r.lines?.length ? r.lines : [...grouped].map(([key, quantity]) => ({ key, quantity })) };
+        const lines = (r.lines?.length ? r.lines : [...grouped].map(([key, quantity]) => ({ key, quantity }))).map((line) => ({ ...line, key: String(line.key), name: names.get(String(line.key))?.name ?? line.name ?? "Unknown item", deletedAt: names.get(String(line.key))?.deletedAt ?? null }));
+        return { ...r, entities, lines };
     });
 }
 
@@ -292,7 +298,7 @@ export const updateRequest = async (id, data, actingUser) => withRequestLock(id,
     }
     if (data.entityType && data.entityType !== request.entityType && !data.lines) fail("Select names/types for the new entity type", 400);
     if (!data.lines) await ensureRequestLines(request);
-    await validateRequestAvailability(data.entityType ?? request.entityType, data.lines ?? request.lines);
+    await validateRequestAvailability(data.entityType ?? request.entityType, data.lines ?? request.lines, !data.entityType || data.entityType === request.entityType ? request.lines : []);
     request.set(data);
     request.entityIds = [];
     await request.save();
@@ -422,10 +428,10 @@ export async function assignUnitsForRequest(request) {
         for (const line of request.lines) {
             const filter = { ...availabilityFilter(request.entityType), [inventoryKey(request.entityType)]: line.key };
             const docs = await EntityModel.find(filter).sort({ createdAt: 1, propertyNumber: 1, _id: 1 }).limit(line.quantity).select("_id");
-            if (docs.length !== line.quantity) fail(`Only ${docs.length} ${line.key} available`);
+            if (docs.length !== line.quantity) fail(`Only ${docs.length} ${line.name ?? "items"} available`);
             const ids = docs.map((doc) => doc._id);
             const result = await EntityModel.updateMany({ ...filter, _id: { $in: ids } }, { $set: { reservedBy: request._id } });
-            if (result.modifiedCount !== line.quantity) fail(`Stock changed for ${line.key}; please try approving again`);
+            if (result.modifiedCount !== line.quantity) fail(`Stock changed for ${line.name ?? "items"}; please try approving again`);
             chosen.push(...ids);
         }
         await checkRequestConditions(request.entityType, chosen);

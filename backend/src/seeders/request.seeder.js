@@ -68,8 +68,8 @@ const REQUESTS_TO_SEED = [
         propertyNumbers: ["LVS-010"],
         coordinatorStatus: "approved",
         governorStatus: "approved",
-        headStatus: "pending",
-        releaseStatus: "partial",
+        headStatus: "approved",
+        releaseStatus: "pending",
     },
     {
         title: "Request for a native piglet",
@@ -106,8 +106,8 @@ const REQUESTS_TO_SEED = [
         source: "livestocks",
         propertyNumbers: ["LVS-013"],
         coordinatorStatus: "approved",
-        governorStatus: "denied",
-        headStatus: "pending",
+        governorStatus: "pending",
+        headStatus: "denied",
         releaseStatus: "pending",
     },
     {
@@ -150,16 +150,16 @@ const REQUESTS_TO_SEED = [
         releaseStatus: "pending",
     },
     {
-        title: "Request for goat and piglet for livelihood diversification",
+        title: "Request for goat and duck for livelihood diversification",
         severity: "medium",
         entityType: "livestock",
         details:
-            "A group of members proposing a joint small-livestock project is requesting a native goat and a piglet to start raising alongside their crops.",
+            "A group of members proposing a joint small-livestock project is requesting a native goat and a duck to start raising alongside their crops.",
         source: "livestocks",
-        propertyNumbers: ["LVS-013", "LVS-011"],
+        propertyNumbers: ["LVS-013", "LVS-012"],
         coordinatorStatus: "approved",
         governorStatus: "approved",
-        headStatus: "pending",
+        headStatus: "approved",
         releaseStatus: "partial",
     },
 ];
@@ -203,10 +203,12 @@ export const seedRequests = async ({ livestocks, equipments, associations, users
     const coordinatorUser = users?.find((u) => u.role === "coordinator") ?? null;
     const governorUser = users?.find((u) => u.role === "governor") ?? null;
     const headUser = users?.find((u) => u.role === "head") ?? null;
+    if (!coordinatorUser || !governorUser || !headUser) throw new Error("seedRequests requires seeded coordinator, governor, and head users");
 
     // Requests are raised on behalf of an association; default to the
     // first seeded association (the one the "far" user is attached to).
-    const defaultAssociation = associations?.[0] ?? null;
+    const defaultAssociation = associations?.find((association) => association.user) ?? associations?.[0];
+    if (!defaultAssociation) throw new Error("seedRequests requires a seeded association");
 
     const sources = {
         livestocks: new Map(livestocks.map((l) => [l.propertyNumber, l])),
@@ -227,7 +229,8 @@ export const seedRequests = async ({ livestocks, equipments, associations, users
 
         const grouped = new Map();
         for (const item of items) {
-            const key = item[inventoryKey(data.entityType)];
+            if (!item[inventoryKey(data.entityType)]) throw new Error(`seedRequests: ${item.propertyNumber} is missing its maintenance type link`);
+            const key = String(item[inventoryKey(data.entityType)]);
             grouped.set(key, (grouped.get(key) ?? 0) + 1);
         }
         const approvalStatus = { coordinator: buildApproval(data.coordinatorStatus, coordinatorUser) };
@@ -244,7 +247,7 @@ export const seedRequests = async ({ livestocks, equipments, associations, users
             title: data.title,
             severity: data.severity,
             entityType: data.entityType,
-            lines: [...grouped].map(([key, quantity]) => ({ key, quantity })),
+            lines: [...grouped].map(([key, quantity]) => ({ key, name: items.find((item) => String(item[inventoryKey(data.entityType)]) === key)?.[data.entityType === "equipment" ? "name" : "animal"], quantity })),
             entityIds: [],
             details: data.details,
             approvalStatus,
@@ -271,6 +274,15 @@ export const seedRequests = async ({ livestocks, equipments, associations, users
                     });
                     request.releasedIds = released;
                     request.releaseStatus = released.length === quantity ? "released" : "partial";
+                }
+                const released = new Set(request.releasedIds.map(String));
+                for (const item of sources[data.source].values()) {
+                    if (!selected.some((id) => String(id) === String(item._id))) continue;
+                    item.reservedBy = released.has(String(item._id)) ? null : request._id;
+                    if (released.has(String(item._id))) {
+                        item.association = request.association;
+                        item.status = "assigned";
+                    }
                 }
             } else {
                 request.approvalStatus.head = { status: "pending" };

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { referenceIdSchema } from "./maintenance.schema.js";
 
 const POSITIONS = [
     "president",
@@ -57,10 +58,9 @@ export const createFarmerSchema = z.object({
         required_error: "Birth date is required",
         invalid_type_error: "Invalid birth date",
     }),
-    address: z
-        .string({ required_error: "Address is required" })
-        .trim()
-        .min(2, "Address must be at least 2 characters"),
+    municipality: referenceIdSchema,
+    barangay: referenceIdSchema,
+    street: z.string().trim().max(200).optional(),
     position: z.enum(POSITIONS).optional().default("member"),
     attachments: z.array(attachmentSchema).optional().default([]),
     profileImage: attachmentSchema.extend({ resourceType: z.literal("image").default("image") }).nullable().optional(),

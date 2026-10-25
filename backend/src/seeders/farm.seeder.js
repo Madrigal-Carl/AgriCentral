@@ -1,4 +1,5 @@
 import Farm from "../models/farm.model.js";
+import Crop from "../models/crop.model.js";
 
 // Each farm now also lists who works it (`farmerAssignments`, indices into
 // the seeded `farmers` array) and what's growing on it
@@ -8,7 +9,6 @@ import Farm from "../models/farm.model.js";
 // actually live nearby.
 const FARMS_TO_SEED = [
     {
-        address: "Sitio Malabaybay, Brgy. Agot, Boac, Marinduque",
         size: 2.5,
         latitude: 13.4762,
         longitude: 121.8563,
@@ -23,7 +23,6 @@ const FARMS_TO_SEED = [
         ],
     },
     {
-        address: "Sitio Kanluran, Brgy. Isok I, Boac, Marinduque",
         size: 1.8,
         latitude: 13.4468,
         longitude: 121.8432,
@@ -38,7 +37,6 @@ const FARMS_TO_SEED = [
         ],
     },
     {
-        address: "Sitio Dulong Bayan, Brgy. Laylay, Boac, Marinduque",
         size: 3.2,
         latitude: 13.4395,
         longitude: 121.8328,
@@ -56,7 +54,6 @@ const FARMS_TO_SEED = [
         ],
     },
     {
-        address: "Sitio Ibaba, Brgy. Mansiwat, Boac, Marinduque",
         size: 2.0,
         latitude: 13.4614,
         longitude: 121.8598,
@@ -74,7 +71,6 @@ const FARMS_TO_SEED = [
         ],
     },
     {
-        address: "Sitio Look, Brgy. Tumagabok, Boac, Marinduque",
         size: 4.1,
         latitude: 13.4203,
         longitude: 121.8215,
@@ -89,7 +85,6 @@ const FARMS_TO_SEED = [
         ],
     },
     {
-        address: "Sitio Wawa, Brgy. Balimbing, Boac, Marinduque",
         size: 1.5,
         latitude: 13.4857,
         longitude: 121.8712,
@@ -104,7 +99,6 @@ const FARMS_TO_SEED = [
         ],
     },
     {
-        address: "Sitio Pulo, Brgy. Boi, Boac, Marinduque",
         size: 2.9,
         latitude: 13.4108,
         longitude: 121.8022,
@@ -119,7 +113,6 @@ const FARMS_TO_SEED = [
         ],
     },
     {
-        address: "Sitio Kanto, Brgy. Catubugan, Boac, Marinduque",
         size: 2.2,
         latitude: 13.4963,
         longitude: 121.8317,
@@ -134,7 +127,6 @@ const FARMS_TO_SEED = [
         ],
     },
     {
-        address: "Sitio Baybayin, Brgy. Poctoy, Boac, Marinduque",
         size: 1.9,
         latitude: 13.5012,
         longitude: 121.8895,
@@ -149,7 +141,6 @@ const FARMS_TO_SEED = [
         ],
     },
     {
-        address: "Sitio Bundok, Brgy. Mataas na Bayan, Boac, Marinduque",
         size: 3.6,
         latitude: 13.4550,
         longitude: 121.8180,
@@ -164,7 +155,6 @@ const FARMS_TO_SEED = [
         ],
     },
     {
-        address: "Sitio Ilaya, Brgy. Tabi, Boac, Marinduque",
         size: 2.3,
         latitude: 13.4300,
         longitude: 121.8600,
@@ -179,7 +169,6 @@ const FARMS_TO_SEED = [
         ],
     },
     {
-        address: "Sitio Bagumbayan, Brgy. Daig, Boac, Marinduque",
         size: 1.7,
         latitude: 13.4680,
         longitude: 121.8500,
@@ -204,7 +193,8 @@ export const wipeFarms = async () => {
 // farm now comes with its assignedFarmers and crops (with per-farm
 // quantities) already populated, since Harvest records depend on farms
 // actually having crops to harvest from.
-export const seedFarms = async ({ associations, farmers, crops } = {}) => {
+export const seedFarms = async ({ associations, farmers, crops, maintenance } = {}) => {
+    if (!maintenance?.municipalities?.length || !maintenance?.barangays?.length) throw new Error("seedFarms requires Maintenance to already be seeded");
     if (!associations?.length) {
         throw new Error("seedFarms requires associations to already be seeded");
     }
@@ -219,20 +209,34 @@ export const seedFarms = async ({ associations, farmers, crops } = {}) => {
 
     for (const data of FARMS_TO_SEED) {
         const association = associations[data.associationIndex];
+        if (!association) throw new Error(`seedFarms: missing association ${data.associationIndex}`);
+        const municipality = maintenance.municipalities.find((item) => String(item._id) === String(association.municipality));
+        const barangay = maintenance.barangays.find((item) => String(item._id) === String(association.barangay));
+        if (!municipality || !barangay || String(barangay.municipality) !== String(municipality._id)) {
+            throw new Error(`seedFarms: invalid location for ${association.name}`);
+        }
 
-        const assignedFarmers = data.farmerAssignments.map(({ farmerIndex, classification }) => ({
-            farmer: farmers[farmerIndex]._id,
-            classification,
-        }));
+        const assignedFarmers = data.farmerAssignments.map(({ farmerIndex, classification }) => {
+            const farmer = farmers[farmerIndex];
+            if (!farmer || String(farmer.association) !== String(association._id)) throw new Error(`seedFarms: farmer ${farmerIndex} must belong to ${association.name}`);
+            return { farmer: farmer._id, classification };
+        });
 
-        const farmCrops = data.cropAssignments.map(({ cropIndex, quantities }) => ({
-            crop: crops[cropIndex]._id,
-            quantities,
-        }));
+        const farmCrops = data.cropAssignments.map(({ cropIndex, quantities }) => {
+            const crop = crops[cropIndex];
+            if (!crop || String(crop.association) !== String(association._id) || !assignedFarmers.some((entry) => String(entry.farmer) === String(crop.assignedFarmer))) {
+                throw new Error(`seedFarms: crop ${cropIndex} must belong to an assigned farmer in ${association.name}`);
+            }
+            if (quantities.planted > crop.unplanted) throw new Error(`seedFarms: insufficient unplanted stock for ${crop.name}`);
+            return { crop: crop._id, quantities };
+        });
 
         const farm = await Farm.create({
             association: association._id,
-            address: data.address,
+            municipality: municipality._id,
+            barangay: barangay._id,
+            street: "",
+            address: `${barangay.name}, ${municipality.name}`,
             size: data.size,
             latitude: data.latitude,
             longitude: data.longitude,
@@ -241,6 +245,11 @@ export const seedFarms = async ({ associations, farmers, crops } = {}) => {
         });
 
         farms.push(farm);
+        for (const entry of farmCrops) {
+            const crop = crops.find((item) => String(item._id) === String(entry.crop));
+            crop.unplanted -= entry.quantities.planted ?? 0;
+            await Crop.updateOne({ _id: crop._id }, { $set: { unplanted: crop.unplanted } });
+        }
 
         const farmerNames = data.farmerAssignments
             .map(({ farmerIndex }) => farmers[farmerIndex].getFullName())

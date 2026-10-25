@@ -2,6 +2,9 @@ import { useMemo } from "react";
 import useAuth from "@/hooks/useAuth";
 
 const PERMISSIONS = {
+    maintenance: {
+        admin: { view: true, add: true, edit: true, delete: true, restore: true },
+    },
     farmers: {
         far: { view: true, add: true, edit: true, delete: true },
         aew: { view: true, add: true, edit: true, delete: true },
@@ -60,6 +63,7 @@ const DEFAULT_CAPABILITIES = {
 };
 
 export function getCapabilities(resource, role) {
+    if (resource === "maintenance" && role !== "admin") return { view: false, add: false, edit: false, delete: false, restore: false };
     const resourceConfig = PERMISSIONS[resource];
     if (!resourceConfig) return DEFAULT_CAPABILITIES;
     return resourceConfig[role] ?? DEFAULT_CAPABILITIES;

@@ -14,8 +14,9 @@ const associationSchema = new mongoose.Schema(
             minlength: 2,
             maxlength: 100,
         },
-        municipality: { type: String, trim: true },
-        barangay: { type: String, trim: true },
+        municipality: { type: mongoose.Schema.Types.ObjectId, ref: "Municipality", required: true },
+        barangay: { type: mongoose.Schema.Types.ObjectId, ref: "Barangay", required: true },
+        legacyMaintenance: { type: mongoose.Schema.Types.Mixed, select: false },
         deletedAt: {
             type: Date,
             default: null,
@@ -32,8 +33,8 @@ associationSchema.index(
         unique: true,
         partialFilterExpression: {
             deletedAt: null,
-            municipality: { $type: "string" },
-            barangay: { $type: "string" },
+            municipality: { $type: "objectId" },
+            barangay: { $type: "objectId" },
         },
         collation: { locale: "en", strength: 2 },
     },

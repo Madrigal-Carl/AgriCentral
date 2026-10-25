@@ -1,4 +1,5 @@
 import Crop from "../models/crop.model.js";
+import CropType from "../models/cropType.model.js";
 
 const CROPS_TO_SEED = [
     { name: "Rice", quantity: 1500 },
@@ -30,9 +31,11 @@ export const seedCrops = async ({ farmers } = {}) => {
     for (let i = 0; i < CROPS_TO_SEED.length; i++) {
         const data = CROPS_TO_SEED[i];
         const farmer = farmers[i % farmers.length];
+        const cropType = await CropType.findOneAndUpdate({ name: data.name, deletedAt: null }, { $setOnInsert: { name: data.name, deletedAt: null } }, { upsert: true, new: true, collation: { locale: "en", strength: 2 } });
 
         const crop = await Crop.create({
             ...data,
+            cropType: cropType._id,
             unplanted: data.quantity,
             isDistributed: true,
             association: farmer.association,

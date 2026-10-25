@@ -17,6 +17,7 @@ export function RowActions({
   onDeny,
   onRelease,
   onChangeDecision,
+  onRestore,
 }) {
   const isReview = Boolean(onApprove || onDeny);
 
@@ -57,6 +58,7 @@ export function RowActions({
       {onView && <IconButton icon={Eye} label="View" onClick={onView} />}
       {onEdit && <IconButton icon={Pencil} label="Edit" onClick={onEdit} />}
       {onChangeDecision && <IconButton icon={Undo2} label="Change decision" onClick={onChangeDecision} />}
+      {onRestore && <IconButton icon={Undo2} label="Restore" onClick={onRestore} />}
       {onRelease && (
         <IconButton
           icon={PackageCheck}

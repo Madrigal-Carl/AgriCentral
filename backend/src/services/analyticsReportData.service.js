@@ -5,6 +5,7 @@ import Harvest from "../models/harvest.model.js";
 import Association from "../models/association.model.js";
 import Farmer from "../models/farmer.model.js";
 import Crop from "../models/crop.model.js";
+import { EQUIPMENT_TYPE_POPULATE, ANIMAL_POPULATE, CROP_TYPE_POPULATE, LOCATION_POPULATE } from "../utils/maintenanceLinks.js";
 
 export const PERIOD_LABEL = { week: "This Week", month: "This Month", year: "This Year" };
 
@@ -38,13 +39,13 @@ const ENTITY_POPULATE = [
 
 export async function getEquipmentRows({ associationId, start, end }) {
     const docs = await Equipment.find(buildEntityMatch({ associationId, start, end }))
-        .populate(ENTITY_POPULATE)
+        .populate([...ENTITY_POPULATE, EQUIPMENT_TYPE_POPULATE])
         .sort({ createdAt: 1 })
         .lean();
 
     return docs.map((e) => ({
         propertyNumber: e.propertyNumber,
-        name: e.name,
+        name: e.equipmentType?.name ?? e.name,
         condition: e.condition,
         status: e.association ? "assigned" : "available",
         association: e.association?.name ?? "",
@@ -57,17 +58,17 @@ export async function getEquipmentRows({ associationId, start, end }) {
 
 export async function getLivestockRows({ associationId, start, end }) {
     const docs = await Livestock.find(buildEntityMatch({ associationId, start, end }))
-        .populate(ENTITY_POPULATE)
+        .populate([...ENTITY_POPULATE, ...ANIMAL_POPULATE])
         .sort({ createdAt: 1 })
         .lean();
 
     return docs.map((l) => ({
         propertyNumber: l.propertyNumber,
-        animal: l.animal,
-        breed: l.breed,
+        animal: l.animalType?.name ?? l.animal,
+        breed: l.breed?.name ?? "",
         gender: l.gender,
         birthDate: l.birthDate,
-        color: l.color,
+        color: l.color?.name ?? "",
         weight: l.weight,
         condition: l.condition,
         status: l.association ? "assigned" : "available",
@@ -86,7 +87,7 @@ export async function getFarmRows({ associationId, start, end }) {
     };
 
     const farms = await Farm.find(farmMatch)
-        .populate({ path: "crops.crop", select: "name" })
+        .populate({ path: "crops.crop", select: "name cropType", populate: CROP_TYPE_POPULATE }).populate(LOCATION_POPULATE)
         .lean();
 
     const farmIds = farms.map((f) => f._id);
@@ -127,7 +128,7 @@ export async function getFarmRows({ associationId, start, end }) {
 
             rows.push({
                 farm: `${farm.tag} - ${farm.address}`,
-                crop: c.crop?.name ?? "Unknown crop",
+                crop: c.crop?.cropType?.name ?? c.crop?.name ?? "Unknown crop",
                 planted: c.quantities?.planted ?? 0,
                 growing: c.quantities?.growing ?? 0,
                 withered: c.quantities?.withered ?? 0,

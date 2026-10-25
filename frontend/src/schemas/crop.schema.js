@@ -1,11 +1,8 @@
 import { z } from "zod";
+import { referenceIdSchema } from "./maintenance.schema.js";
 
 export const cropFormSchema = z.object({
-    name: z
-        .string()
-        .trim()
-        .min(2, "Crop name must be at least 2 characters")
-        .max(100, "Crop name must not exceed 100 characters"),
+    cropType: referenceIdSchema,
     quantity: z
         .preprocess((val) => {
             if (val === "" || val === null || val === undefined) return undefined;

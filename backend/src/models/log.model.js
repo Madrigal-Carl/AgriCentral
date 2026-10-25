@@ -4,7 +4,7 @@ const logSchema = new mongoose.Schema(
     {
         entityType: {
             type: String,
-            enum: ["farm", "farmer", "livestock", "equipment", "crop", "report", "request"],
+            enum: ["farm", "farmer", "livestock", "equipment", "crop", "report", "request", "maintenance"],
             required: true,
         },
         entityId: {

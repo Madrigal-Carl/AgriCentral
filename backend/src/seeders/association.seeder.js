@@ -1,28 +1,17 @@
 import Association from "../models/association.model.js";
 
-const ASSOCIATIONS_TO_SEED = [
-    { name: "Agot Rice Farmers Association" },
-    { name: "Isok Vegetable Growers Cooperative" },
-    { name: "Laylay Coconut Farmers Association" },
-    { name: "Mansiwat Agri-Livestock Association" },
-    { name: "Tumagabok Rootcrop Growers Cooperative" },
-    { name: "Balimbing Farmers and Fisherfolk Association" },
-    { name: "Boi Corn Producers Association" },
-    { name: "Catubugan Banana Growers Cooperative" },
-    { name: "Poctoy Coastal Farmers Association" },
-    { name: "Mataas na Bayan Highland Farmers Association" },
-];
-
 export const wipeAssociations = async () => {
     const result = await Association.deleteMany({});
     console.log(`  Wiped ${result.deletedCount} association(s).`);
 };
 
-export const seedAssociations = async () => {
+export const seedAssociations = async ({ maintenance }) => {
+    if (!maintenance?.municipalities?.length || (maintenance?.barangays?.length ?? 0) < 10) throw new Error("seedAssociations requires Maintenance with at least 10 active barangays");
     const associations = [];
 
-    for (const data of ASSOCIATIONS_TO_SEED) {
-        const association = await Association.create(data);
+    for (const barangay of maintenance.barangays.slice(0, 10)) {
+        const municipality = maintenance.municipalities.find((item) => String(item._id) === String(barangay.municipality));
+        const association = await Association.create({ name: `${barangay.name} Farmers Association`, municipality: municipality._id, barangay: barangay._id });
         associations.push(association);
         console.log(`  Seeded: ${association.name}`);
     }

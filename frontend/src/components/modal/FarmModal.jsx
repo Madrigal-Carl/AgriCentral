@@ -13,6 +13,8 @@ import {
 import { CROP_STATUS_OPTIONS } from "@/constants/data";
 import { LocationPicker } from "@/components/public";
 import { ModalShell } from "./ModalShell";
+import { LocationFields } from "./LocationFields";
+import { referenceId } from "@/hooks/useLookups";
 import { useFarmers, farmerKeys } from "@/hooks/useFarmers";
 import { getCropsByFarmerId } from "@/services/farmer.service";
 import { useAssociations } from "@/hooks/useAssociations";
@@ -119,6 +121,9 @@ export function FarmModal({
     if (!initial) return initial;
     return {
       ...initial,
+      municipality: referenceId(initial.municipality),
+      barangay: referenceId(initial.barangay),
+      street: initial.street ?? "",
       assignedFarmers: (initial.assignedFarmers ?? []).map((a) => ({
         farmer: typeof a.farmer === "string" ? a.farmer : a.farmer._id,
         classification: a.classification ?? "farm_worker",
@@ -469,9 +474,7 @@ export function FarmModal({
         )}
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Address" full error={errors.address?.message}>
-            <TextInput {...register("address")} placeholder="Nakuru, KE" />
-          </Field>
+          <LocationFields control={control} setValue={setValue} register={register} initial={initial} errors={errors} street />
 
           <Field label="Size (hectares)" full error={errors.size?.message}>
             <TextInput

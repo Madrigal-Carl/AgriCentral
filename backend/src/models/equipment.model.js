@@ -12,9 +12,9 @@ const equipmentSchema = new mongoose.Schema(
             trim: true,
             uppercase: true,
         },
+        equipmentType: { type: mongoose.Schema.Types.ObjectId, ref: "EquipmentType", required: true },
         name: {
             type: String,
-            required: true,
             trim: true,
         },
         condition: {

@@ -3,10 +3,11 @@ import Crop from "../models/crop.model.js";
 import Farmer from "../models/farmer.model.js";
 import User from "../models/user.model.js";
 import Association from "../models/association.model.js";
+import { validateLocation, LOCATION_POPULATE, CROP_TYPE_POPULATE } from "../utils/maintenanceLinks.js";
 import HarvestLog from "../models/harvest.model.js";
 import { createLog, getLogsForEntities, humanize } from "./log.service.js";
 
-const CROP_POPULATE = { path: "crops.crop" };
+const CROP_POPULATE = { path: "crops.crop", populate: CROP_TYPE_POPULATE };
 const FARMER_POPULATE = { path: "assignedFarmers.farmer", select: "firstName lastName emailAddress" };
 const ASSOCIATION_POPULATE = { path: "association", select: "name" };
 
@@ -245,6 +246,7 @@ const logHarvestEntries = async ({ farm, entries }) => {
 
 export const createFarm = async (data, authenticatedUserId) => {
     const { associationId, ...farmData } = data;
+    await validateLocation(farmData);
 
     if (farmData.crops?.length) {
         await validateCropQuantities(farmData.crops);
@@ -311,12 +313,13 @@ export const createFarm = async (data, authenticatedUserId) => {
         });
     }
 
-    const populated = await farm.populate([FARMER_POPULATE, CROP_POPULATE, ASSOCIATION_POPULATE]);
+    const populated = await farm.populate([FARMER_POPULATE, CROP_POPULATE, ASSOCIATION_POPULATE, ...LOCATION_POPULATE]);
     return toFarmObject(populated);
 };
 
 export const updateFarm = async (id, data) => {
     const { associationId, ...farmData } = data;
+    if (["municipality", "barangay", "street"].some((key) => data[key] !== undefined)) await validateLocation(farmData, await Farm.findById(id) ?? {});
     if (associationId !== undefined) {
         farmData.association = associationId;
     }
@@ -358,7 +361,7 @@ export const updateFarm = async (id, data) => {
         { _id: id, deletedAt: null },
         { $set: farmData },
         { new: true, runValidators: true }
-    ).populate([FARMER_POPULATE, CROP_POPULATE, ASSOCIATION_POPULATE]);
+    ).populate([FARMER_POPULATE, CROP_POPULATE, ASSOCIATION_POPULATE, ...LOCATION_POPULATE]);
 
     if (!farm) {
         const notFoundError = new Error("Farm not found");
@@ -553,7 +556,7 @@ export const getFarms = async ({ search, crop, associationId, all, page, limit, 
 
     if (crop) {
         const matchingCropIds = await Crop.find({
-            name: new RegExp(escapeRegex(crop), "i"),
+            cropType: crop,
             deletedAt: null,
         }).distinct("_id");
 
@@ -576,7 +579,7 @@ export const getFarms = async ({ search, crop, associationId, all, page, limit, 
     if (all) {
         const farms = await Farm.find(filter)
             .sort({ createdAt: -1 })
-            .populate([FARMER_POPULATE, CROP_POPULATE, ASSOCIATION_POPULATE]);
+            .populate([FARMER_POPULATE, CROP_POPULATE, ASSOCIATION_POPULATE, ...LOCATION_POPULATE]);
 
         return {
             farms: await attachFarmHistory(farms.map(toFarmObject), associationId),
@@ -591,7 +594,7 @@ export const getFarms = async ({ search, crop, associationId, all, page, limit, 
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
-            .populate([FARMER_POPULATE, CROP_POPULATE, ASSOCIATION_POPULATE]),
+            .populate([FARMER_POPULATE, CROP_POPULATE, ASSOCIATION_POPULATE, ...LOCATION_POPULATE]),
         Farm.countDocuments(filter),
     ]);
 

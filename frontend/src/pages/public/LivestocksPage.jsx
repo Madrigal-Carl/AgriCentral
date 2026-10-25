@@ -103,7 +103,7 @@ export function LivestocksPage() {
       data: {
         id: "",
         propertyNumber: "",
-        animal: "",
+        animalType: "",
         breed: "",
         gender: "male",
         health: "healthy",
@@ -122,6 +122,7 @@ export function LivestocksPage() {
       mode: "edit",
       data: {
         _id: row._id,
+        animalType: row.animalType,
         id: row.propertyNumber,
         propertyNumber: row.propertyNumber,
         animal: row.animal,
@@ -249,7 +250,7 @@ export function LivestocksPage() {
                     {r.propertyNumber}
                   </div>
                   <div className="text-xs text-secondary">
-                    {r.animal} · {r.breed}
+                    {r.animalType?.name ?? r.animal} · {r.breed?.name ?? "—"}
                   </div>
                 </div>
                 {r.reservedBy && (

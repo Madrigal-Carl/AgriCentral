@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { referenceIdSchema } from "./maintenance.schema.js";
 
 const FARMER_CLASSIFICATIONS = [
     "owner",
@@ -68,10 +69,9 @@ const sizeSchema = z.preprocess(
 
 export const createFarmSchema = z.object({
     associationId: optionalObjectId("association id"),
-    address: z
-        .string({ required_error: "Address is required" })
-        .trim()
-        .min(2, "Address must be at least 2 characters"),
+    municipality: referenceIdSchema,
+    barangay: referenceIdSchema,
+    street: z.string().trim().max(200).optional(),
     size: sizeSchema,
     assignedFarmers: z.array(farmFarmerSchema).optional().default([]),
     crops: z.array(farmCropSchema).optional().default([]),
@@ -91,7 +91,7 @@ export const farmIdParamSchema = z.object({
 
 export const getFarmsQuerySchema = z.object({
     search: z.string().trim().min(1).max(100).optional(),
-    crop: z.string().trim().min(1).max(100).optional(),
+    crop: referenceIdSchema.optional(),
     associationId: objectId("association id").optional(),
     all: z
         .enum(["true", "false"])

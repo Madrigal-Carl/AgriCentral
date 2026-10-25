@@ -31,7 +31,7 @@ export function FarmerDrawer({ row, onClose }) {
   const farmItems = (row.farms || []).map((f) => `${f.tag} · ${f.address}`);
   const livestockItems = (row.livestock || []).map(
     (l) =>
-      `${l.propertyNumber} · ${l.animal} (${l.breed}) — ${capitalize(l.condition)}`,
+      `${l.propertyNumber} · ${l.animal} (${l.breed?.name ?? "—"}) — ${capitalize(l.condition)}`,
   );
   const equipmentItems = (row.equipment || []).map(
     (e) => `${e.propertyNumber} · ${e.name} — ${capitalize(e.condition)}`,

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { referenceIdSchema } from "./maintenance.schema.js";
 import { isMeaningfulName, MEANINGFUL_NAME_ERROR } from "../utils/meaningfulName.js";
 
 export const createAssociationSchema = z.object({
@@ -7,8 +8,8 @@ export const createAssociationSchema = z.object({
         .trim()
         .max(100, "Name must not exceed 100 characters")
         .refine(isMeaningfulName, MEANINGFUL_NAME_ERROR),
-    municipality: z.string().trim().min(1, "Municipality is required"),
-    barangay: z.string().trim().min(1, "Barangay is required"),
+    municipality: referenceIdSchema,
+    barangay: referenceIdSchema,
 });
 
 export const updateAssociationSchema = createAssociationSchema

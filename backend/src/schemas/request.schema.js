@@ -20,7 +20,7 @@ export const createRequestSchema = z.object({
     entityType: z.enum(ENTITY_TYPES, { required_error: "Entity type is required" }),
     lines: z
         .array(z.object({
-            key: z.string().trim().min(1, "Select a name/type").max(200),
+            key: objectId("Select a valid inventory type"),
             quantity: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
         }))
         .min(1, "Select at least one name/type")

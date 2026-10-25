@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { referenceIdSchema } from "./maintenance.schema.js";
 
 export const POSITIONS = [
     "president",
@@ -48,10 +49,9 @@ const baseFarmerFormSchema = z.object({
     dob: z
         .string({ required_error: "Birth date is required" })
         .min(1, "Birth date is required"),
-    address: z
-        .string({ required_error: "Address is required" })
-        .trim()
-        .min(2, "Address must be at least 2 characters"),
+    municipality: referenceIdSchema,
+    barangay: referenceIdSchema,
+    street: z.string().trim().max(200).optional(),
     position: z.enum(POSITIONS).optional().default("member"),
     // Backend may send null for an unset association (see toFormShape),
     // and the form can also start with "" — accept all three "empty"

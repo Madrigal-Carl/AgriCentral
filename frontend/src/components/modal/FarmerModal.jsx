@@ -19,6 +19,8 @@ import {
 import { useCreateFarmer, useUpdateFarmer } from "@/hooks/useFarmers";
 import { useAssociations } from "@/hooks/useAssociations";
 import { getErrorMessage } from "@/utils/getErrorMessage";
+import { LocationFields } from "./LocationFields";
+import { referenceId } from "@/hooks/useLookups";
 
 const STATUS_OPTIONS = [
   { value: "active", label: "Active" },
@@ -67,6 +69,9 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
 
     return {
       ...initial,
+      municipality: referenceId(initial.municipality),
+      barangay: referenceId(initial.barangay),
+      street: initial.street ?? "",
       association:
         initial.association == null
           ? initial.association
@@ -90,6 +95,7 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
     control,
     reset,
     setError,
+    setValue,
     formState: { errors },
   } = useForm({
     resolver,
@@ -142,7 +148,9 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
         emailAddress: values.email || undefined,
         gender: values.gender,
         birthDate: values.dob,
-        address: values.address,
+        municipality: values.municipality,
+        barangay: values.barangay,
+        street: values.street,
         position: values.position,
         profileImage: values.profileImage,
         ...(!isFar && values.association
@@ -274,9 +282,7 @@ export function FarmerModal({ mode, initial, onClose, onSave }) {
             <TextInput type="date" {...register("dob")} />
           </Field>
 
-          <Field label="Address" full={!isEdit} error={errors.address?.message}>
-            <TextInput {...register("address")} placeholder="Street, City" />
-          </Field>
+          <LocationFields control={control} setValue={setValue} register={register} initial={initial} errors={errors} street />
 
           {isEdit && (
             <Field label="Status" error={errors.status?.message}>

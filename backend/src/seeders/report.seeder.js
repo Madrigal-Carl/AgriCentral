@@ -1,4 +1,6 @@
 import Report from "../models/report.model.js";
+import Equipment from "../models/equipment.model.js";
+import Livestock from "../models/livestock.model.js";
 
 // Each entry sources its item(s) from an already-seeded collection
 // (`farms`, `livestocks`, or `equipments`) by index, so `itemIds` (and
@@ -108,7 +110,7 @@ const REPORTS_TO_SEED = [
         details:
             "A fall armyworm infestation has been spreading across the corn-planted section of this farm, with visible leaf damage on a significant number of stalks.",
         source: "farms",
-        indexes: [6],
+        indexes: [5],
         aewStatus: "denied",
         coordinatorStatus: "pending",
     },
@@ -185,6 +187,7 @@ export const seedReports = async ({ farms, livestocks, equipments, users } = {})
 
     const aewUser = users?.find((u) => u.role === "aew") ?? null;
     const coordinatorUser = users?.find((u) => u.role === "coordinator") ?? null;
+    if (!aewUser || !coordinatorUser) throw new Error("seedReports requires seeded AEW and coordinator users");
 
     const sources = { farms, livestocks, equipments };
     const reports = [];
@@ -193,6 +196,10 @@ export const seedReports = async ({ farms, livestocks, equipments, users } = {})
         const collection = sources[data.source];
         const items = data.indexes.map((i) => collection[i]);
         const association = items[0]?.association ?? null;
+        if (items.some((item) => !item) || !association || items.some((item) => String(item.association) !== String(association))) {
+            throw new Error(`seedReports: all items in "${data.title}" must exist in the same association`);
+        }
+        if (data.entityType === "farm" && items.some((farm) => !farm.crops?.length)) throw new Error(`seedReports: "${data.title}" requires planted crops`);
 
         const report = await Report.create({
             association,
@@ -215,6 +222,14 @@ export const seedReports = async ({ farms, livestocks, equipments, users } = {})
             },
         });
 
+        if (data.entityType !== "farm" && ["aew", "coordinator"].some((stage) => report.approvalStatus[stage]?.status === "approved")) {
+            const Model = data.entityType === "equipment" ? Equipment : Livestock;
+            for (const item of items) {
+                const changes = { condition: data.condition, ...(data.entityType === "livestock" ? { deceasedAt: data.condition === "deceased" ? new Date() : null } : {}) };
+                await Model.updateOne({ _id: item._id }, { $set: changes, ...(data.entityType === "livestock" ? { $inc: { __v: 1 } } : {}) }, { runValidators: true });
+                Object.assign(item, changes);
+            }
+        }
         reports.push(report);
         console.log(`  Seeded: ${report.title} (${report.entityType}, ${report.severity})`);
     }

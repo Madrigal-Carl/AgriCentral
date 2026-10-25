@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { referenceIdSchema } from "./maintenance.schema.js";
 import { GENDER_OPTIONS, LIVESTOCK_HEALTH_OPTIONS } from "@/constants/data";
 
 const GENDERS = GENDER_OPTIONS.map((o) => o.value);
@@ -11,27 +12,15 @@ const baseLivestockFormSchema = z.object({
         .trim()
         .min(1, "Property number is required")
         .max(30, "Property number must not exceed 30 characters"),
-    animal: z
-        .string({ required_error: "Animal type is required" })
-        .trim()
-        .min(2, "Animal type must be at least 2 characters")
-        .max(50, "Animal type must not exceed 50 characters"),
-    breed: z
-        .string({ required_error: "Breed is required" })
-        .trim()
-        .min(2, "Breed must be at least 2 characters")
-        .max(50, "Breed must not exceed 50 characters"),
+    animalType: referenceIdSchema,
+    breed: referenceIdSchema,
     gender: z.enum(GENDERS),
     health: z.enum(HEALTH_STATUSES),
     dob: z
         .string({ error: "Release date is required" })
         .trim()
         .min(1, "Release date is required"),
-    color: z
-        .string({ required_error: "Color is required" })
-        .trim()
-        .min(1, "Color is required")
-        .max(50, "Color must not exceed 50 characters"),
+    color: referenceIdSchema,
     weight: z.preprocess(
         (val) => (val === "" || val === null || val === undefined ? undefined : val),
         z.union([z.number(), z.string()]).optional(),

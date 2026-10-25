@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { referenceIdSchema } from "./maintenance.schema.js";
 import { BLOCKED_CONDITIONS } from "../utils/assignment.js";
 
 const CONDITIONS = ["good", "excellent", "damaged", "unusable", "maintenance"];
@@ -16,11 +17,7 @@ export const createEquipmentSchema = z
             .min(1, "Property number is required")
             .max(30, "Property number must not exceed 30 characters")
             .toUpperCase(),
-        name: z
-            .string({ required_error: "Name is required" })
-            .trim()
-            .min(2, "Name must be at least 2 characters")
-            .max(100, "Name must not exceed 100 characters"),
+        equipmentType: referenceIdSchema,
         condition: z.enum(CONDITIONS).optional().default("good"),
         status: z.enum(STATUSES).optional().default("available"),
         assignedFarmer: objectId("Invalid farmer id").optional(),
@@ -40,12 +37,7 @@ export const updateEquipmentSchema = z
             .max(30, "Property number must not exceed 30 characters")
             .toUpperCase()
             .optional(),
-        name: z
-            .string()
-            .trim()
-            .min(2, "Name must be at least 2 characters")
-            .max(100, "Name must not exceed 100 characters")
-            .optional(),
+        equipmentType: referenceIdSchema.optional(),
         condition: z.enum(CONDITIONS).optional(),
         status: z.enum(STATUSES).optional(),
         // null clears the assignment (return to available); a string

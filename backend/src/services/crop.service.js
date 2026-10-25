@@ -2,6 +2,7 @@ import Crop from "../models/crop.model.js";
 import User from "../models/user.model.js";
 import Farmer from "../models/farmer.model.js";
 import Association from "../models/association.model.js";
+import { validateInventoryLinks, CROP_TYPE_POPULATE } from "../utils/maintenanceLinks.js";
 import { createLog, getLogsForEntities } from "./log.service.js";
 
 const ASSOCIATION_POPULATE = { path: "association", select: "name" };
@@ -27,6 +28,7 @@ const getAssociationName = async (associationId) => {
 
 export const createCrop = async (data, authenticatedUserId) => {
     const { associationId, ...cropData } = data;
+    await validateInventoryLinks("crop", cropData);
 
     const resolvedAssociationId = await resolveAssociationId(
         associationId,
@@ -60,13 +62,14 @@ export const createCrop = async (data, authenticatedUserId) => {
         });
     }
 
-    await crop.populate([FARMER_POPULATE, ASSOCIATION_POPULATE]);
+    await crop.populate([FARMER_POPULATE, ASSOCIATION_POPULATE, CROP_TYPE_POPULATE]);
 
     return crop;
 };
 
 export const updateCrop = async (id, data) => {
     const { associationId, ...cropData } = data;
+    if (cropData.cropType !== undefined) await validateInventoryLinks("crop", cropData, await Crop.findById(id) ?? {});
     if (associationId !== undefined) {
         cropData.association = associationId;
     }
@@ -106,7 +109,7 @@ export const updateCrop = async (id, data) => {
         { _id: id, deletedAt: null },
         { $set: cropData },
         { new: true, runValidators: true }
-    ).populate([FARMER_POPULATE, ASSOCIATION_POPULATE]);
+    ).populate([FARMER_POPULATE, ASSOCIATION_POPULATE, CROP_TYPE_POPULATE]);
 
     if (!crop) {
         const notFoundError = new Error("Crop not found");
@@ -194,7 +197,7 @@ export const distributeCrop = async (id) => {
         { _id: id, deletedAt: null },
         { $set: { isDistributed: true } },
         { new: true, runValidators: true }
-    ).populate([FARMER_POPULATE, ASSOCIATION_POPULATE]);
+    ).populate([FARMER_POPULATE, ASSOCIATION_POPULATE, CROP_TYPE_POPULATE]);
 
     if (!crop) {
         const notFoundError = new Error("Crop not found");
@@ -235,6 +238,7 @@ const attachHistory = async (crops, associationId) => {
         const key = obj._id.toString();
         return {
             ...obj,
+            name: obj.cropType?.name ?? obj.name,
             history: logsByCropId.get(key) ?? [],
         };
     });
@@ -252,7 +256,7 @@ export const getCrops = async ({ search, associationId, all, page, limit, includ
     }
 
     if (all) {
-        const crops = await Crop.find(filter).populate("association", "name").populate("assignedFarmer", "firstName lastName").sort({ createdAt: -1 });
+        const crops = await Crop.find(filter).populate(CROP_TYPE_POPULATE).populate("association", "name").populate("assignedFarmer", "firstName lastName").sort({ createdAt: -1 });
         return {
             crops: await attachHistory(crops, associationId),
             pagination: null,
@@ -262,7 +266,7 @@ export const getCrops = async ({ search, associationId, all, page, limit, includ
     const skip = (page - 1) * limit;
 
     const [crops, total] = await Promise.all([
-        Crop.find(filter).populate("association", "name").populate("assignedFarmer", "firstName lastName").sort({ createdAt: -1 }).skip(skip).limit(limit),
+        Crop.find(filter).populate(CROP_TYPE_POPULATE).populate("association", "name").populate("assignedFarmer", "firstName lastName").sort({ createdAt: -1 }).skip(skip).limit(limit),
         Crop.countDocuments(filter),
     ]);
 

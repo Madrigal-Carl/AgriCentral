@@ -13,6 +13,8 @@ import { useFarmersByAssociationId } from "@/hooks/useFarmers";
 import { useAssociations } from "@/hooks/useAssociations";
 import { useCreateCrop, useUpdateCrop } from "@/hooks/useCrops";
 import { cropFormSchema, cropUpdateSchema } from "@/schemas/crop.schema";
+import { LookupSelect } from "@/components/ui/LookupSelect";
+import { referenceId } from "@/hooks/useLookups";
 
 export function CropModal({ mode, initial, onClose, onSave }) {
   const isEdit = mode === "edit";
@@ -25,7 +27,7 @@ export function CropModal({ mode, initial, onClose, onSave }) {
     formState: { errors },
   } = useForm({
     resolver: zodResolver(isEdit ? cropUpdateSchema : cropFormSchema),
-    defaultValues: initial,
+    defaultValues: { ...initial, cropType: referenceId(initial.cropType) },
   });
 
   // Association the crop belongs to — always selectable now, regardless of role.
@@ -70,7 +72,7 @@ export function CropModal({ mode, initial, onClose, onSave }) {
     setSubmitError(null);
 
     const payload = {
-      name: values.name,
+      cropType: values.cropType,
       quantity: values.quantity,
       ...(values.assignedFarmer
         ? { assignedFarmer: values.assignedFarmer }
@@ -132,9 +134,7 @@ export function CropModal({ mode, initial, onClose, onSave }) {
             </div>
           )}
           <div className="grid grid-cols-1 gap-4">
-            <Field label="Crop Name" error={errors.name?.message}>
-              <TextInput {...register("name")} placeholder="Maize" />
-            </Field>
+            <LookupSelect control={control} name="cropType" type="crops" label="Crop" saved={initial.cropType} error={errors.cropType?.message} />
             <Field label="Quantity" error={errors.quantity?.message}>
               <TextInput
                 type="number"

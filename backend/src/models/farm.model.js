@@ -67,6 +67,10 @@ const farmSchema = new mongoose.Schema(
             trim: true,
             uppercase: true,
         },
+        municipality: { type: mongoose.Schema.Types.ObjectId, ref: "Municipality", required: true },
+        barangay: { type: mongoose.Schema.Types.ObjectId, ref: "Barangay", required: true },
+        street: { type: String, trim: true, maxlength: 200 },
+        legacyMaintenance: { type: mongoose.Schema.Types.Mixed, select: false },
         address: {
             type: String,
             required: true,

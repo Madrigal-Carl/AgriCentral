@@ -22,6 +22,7 @@ export const wipeUsers = async () => {
 };
 
 export const seedUsers = async ({ associations = [] } = {}) => {
+    if (!associations.length) throw new Error("seedUsers requires associations to already be seeded");
     const hashedPassword = await bcrypt.hash(SHARED_PASSWORD, SALT_ROUNDS);
     const users = [];
 
@@ -38,10 +39,17 @@ export const seedUsers = async ({ associations = [] } = {}) => {
         console.log(`  Seeded: ${user.fullname} <${user.email}> (${user.role})`);
     }
 
-    const farUser = users.find((u) => u.role === "far");
-    if (farUser && associations.length > 0) {
-        const [association] = associations;
+    for (const [index, association] of associations.entries()) {
+        const farUser = index === 0 ? users.find((user) => user.role === "far") : await User.create({
+            fullname: `${association.name} Representative`,
+            email: `far${index + 1}@gmail.com`,
+            password: hashedPassword,
+            isVerified: SHARED_IS_VERIFIED,
+            role: "far",
+        });
+        if (index > 0) users.push(farUser);
         await Association.findByIdAndUpdate(association._id, { $set: { user: farUser._id } });
+        association.user = farUser._id;
         console.log(`  Assigned ${farUser.fullname} to association: ${association.name}`);
     }
 

@@ -20,7 +20,7 @@ import { usePermissions } from "@/constants/permissions";
 
 const blankForm = {
   id: "",
-  name: "",
+  cropType: "",
   quantity: "",
   assignedFarmer: "",
   association: "",
@@ -83,6 +83,7 @@ export function CropsPage() {
       mode: "edit",
       data: {
         id: row._id,
+        cropType: row.cropType,
         name: row.name,
         quantity: row.quantity,
         assignedFarmer: row.assignedFarmer?._id ?? row.assignedFarmer ?? "",

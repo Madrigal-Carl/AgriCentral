@@ -1,5 +1,6 @@
 import "./config/env.js";
 import mongoose from "mongoose";
+import { seedMaintenance } from "./seeders/maintenance.seeder.js";
 
 import { wipeAssociations, seedAssociations } from "./seeders/association.seeder.js";
 import { wipeUsers, seedUsers } from "./seeders/user.seeder.js";
@@ -17,8 +18,9 @@ import { wipeRequests, seedRequests } from "./seeders/request.seeder.js";
 // depends on, so foreign keys always point at documents that already
 // exist by the time they're referenced.
 //
-//   Associations -> no dependencies
-//   Users        -> no dependencies (seeded with association: null)
+//   Maintenance  -> verified locations and shared inventory reference data
+//   Associations -> needs Maintenance
+//   Users        -> needs Associations (one FAR per association)
 //   Farmers      -> needs Associations
 //   Crops        -> needs Farmers (association is copied from the farmer)
 //   Farms        -> needs Associations, Farmers, Crops (each farm now
@@ -28,14 +30,15 @@ import { wipeRequests, seedRequests } from "./seeders/request.seeder.js";
 //   Equipment    -> needs Farmers
 //   Reports      -> needs Farms, Livestock, Equipment (reported items are
 //                   pulled from these) and Users (aew/coordinator approvers)
-//   Logs         -> needs Farmers, Farms, Livestock, Equipment
 //   Requests     -> needs Livestock, Equipment (unassigned items only),
 //                   Associations, and Users (coordinator/governor/head approvers)
+//   Logs         -> needs all entities, Reports, Requests, and final assignments
 //
 // To add a new model seeder later: create seeders/xxx.seeder.js exporting
 // wipeXxx()/seedXxx(context), import it above, and add one entry below in
 // the right spot relative to what it depends on.
 const SEEDERS = [
+    { name: "Maintenance", wipe: async () => {}, seed: seedMaintenance },
     { name: "Associations", wipe: wipeAssociations, seed: seedAssociations },
     { name: "Users", wipe: wipeUsers, seed: seedUsers },
     { name: "Farmers", wipe: wipeFarmers, seed: seedFarmers },
@@ -45,8 +48,8 @@ const SEEDERS = [
     { name: "Livestock", wipe: wipeLivestocks, seed: seedLivestocks },
     { name: "Equipment", wipe: wipeEquipments, seed: seedEquipments },
     { name: "Reports", wipe: wipeReports, seed: seedReports },
-    { name: "Logs", wipe: wipeLogs, seed: seedLogs },
     { name: "Requests", wipe: wipeRequests, seed: seedRequests },
+    { name: "Logs", wipe: wipeLogs, seed: seedLogs },
 ];
 
 async function runSeeders() {

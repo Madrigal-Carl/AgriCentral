@@ -46,6 +46,10 @@ export function AssociationDrawer({ row, onClose }) {
             </div>
           </Section>
 
+          <Section icon={Building2} title="Location">
+            <div className="text-sm text-secondary">{[row.barangay?.name, row.municipality?.name].filter(Boolean).join(", ") || "—"}</div>
+          </Section>
+
           <Section icon={Users2} title="Members">
             {members.length > 0 ? (
               <ul className="divide-y divide-border">

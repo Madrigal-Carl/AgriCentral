@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { referenceIdSchema } from "./maintenance.schema.js";
 
 const objectIdOrEmpty = (message) =>
     z.preprocess(
@@ -14,11 +15,7 @@ const requiredObjectId = (invalidMessage, requiredMessage) =>
 
 export const createCropSchema = z.object({
     associationId: requiredObjectId("Invalid association id", "Association is required"),
-    name: z
-        .string({ required_error: "Crop name is required" })
-        .trim()
-        .min(2, "Crop name must be at least 2 characters")
-        .max(100, "Crop name must not exceed 100 characters"),
+    cropType: referenceIdSchema,
     quantity: z.coerce
         .number({ invalid_type_error: "Quantity must be a number" })
         .min(0, "Quantity cannot be negative")
@@ -29,12 +26,7 @@ export const createCropSchema = z.object({
 
 export const updateCropSchema = z.object({
     associationId: requiredObjectId("Invalid association id", "Association is required").optional(),
-    name: z
-        .string()
-        .trim()
-        .min(2, "Crop name must be at least 2 characters")
-        .max(100, "Crop name must not exceed 100 characters")
-        .optional(),
+    cropType: referenceIdSchema.optional(),
     quantity: z.coerce
         .number({ invalid_type_error: "Quantity must be a number" })
         .min(0, "Quantity cannot be negative")

@@ -1,4 +1,15 @@
 import Livestock from "../models/livestock.model.js";
+import AnimalType from "../models/animalType.model.js";
+import Breed from "../models/breed.model.js";
+import Color from "../models/color.model.js";
+
+async function linkLivestock(data) {
+    const upsert = (Model, filter) => Model.findOneAndUpdate({ ...filter, deletedAt: null }, { $setOnInsert: { ...filter, deletedAt: null } }, { upsert: true, new: true, collation: { locale: "en", strength: 2 } });
+    const animal = await upsert(AnimalType, { name: data.animal });
+    const breed = await upsert(Breed, { name: data.breed, animalType: animal._id });
+    const color = await upsert(Color, { name: data.color });
+    return { ...data, animalType: animal._id, breed: breed._id, color: color._id };
+}
 
 const LIVESTOCK_TO_SEED = [
     {
@@ -159,7 +170,7 @@ export const seedLivestocks = async ({ farmers } = {}) => {
         const farmer = farmers[i % farmers.length];
 
         const livestock = await Livestock.create({
-            ...data,
+            ...await linkLivestock(data),
             association: farmer.association,
             assignedFarmer: farmer._id,
             status: "assigned",
@@ -171,7 +182,7 @@ export const seedLivestocks = async ({ farmers } = {}) => {
 
     for (const data of UNASSIGNED_LIVESTOCK_TO_SEED) {
         const livestock = await Livestock.create({
-            ...data,
+            ...await linkLivestock(data),
             association: null,
             assignedFarmer: null,
             status: "available",

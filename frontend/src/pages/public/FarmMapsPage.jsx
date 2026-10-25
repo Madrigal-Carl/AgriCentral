@@ -3,7 +3,7 @@ import { Wheat, Search } from "lucide-react";
 import { PageHeader } from "@/components/public";
 import { Select } from "@/components/ui";
 import { useFarms } from "@/hooks/useFarms";
-import { useCrops } from "@/hooks/useCrops";
+import { useLookups, lookupOptions } from "@/hooks/useLookups";
 import { BOAC_CENTER } from "@/constants/data";
 
 const MARKER_ICON_URL =
@@ -195,12 +195,8 @@ export function FarmMapsPage() {
     ...(cropFilter ? { crop: cropFilter } : {}),
   });
 
-  // Crop name options for the dropdown — same pattern used on the Farms
-  // table page (`all: true` skips pagination since we just need names).
-  const { data: cropsData } = useCrops({ all: true });
-  const cropOptions = Array.from(
-    new Set((cropsData?.crops ?? []).map((c) => c.name)),
-  ).map((name) => ({ value: name, label: name }));
+  const { data: lookups } = useLookups();
+  const cropOptions = lookupOptions(lookups?.crops);
 
   const farms = useMemo(() => {
     return (data?.farms ?? []).map((f) => ({

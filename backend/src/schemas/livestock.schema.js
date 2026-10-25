@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { referenceIdSchema } from "./maintenance.schema.js";
 import { BLOCKED_CONDITIONS } from "../utils/assignment.js";
 
 const CONDITIONS = ["healthy", "pregnant", "sick", "injured", "deceased"];
@@ -17,23 +18,11 @@ export const createLivestockSchema = z
             .min(1, "Property number is required")
             .max(30, "Property number must not exceed 30 characters")
             .toUpperCase(),
-        animal: z
-            .string({ required_error: "Animal is required" })
-            .trim()
-            .min(2, "Animal must be at least 2 characters")
-            .max(100, "Animal must not exceed 100 characters"),
-        breed: z
-            .string({ required_error: "Breed is required" })
-            .trim()
-            .min(2, "Breed must be at least 2 characters")
-            .max(100, "Breed must not exceed 100 characters"),
+        animalType: referenceIdSchema,
+        breed: referenceIdSchema,
         gender: z.enum(GENDERS, { required_error: "Gender is required" }),
         birthDate: z.coerce.date({ error: "Invalid release date" }),
-        color: z
-            .string({ required_error: "Color is required" })
-            .trim()
-            .min(1, "Color is required")
-            .max(50, "Color must not exceed 50 characters"),
+        color: referenceIdSchema,
         weight: z.coerce
             .number({ required_error: "Weight is required" })
             .min(0, "Weight must not be negative")
@@ -58,26 +47,11 @@ export const updateLivestockSchema = z
             .max(30, "Property number must not exceed 30 characters")
             .toUpperCase()
             .optional(),
-        animal: z
-            .string()
-            .trim()
-            .min(2, "Animal must be at least 2 characters")
-            .max(100, "Animal must not exceed 100 characters")
-            .optional(),
-        breed: z
-            .string()
-            .trim()
-            .min(2, "Breed must be at least 2 characters")
-            .max(100, "Breed must not exceed 100 characters")
-            .optional(),
+        animalType: referenceIdSchema.optional(),
+        breed: referenceIdSchema.optional(),
         gender: z.enum(GENDERS).optional(),
         birthDate: z.coerce.date({ error: "Invalid release date" }).optional(),
-        color: z
-            .string()
-            .trim()
-            .min(1, "Color is required")
-            .max(50, "Color must not exceed 50 characters")
-            .optional(),
+        color: referenceIdSchema.optional(),
         weight: z.coerce.number().min(0, "Weight must not be negative").optional(),
         condition: z.enum(CONDITIONS).optional(),
         status: z.enum(STATUSES).optional(),
@@ -108,7 +82,7 @@ export const getLivestocksQuerySchema = z.object({
 });
 
 export const getLivestockMothersQuerySchema = z.object({
-    animal: z.string().trim().min(2, "Enter an animal type").max(100),
+    animalType: referenceIdSchema,
     associationId: objectId("Invalid association id").optional(),
     assignedFarmer: objectId("Invalid farmer id").optional(),
     excludeId: objectId("Invalid livestock id").optional(),

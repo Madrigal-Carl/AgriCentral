@@ -8,6 +8,7 @@ export function SingleSelect({
   placeholder,
   searchPlaceholder,
   allowCreate = false,
+  disabled = false,
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -56,6 +57,7 @@ export function SingleSelect({
     <div ref={ref} className="relative w-full">
       <button
         type="button"
+        disabled={disabled}
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center justify-between gap-2 border border-border bg-surface px-3 py-2.5 text-left text-sm hover:border-foreground-40"
       >
@@ -66,7 +68,7 @@ export function SingleSelect({
           className={`h-4 w-4 shrink-0 text-secondary transition-transform ${open ? "rotate-180" : ""}`}
         />
       </button>
-      {open && (
+      {open && !disabled && (
         <div className="absolute left-0 right-0 top-full z-30 mt-1 border border-border bg-surface shadow-lg">
           <div className="relative border-b border-border">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary" />

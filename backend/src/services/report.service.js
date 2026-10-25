@@ -9,6 +9,7 @@ import emailQueue from "../queues/email.queue.js";
 import { EMAIL_JOBS } from "../queues/email.jobs.js";
 import { getReportItems, highestSeverity, normalizeReportItems } from "../utils/reportItems.js";
 import { createReportSchema } from "../schemas/report.schema.js";
+import { CROP_TYPE_POPULATE, EQUIPMENT_TYPE_POPULATE, ANIMAL_POPULATE } from "../utils/maintenanceLinks.js";
 
 const STAGE_ROLES = ["aew", "coordinator"];
 
@@ -22,9 +23,9 @@ const ENTITY_MODELS = {
 };
 
 const ENTITY_SELECT = {
-    farm: "name quantity",
-    livestock: "propertyNumber animal",
-    equipment: "propertyNumber name",
+    farm: "name cropType quantity",
+    livestock: "propertyNumber animal animalType breed color",
+    equipment: "propertyNumber name equipmentType",
 };
 
 const ASSOCIATION_POPULATE = { path: "association", select: "name" };
@@ -42,13 +43,13 @@ async function populateEntities(reports) {
 
     const [cropDocs, livestockDocs, equipmentDocs, farmDocs] = await Promise.all([
         idsByType.farm.size
-            ? Crop.find({ _id: { $in: [...idsByType.farm] } }).select(ENTITY_SELECT.farm).lean()
+            ? Crop.find({ _id: { $in: [...idsByType.farm] } }).select(ENTITY_SELECT.farm).populate(CROP_TYPE_POPULATE).lean()
             : [],
         idsByType.livestock.size
-            ? Livestock.find({ _id: { $in: [...idsByType.livestock] } }).select(ENTITY_SELECT.livestock).lean()
+            ? Livestock.find({ _id: { $in: [...idsByType.livestock] } }).select(ENTITY_SELECT.livestock).populate(ANIMAL_POPULATE).lean()
             : [],
         idsByType.equipment.size
-            ? Equipment.find({ _id: { $in: [...idsByType.equipment] } }).select(ENTITY_SELECT.equipment).lean()
+            ? Equipment.find({ _id: { $in: [...idsByType.equipment] } }).select(ENTITY_SELECT.equipment).populate(EQUIPMENT_TYPE_POPULATE).lean()
             : [],
         farmIds.size
             ? Farm.find({ _id: { $in: [...farmIds] } }).select("tag address").lean()

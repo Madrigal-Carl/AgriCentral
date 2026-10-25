@@ -95,7 +95,7 @@ export function EquipmentsPage() {
       data: {
         id: "",
         propertyNumber: "",
-        name: "",
+        equipmentType: "",
         condition: "good",
         status: "available",
         farmer: "",
@@ -110,6 +110,7 @@ export function EquipmentsPage() {
       mode: "edit",
       data: {
         _id: row._id,
+        equipmentType: row.equipmentType,
         id: row.propertyNumber,
         propertyNumber: row.propertyNumber,
         name: row.name,

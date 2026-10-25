@@ -2,6 +2,7 @@ import Equipment from "../models/equipment.model.js";
 import Farmer from "../models/farmer.model.js";
 import User from "../models/user.model.js";
 import Association from "../models/association.model.js";
+import { validateInventoryLinks, EQUIPMENT_TYPE_POPULATE } from "../utils/maintenanceLinks.js";
 import { createLog, getLogsForEntities } from "./log.service.js";
 import { assertAssignable } from "../utils/assignment.js";
 
@@ -21,6 +22,7 @@ const resolveAssociationId = async (associationId, authenticatedUserId) => {
 
 export const createEquipment = async (data, authenticatedUserId) => {
     const { associationId, ...equipmentData } = data;
+    await validateInventoryLinks("equipment", equipmentData);
 
     const existing = await Equipment.findOne({ propertyNumber: equipmentData.propertyNumber, deletedAt: null });
 
@@ -82,6 +84,7 @@ export const createEquipment = async (data, authenticatedUserId) => {
     await equipment.populate([
         { path: "assignedFarmer", select: "firstName lastName" },
         ASSOCIATION_POPULATE,
+        EQUIPMENT_TYPE_POPULATE,
     ]);
 
     return equipment;
@@ -89,6 +92,7 @@ export const createEquipment = async (data, authenticatedUserId) => {
 
 export const updateEquipment = async (id, data) => {
     const { associationId, ...equipmentData } = data;
+    if (equipmentData.equipmentType !== undefined) await validateInventoryLinks("equipment", equipmentData, await Equipment.findById(id) ?? {});
     if (associationId !== undefined) {
         equipmentData.association = associationId;
     }
@@ -136,7 +140,7 @@ export const updateEquipment = async (id, data) => {
             ...(Object.keys(unset).length ? { $unset: unset } : {}),
         },
         { new: true, runValidators: true },
-    ).populate([{ path: "assignedFarmer", select: "firstName lastName" }, ASSOCIATION_POPULATE]);
+    ).populate([{ path: "assignedFarmer", select: "firstName lastName" }, ASSOCIATION_POPULATE, EQUIPMENT_TYPE_POPULATE]);
 
     if (!equipment) {
         const notFoundError = new Error("Equipment not found");
@@ -283,6 +287,7 @@ const attachHistory = async (equipments, associationId) => {
         const key = obj._id.toString();
         return {
             ...obj,
+            name: obj.equipmentType?.name ?? obj.name,
             status: obj.association ? "assigned" : "available",
             history: logsByEquipmentId.get(key) ?? [],
         };
@@ -295,7 +300,7 @@ export const getAvailableEquipments = async () => {
         association: null,
         assignedFarmer: null,
     })
-        .select("propertyNumber name condition status")
+        .select("propertyNumber name equipmentType condition status").populate(EQUIPMENT_TYPE_POPULATE)
         .sort({ propertyNumber: 1 });
 
     return equipments;
@@ -322,7 +327,7 @@ export const getEquipments = async ({
 
     if (all) {
         const equipments = await Equipment.find(filter)
-            .populate([{ path: "assignedFarmer", select: "firstName lastName" }, ASSOCIATION_POPULATE])
+            .populate([{ path: "assignedFarmer", select: "firstName lastName" }, ASSOCIATION_POPULATE, EQUIPMENT_TYPE_POPULATE])
             .sort({ createdAt: -1 });
 
         return {
@@ -335,7 +340,7 @@ export const getEquipments = async ({
 
     const [equipments, total] = await Promise.all([
         Equipment.find(filter)
-            .populate([{ path: "assignedFarmer", select: "firstName lastName" }, ASSOCIATION_POPULATE])
+            .populate([{ path: "assignedFarmer", select: "firstName lastName" }, ASSOCIATION_POPULATE, EQUIPMENT_TYPE_POPULATE])
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit),

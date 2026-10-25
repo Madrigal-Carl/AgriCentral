@@ -3,6 +3,8 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, Field, FullSelect, TextInput } from "@/components/ui";
 import { ModalShell } from "./ModalShell";
+import { LookupSelect } from "@/components/ui/LookupSelect";
+import { referenceId } from "@/hooks/useLookups";
 import { EQUIPMENT_CONDITION_OPTIONS } from "@/constants/data";
 import { useAssociations } from "@/hooks/useAssociations";
 import { useCreateEquipment, useUpdateEquipment } from "@/hooks/useEquipments";
@@ -32,7 +34,7 @@ export function EquipmentModal({ mode, initial, onClose, onSave }) {
     })),
     defaultValues: {
       propertyNumber: initial.id,
-      name: initial.name,
+      equipmentType: referenceId(initial.equipmentType),
       condition: initial.condition,
       associationId: initial.associationId || "",
     },
@@ -74,7 +76,7 @@ export function EquipmentModal({ mode, initial, onClose, onSave }) {
 
     const payload = {
       propertyNumber: values.propertyNumber,
-      name: values.name,
+      equipmentType: values.equipmentType,
       condition: values.condition,
       status: derivedStatus,
       ...(isEdit
@@ -158,12 +160,7 @@ export function EquipmentModal({ mode, initial, onClose, onSave }) {
         <Field label="Property Number" error={errors.propertyNumber?.message}>
           <TextInput {...register("propertyNumber")} placeholder="EQ-001" />
         </Field>
-        <Field label="Equipment Name" error={errors.name?.message}>
-          <TextInput
-            {...register("name")}
-            placeholder="Tractor, Plough, Harvester…"
-          />
-        </Field>
+        <LookupSelect control={control} name="equipmentType" type="equipments" label="Equipment" saved={initial.equipmentType} error={errors.equipmentType?.message} />
         <Field label="Condition" error={errors.condition?.message}>
           <Controller
             name="condition"

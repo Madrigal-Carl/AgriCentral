@@ -185,7 +185,7 @@ export function RequestsPage() {
           {
             key: "quantity",
             header: "Requested items",
-            cell: (r) => getRequestLines(r).map((line) => `${line.quantity} × ${line.key}`).join(", ") || `${r.entityIds?.length ?? 0} items`,
+            cell: (r) => getRequestLines(r).map((line) => `${line.quantity} × ${line.name ?? "Unknown item"}`).join(", ") || `${r.entityIds?.length ?? 0} items`,
           },
           {
             key: "severity",
