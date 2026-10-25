@@ -26,7 +26,10 @@
     "dev": "nodemon src/server.js",
     "worker": "nodemon src/workers.js",
     "start": "node src/server.js",
-    "seed": "node src/seeder.js"
+    "seed": "node src/seeder.js",
+    "migrate:request-report-items": "node src/migrations/request-report-items.js",
+    "test": "node --experimental-test-module-mocks --test src/tests/*.test.js",
+    "test:browser": "node src/tests/request-report.browser.js"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"

@@ -6,6 +6,7 @@ import {
   Check,
   X as XIcon,
   PackageCheck,
+  Undo2,
 } from "lucide-react";
 
 export function RowActions({
@@ -15,6 +16,7 @@ export function RowActions({
   onApprove,
   onDeny,
   onRelease,
+  onChangeDecision,
 }) {
   const isReview = Boolean(onApprove || onDeny);
 
@@ -54,6 +56,7 @@ export function RowActions({
     <div className="flex items-center justify-end gap-1">
       {onView && <IconButton icon={Eye} label="View" onClick={onView} />}
       {onEdit && <IconButton icon={Pencil} label="Edit" onClick={onEdit} />}
+      {onChangeDecision && <IconButton icon={Undo2} label="Change decision" onClick={onChangeDecision} />}
       {onRelease && (
         <IconButton
           icon={PackageCheck}

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isMeaningfulName, MEANINGFUL_NAME_ERROR } from "@/utils/meaningfulName";
+import { EQUIPMENT_CONDITION_OPTIONS, LIVESTOCK_HEALTH_OPTIONS } from "@/constants/data";
 
 const SEVERITIES = ["low", "medium", "high", "critical"];
 const ENTITY_TYPES = ["farm", "livestock", "equipment"];
@@ -39,10 +40,13 @@ const baseReportForm = z.object({
     farm: z.union([objectId("Select a farm"), z.literal("")]).optional(),
     itemIds: z
         .array(objectId("Invalid item"))
-        .min(1, "Select at least one item"),
-    condition: z
-        .string({ required_error: "Condition is required" })
-        .min(1, "Condition is required"),
+        .optional(),
+    items: z.array(z.object({
+        itemId: objectId("Invalid item"),
+        condition: z.string().trim().min(1, "Select a condition"),
+        severity: z.enum(SEVERITIES).default("medium"),
+    })).optional(),
+    condition: z.string().optional(),
     details: z
         .string({ required_error: "Details are required" })
         .trim()
@@ -54,13 +58,29 @@ const baseReportForm = z.object({
         .optional(),
 });
 
+function refineItems(data, ctx) {
+    const issue = (path, message) => ctx.addIssue({ code: "custom", path, message });
+    if (data.entityType === "farm") {
+        if (!data.farm) issue(["farm"], "Farm is required for farm reports");
+        if (!data.itemIds?.length) issue(["itemIds"], "Select at least one crop");
+        if (new Set(data.itemIds).size !== data.itemIds?.length) issue(["itemIds"], "Duplicate crops are not allowed");
+        if (!["planted", "growing", "withered", "harvested", "damaged"].includes(data.condition)) issue(["condition"], "Select a crop condition");
+    } else {
+        if (!data.items?.length) issue(["items"], "Select at least one item");
+        const options = data.entityType === "equipment" ? EQUIPMENT_CONDITION_OPTIONS : LIVESTOCK_HEALTH_OPTIONS;
+        const seen = new Set();
+        (data.items ?? []).forEach((item, index) => {
+            if (seen.has(item.itemId)) issue(["items", index, "itemId"], "Duplicate items are not allowed");
+            seen.add(item.itemId);
+            if (!options.some((option) => option.value === item.condition)) issue(["items", index, "condition"], "Select a valid condition");
+        });
+    }
+}
+
 // far never sends association (server derives it); aew must pick one.
 export function createReportFormSchema(isFar) {
     return baseReportForm
-        .refine((data) => data.entityType !== "farm" || !!data.farm, {
-            message: "Farm is required for farm reports",
-            path: ["farm"],
-        })
+        .superRefine(refineItems)
         .refine((data) => isFar || !!data.association, {
             message: "Association is required",
             path: ["association"],
@@ -68,10 +88,5 @@ export function createReportFormSchema(isFar) {
 }
 
 export function createReportUpdateSchema() {
-    return baseReportForm
-        .partial()
-        .refine(
-            (data) => !data.entityType || data.entityType !== "farm" || !!data.farm,
-            { message: "Farm is required for farm reports", path: ["farm"] },
-        );
+    return baseReportForm.superRefine(refineItems);
 }

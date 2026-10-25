@@ -7,6 +7,7 @@ import {
   StatusPill,
 } from "@/components/public";
 import { Button } from "@/components/ui";
+import { RequestDecisionModal } from "@/components/modal/RequestDecisionModal";
 import { typeLabel, typeTone, sevTone, sevLabel } from "@/constants/data";
 import { usePermissions } from "@/constants/permissions";
 import {
@@ -17,6 +18,8 @@ import {
 } from "@/components/modal";
 import {
   getCurrentStage,
+  canRevertDecision,
+  getRequestLines,
   getDisplayStatus,
   isFullyApproved,
   statusTone,
@@ -32,7 +35,7 @@ import {
   useRequests,
 } from "@/hooks/useRequests";
 import useAuth from "@/hooks/useAuth";
-import { fmtPendingSince } from "@/utils/format";
+import { fmtRequestedAt } from "@/utils/format";
 
 export function RequestsPage() {
   const can = usePermissions("requests");
@@ -46,6 +49,7 @@ export function RequestsPage() {
 
   const [modal, setModal] = useState(null);
   const [drawer, setDrawer] = useState(null);
+  const [decisionRow, setDecisionRow] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [reviewRow, setReviewRow] = useState(null); // { row, action: "approve" | "deny" | "release" }
 
@@ -74,7 +78,7 @@ export function RequestsPage() {
     onSuccess: () => { setReviewRow(null); setDrawer(null); },
   });
   const { mutate: submitRelease, isPending: isReleasing, error: releaseError, reset: resetRelease } = useReleaseRequest({
-    onSuccess: () => setReviewRow(null),
+    onSuccess: () => { setReviewRow(null); setDrawer(null); },
   });
   const { mutate: removeRequest } = useDeleteRequest({
     onSuccess: () => setConfirmDelete(null),
@@ -180,8 +184,8 @@ export function RequestsPage() {
           },
           {
             key: "quantity",
-            header: "Quantity",
-            cell: (r) => r.entities?.length ?? r.entityIds?.length ?? 0,
+            header: "Requested items",
+            cell: (r) => getRequestLines(r).map((line) => `${line.quantity} × ${line.key}`).join(", ") || `${r.entityIds?.length ?? 0} items`,
           },
           {
             key: "severity",
@@ -196,13 +200,13 @@ export function RequestsPage() {
             key: "status",
             header: "Status",
             cell: (r) => {
-              const displayStatus = getDisplayStatus(r);
+              const displayStatus = getDisplayStatus(r, role);
               return (
                 <div className="flex flex-wrap items-center gap-1.5">
                   <StatusPill tone={statusTone[displayStatus]}>
                     {statusLabel[displayStatus]}
                   </StatusPill>
-                  {displayStatus === "approved" && (
+                  {isFullyApproved(r) && (
                     <StatusPill tone={releaseStatusTone[r.releaseStatus]}>
                       {releaseStatusLabel[r.releaseStatus]}
                     </StatusPill>
@@ -212,9 +216,9 @@ export function RequestsPage() {
             },
           },
           {
-            key: "pendingFor",
-            header: "Pending For",
-            cell: (r) => getDisplayStatus(r) === "pending" ? fmtPendingSince(r.createdAt) : "—",
+            key: "requestedAt",
+            header: "Submitted",
+            cell: (r) => fmtRequestedAt(r.createdAt),
           },
           {
             key: "actions",
@@ -224,20 +228,19 @@ export function RequestsPage() {
               const currentStage = getCurrentStage(r);
               const canReviewThis =
                 can.review && currentStage && role === currentStage && getDisplayStatus(r) === "pending";
-              const coordinatorReviewed =
-                r.approvalStatus?.coordinator?.status === "approved" ||
-                r.approvalStatus?.coordinator?.status === "denied";
+               const coordinatorReviewed = Object.values(r.approvalStatus ?? {}).some((entry) => ["approved", "denied"].includes(entry?.status));
               const canEditThis = can.edit && !coordinatorReviewed;
               const canDeleteThis = can.delete && !coordinatorReviewed;
 
               const canReleaseThis =
                 role === "coordinator" &&
                 isFullyApproved(r) &&
-                r.releaseStatus === "pending";
+                r.releaseStatus !== "released";
 
               return (
                 <RowActions
                   onView={() => openView(r)}
+                  onChangeDecision={canRevertDecision(r, role) ? () => setDecisionRow(r) : undefined}
                   onEdit={canEditThis ? () => openEdit(r) : undefined}
                   onDelete={canDeleteThis ? () => askDelete(r) : undefined}
                   onApprove={canReviewThis ? () => askApprove(r) : undefined}
@@ -263,9 +266,15 @@ export function RequestsPage() {
         />
       )}
       {drawer && <RequestDrawer row={drawer} onClose={() => setDrawer(null)}
+        role={role}
+        onChangeDecision={canRevertDecision(drawer, role) ? () => setDecisionRow(drawer) : undefined}
         onApprove={can.review && role === getCurrentStage(drawer) && getDisplayStatus(drawer) === "pending" ? () => askApprove(drawer) : undefined}
         onDeny={can.review && role === getCurrentStage(drawer) && getDisplayStatus(drawer) === "pending" ? () => askDeny(drawer) : undefined}
       />}
+      {decisionRow && canRevertDecision(decisionRow, role) && (
+        <RequestDecisionModal row={decisionRow} role={role} onClose={() => setDecisionRow(null)}
+          onSave={() => { setDecisionRow(null); setDrawer(null); }} />
+      )}
       {confirmDelete && can.delete && (
         <DeleteConfirmModal
           id={confirmDelete._id}

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
     getEquipments,
     getAvailableEquipments,
+    getEquipmentAvailability,
     createEquipment,
     updateEquipment,
     deleteEquipment,
@@ -77,4 +78,8 @@ export function useDeleteEquipment(options = {}) {
         },
         onError: options.onError,
     });
+}
+
+export function useEquipmentAvailability(options = {}) {
+  return useQuery({ queryKey: [...equipmentKeys.all, "availability"], queryFn: getEquipmentAvailability, ...options });
 }

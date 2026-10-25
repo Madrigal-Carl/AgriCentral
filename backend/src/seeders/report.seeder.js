@@ -200,12 +200,18 @@ export const seedReports = async ({ farms, livestocks, equipments, users } = {})
             severity: data.severity,
             entityType: data.entityType,
             parentId: data.entityType === "farm" ? items[0]._id : null,
-            condition: data.condition,
-            itemIds: items.map((item) => item._id),
+            condition: data.entityType === "farm" ? data.condition : undefined,
+            itemIds: data.entityType === "farm"
+                ? items.flatMap((farm) => farm.crops.map((entry) => entry.crop))
+                : items.map((item) => item._id),
+            items: data.entityType === "farm" ? [] : items.map((item) => ({
+                item: item._id, condition: data.condition, severity: data.severity,
+            })),
             details: data.details,
             approvalStatus: {
-                aew: buildApproval(data.aewStatus, aewUser),
-                coordinator: buildApproval(data.coordinatorStatus, coordinatorUser),
+                ...(data.coordinatorStatus === "pending"
+                    ? { aew: buildApproval(data.aewStatus, aewUser) }
+                    : { coordinator: buildApproval(data.coordinatorStatus, coordinatorUser) }),
             },
         });
 

@@ -25,6 +25,11 @@ export async function getAvailableLivestocks() {
     return response.data;
 }
 
+export async function getLivestockAvailability() {
+  const response = await api.get("/livestocks/availability");
+  return response.data;
+}
+
 export async function getLivestock(id) {
     const response = await api.get(`/livestocks/${id}`);
     return response.data;

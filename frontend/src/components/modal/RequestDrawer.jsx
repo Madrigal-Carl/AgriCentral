@@ -1,19 +1,25 @@
 import { X, Info, Package, FileText, Calendar } from "lucide-react";
 import { DefList, Section } from "@/components/drawer";
 import { StatusPill } from "@/components/public";
-import { typeLabel, typeTone, sevTone, sevLabel } from "@/constants/data";
+import { typeLabel, sevTone, sevLabel } from "@/constants/data";
 import {
   getDisplayStatus,
+  getOverallStatus,
+  isFullyApproved,
   statusTone,
   statusLabel,
   releaseStatusTone,
   releaseStatusLabel,
+  getRequestLines,
+  canRevertDecision,
+  formatRequestHistoryMessage,
 } from "@/utils/request";
-import { fmtDate } from "@/utils/format";
+import { fmtLongDate } from "@/utils/format";
 import { Button } from "@/components/ui";
 
-export function RequestDrawer({ row, onClose, onApprove, onDeny }) {
-  const displayStatus = getDisplayStatus(row);
+export function RequestDrawer({ row, onClose, onApprove, onDeny, onChangeDecision, role }) {
+  const displayStatus = getDisplayStatus(row, role);
+  const overallStatus = getOverallStatus(row);
   const entities = row.entities ?? [];
   const history = row.history ?? [];
 
@@ -38,7 +44,7 @@ export function RequestDrawer({ row, onClose, onApprove, onDeny }) {
                 <StatusPill tone={statusTone[displayStatus]}>
                   {statusLabel[displayStatus]}
                 </StatusPill>
-                {displayStatus === "approved" && (
+                {isFullyApproved(row) && (
                   <StatusPill tone={releaseStatusTone[row.releaseStatus]}>
                     {releaseStatusLabel[row.releaseStatus]}
                   </StatusPill>
@@ -64,7 +70,8 @@ export function RequestDrawer({ row, onClose, onApprove, onDeny }) {
                 ["Type", typeLabel[row.entityType]],
                 ["Severity", sevLabel[row.severity]],
                 ["Status", statusLabel[displayStatus]],
-                ["Submitted", fmtDate(row.createdAt)],
+                ...(displayStatus !== overallStatus ? [["Overall status", statusLabel[overallStatus]]] : []),
+                ["Submitted", fmtLongDate(row.createdAt)],
               ]}
             />
           </Section>
@@ -73,6 +80,10 @@ export function RequestDrawer({ row, onClose, onApprove, onDeny }) {
             icon={Package}
             title={`Requested ${typeLabel[row.entityType]}`}
           >
+            <ul className="mb-3 space-y-1 text-sm font-medium text-foreground">
+              {getRequestLines(row).map((line) => <li key={line.key}>{line.quantity} × {line.key}</li>)}
+            </ul>
+            {entities.length > 0 && <p className="mb-2 text-xs text-secondary">Assigned units</p>}
             {entities.length ? (
               <div className="space-y-2">
                 {entities.map((e) => (
@@ -93,9 +104,25 @@ export function RequestDrawer({ row, onClose, onApprove, onDeny }) {
               </div>
             ) : (
               <div className="text-sm text-secondary">
-                No items resolved for this request.
+                Units will be assigned automatically at head approval.
               </div>
             )}
+          </Section>
+
+          <Section icon={Info} title="Approvals">
+            <div className="space-y-3">
+              {["coordinator", "governor", "head"].filter((stage) => row.approvalStatus?.[stage]).map((stage) => {
+                const entry = row.approvalStatus[stage];
+                return <div key={stage} className="border border-border p-3 text-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="capitalize text-foreground">{stage}</span>
+                    <StatusPill tone={statusTone[entry.status]}>{statusLabel[entry.status]}</StatusPill>
+                  </div>
+                  {entry.approvedAt && <p className="mt-1 text-xs text-secondary">{fmtLongDate(entry.approvedAt)}</p>}
+                  {entry.remarks && <p className="mt-1 whitespace-pre-wrap text-foreground">{entry.remarks}</p>}
+                </div>;
+              })}
+            </div>
           </Section>
 
           <Section icon={FileText} title="Details">
@@ -111,10 +138,10 @@ export function RequestDrawer({ row, onClose, onApprove, onDeny }) {
                   <li key={i} className="relative pl-5 pb-4 last:pb-0">
                     <span className="absolute -left-[5px] top-1.5 h-2.5 w-2.5 bg-accent" />
                     <div className="text-sm text-foreground">
-                      {entry.message}
+                      {formatRequestHistoryMessage(entry.message)}
                     </div>
                     <div className="text-xs text-secondary">
-                      {fmtDate(entry.date)}
+                      <time dateTime={entry.date} title={entry.date ? new Date(entry.date).toLocaleString() : undefined}>{fmtLongDate(entry.date)}</time>
                     </div>
                   </li>
                 ))}
@@ -126,10 +153,11 @@ export function RequestDrawer({ row, onClose, onApprove, onDeny }) {
             )}
           </Section>
         </div>
-        {(onApprove || onDeny) && (
+        {(onApprove || onDeny || (onChangeDecision && canRevertDecision(row, role))) && (
           <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-muted-40 px-6 py-4">
             {onApprove && <Button variant="accent" onClick={onApprove}>Approve</Button>}
             {onDeny && <Button variant="danger" onClick={onDeny}>Disapprove</Button>}
+            {onChangeDecision && canRevertDecision(row, role) && <Button variant="outline" onClick={onChangeDecision}>Change decision</Button>}
           </div>
         )}
       </aside>

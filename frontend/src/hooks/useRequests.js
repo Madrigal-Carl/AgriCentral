@@ -4,6 +4,7 @@ import {
     createRequest,
     updateRequest,
     updateRequestApproval,
+    revertRequestApproval,
     releaseRequest,
     deleteRequest,
 } from "@/services/request.service";
@@ -36,6 +37,8 @@ export function useCreateRequest(options = {}) {
     return useMutation({
         mutationFn: (data) => createRequest(data),
         onSuccess: (data, variables, context) => {
+            queryClient.invalidateQueries({ queryKey: equipmentKeys.all });
+            queryClient.invalidateQueries({ queryKey: livestockKeys.all });
             queryClient.invalidateQueries({ queryKey: requestKeys.lists() });
             options.onSuccess?.(data, variables, context);
         },
@@ -49,6 +52,8 @@ export function useUpdateRequest(options = {}) {
     return useMutation({
         mutationFn: ({ id, ...data }) => updateRequest(id, data),
         onSuccess: (data, variables, context) => {
+            queryClient.invalidateQueries({ queryKey: equipmentKeys.all });
+            queryClient.invalidateQueries({ queryKey: livestockKeys.all });
             queryClient.invalidateQueries({ queryKey: requestKeys.lists() });
             queryClient.invalidateQueries({
                 queryKey: requestKeys.detail(variables.id),
@@ -107,4 +112,19 @@ export function useDeleteRequest(options = {}) {
         },
         onError: options.onError,
     });
+}
+
+export function useRevertRequestApproval(options = {}) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => revertRequestApproval(id, data),
+    onSuccess: (data, variables, context) => {
+      queryClient.invalidateQueries({ queryKey: equipmentKeys.all });
+      queryClient.invalidateQueries({ queryKey: livestockKeys.all });
+      queryClient.invalidateQueries({ queryKey: requestKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: requestKeys.detail(variables.id) });
+      options.onSuccess?.(data, variables, context);
+    },
+    onError: options.onError,
+  });
 }

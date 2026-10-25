@@ -1,6 +1,9 @@
+import { escapeHtml } from "../../utils/escapeHtml.js";
+
 export const requestRejectedTemplate = ({
   name,
   requestTitle,
+  requestedItems,
   stage,
   remarks,
 }) => `
@@ -48,7 +51,7 @@ export const requestRejectedTemplate = ({
               <p style="font-size:16px;line-height:1.7;color:#4b5563;">
                 We regret to inform you that your request titled
                 <strong>"${requestTitle}"</strong> has been denied at the
-                <strong>${stage}</strong> review stage.
+                <strong>${stage}</strong> review stage. Requested: ${escapeHtml(requestedItems)}.
               </p>
 
               <div style="margin:24px 0;padding:16px 20px;background:#fef2f2;border-left:4px solid #dc2626;border-radius:6px;">
@@ -56,7 +59,7 @@ export const requestRejectedTemplate = ({
                   Reason provided
                 </p>
                 <p style="margin:0;font-size:14px;line-height:1.6;color:#4b5563;">
-                  ${remarks || "No specific remarks were provided."}
+                  ${escapeHtml(remarks || "No specific remarks were provided.")}
                 </p>
               </div>
 

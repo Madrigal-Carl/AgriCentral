@@ -7,6 +7,8 @@ import {
     deleteReport,
 } from "@/services/report.service";
 import { uploadToCloudinary } from "@/services/upload.service";
+import { equipmentKeys } from "@/hooks/useEquipments";
+import { livestockKeys } from "@/hooks/useLivestocks";
 
 /* ---------------- Query Keys ---------------- */
 export const reportKeys = {
@@ -92,6 +94,10 @@ export function useUpdateReportApproval(options = {}) {
     return useMutation({
         mutationFn: ({ id, ...data }) => updateReportApproval(id, data),
         onSuccess: (data, variables, context) => {
+            queryClient.invalidateQueries({ queryKey: equipmentKeys.all });
+            queryClient.invalidateQueries({ queryKey: livestockKeys.all });
+            queryClient.invalidateQueries({ queryKey: ["analytics"] });
+            queryClient.invalidateQueries({ queryKey: ["overview"] });
             queryClient.invalidateQueries({ queryKey: reportKeys.lists() });
             queryClient.invalidateQueries({
                 queryKey: reportKeys.detail(variables.id),

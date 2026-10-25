@@ -3,6 +3,7 @@ import {
     createRequestHandler,
     updateRequestHandler,
     updateRequestApprovalHandler,
+    revertRequestApprovalHandler,
     releaseRequestHandler,
     deleteRequestHandler,
     getRequestsHandler,
@@ -11,6 +12,7 @@ import {
     validateCreateRequest,
     validateUpdateRequest,
     validateUpdateRequestApproval,
+    validateRevertRequestApproval,
     validateRequestIdParam,
     validateGetRequestsQuery,
 } from "../validators/request.validator.js";
@@ -41,6 +43,14 @@ router.patch(
     validateRequestIdParam,
     validateUpdateRequestApproval,
     updateRequestApprovalHandler,
+);
+router.patch(
+    "/:id/approval/revert",
+    authenticated,
+    allowRoles("governor", "head"),
+    validateRequestIdParam,
+    validateRevertRequestApproval,
+    revertRequestApprovalHandler,
 );
 router.patch(
     "/:id/release",

@@ -2,8 +2,8 @@ import { Calendar, ClipboardList, FileText, Info, X } from "lucide-react";
 import { DefList, Section } from "@/components/drawer";
 import { StatusPill } from "@/components/public";
 import { fmtDate } from "@/utils/format";
-import { typeTone, typeLabel, sevTone, sevLabel } from "@/constants/data";
-import { getReportStatus, statusTone, statusLabel } from "@/utils/report";
+import { typeTone, typeLabel, sevTone, sevLabel, healthTone, condTone } from "@/constants/data";
+import { getReportStatus, getReportItems, getReportSeverity, reportItemLabel, statusTone, statusLabel } from "@/utils/report";
 import { Button } from "@/components/ui";
 
 // Attachments are { url, publicId, resourceType } objects — there's no
@@ -45,14 +45,11 @@ function submittedByRole(row) {
 
 export function ReportDrawer({ row, onClose, onApprove, onDeny }) {
   const reportStatus = getReportStatus(row);
-  const items = row.items ?? [];
+  const items = getReportItems(row);
+  const severity = getReportSeverity(row);
   const files = row.attachments ?? row.files ?? [];
   const history = row.history ?? [];
   const submitterRole = submittedByRole(row);
-
-  const reviewEntries = ["aew", "coordinator"]
-    .map((stage) => ({ stage, entry: row.approvalStatus?.[stage] }))
-    .filter(({ entry }) => entry && entry.status !== "pending");
 
   return (
     <div className="fixed inset-0 z-50" onClick={onClose}>
@@ -74,8 +71,8 @@ export function ReportDrawer({ row, onClose, onApprove, onDeny }) {
                 <StatusPill tone={typeTone[row.entityType]}>
                   {typeLabel[row.entityType] ?? row.entityType}
                 </StatusPill>
-                <StatusPill tone={sevTone[row.severity]}>
-                  {sevLabel[row.severity]}
+                <StatusPill tone={sevTone[severity]}>
+                  {sevLabel[severity]}
                 </StatusPill>
                 <StatusPill tone={statusTone[reportStatus]}>
                   {statusLabel[reportStatus]}
@@ -103,8 +100,8 @@ export function ReportDrawer({ row, onClose, onApprove, onDeny }) {
                 ],
                 ["Title", row.title],
                 ["Type", typeLabel[row.entityType] ?? row.entityType],
-                ["Condition", row.condition ?? "—"],
-                ["Severity", sevLabel[row.severity]],
+                ...(row.entityType === "farm" ? [["Condition", row.condition ?? "—"]] : []),
+                ["Severity", sevLabel[severity]],
                 ["Status", statusLabel[reportStatus]],
                 ...(row.entityType === "farm" && row.parent
                   ? [["Farm", `${row.parent.tag} — ${row.parent.address}`]]
@@ -124,10 +121,14 @@ export function ReportDrawer({ row, onClose, onApprove, onDeny }) {
               <ul className="space-y-2">
                 {items.map((item) => (
                   <li
-                    key={item._id}
+                    key={item.itemId}
                     className="border border-border bg-muted-30 px-3 py-2 text-sm text-foreground"
                   >
-                    {itemLabel(row.entityType, item)}
+                    {row.entityType === "farm" ? itemLabel(row.entityType, item) : reportItemLabel(row.entityType, item)}
+                    {row.entityType !== "farm" && <div className="mt-2 flex flex-wrap gap-2">
+                      <StatusPill tone={(row.entityType === "equipment" ? condTone : healthTone)?.[item.condition] ?? "info"}>{item.condition ?? "—"}</StatusPill>
+                      <StatusPill tone={sevTone[item.severity]}>{sevLabel[item.severity]}</StatusPill>
+                    </div>}
                   </li>
                 ))}
               </ul>

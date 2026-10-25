@@ -1,4 +1,5 @@
 import express from "express";
+import { getEquipmentAvailabilityHandler } from "../controllers/availability.controller.js";
 import {
     createEquipmentHandler,
     updateEquipmentHandler,
@@ -15,6 +16,7 @@ import {
 import { authenticated, allowRoles, scopeByAssociationId } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
+router.get("/availability", authenticated, allowRoles("far"), getEquipmentAvailabilityHandler);
 
 router.get("/", authenticated, allowRoles("far", "aew", "coordinator", "head", "governor", "admin"), scopeByAssociationId, validateGetEquipmentsQuery, getEquipmentsHandler);
 router.get("/available", authenticated, allowRoles("far", "aew", "coordinator", "head", "governor", "admin"), getAvailableEquipmentsHandler);

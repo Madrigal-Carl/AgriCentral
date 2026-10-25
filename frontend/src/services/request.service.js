@@ -29,3 +29,8 @@ export async function deleteRequest(id) {
     const response = await api.delete(`/requests/${id}`);
     return response.data;
 }
+
+export async function revertRequestApproval(id, data) {
+  const response = await api.patch(`/requests/${id}/approval/revert`, data);
+  return response.data;
+}

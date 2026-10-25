@@ -81,9 +81,15 @@ const reportSchema = new mongoose.Schema(
         },
         condition: {
             type: String,
-            required: true,
+            required: function () { return this.entityType === "farm"; },
             trim: true,
         },
+        items: [{
+            _id: false,
+            item: { type: mongoose.Schema.Types.ObjectId, required: true },
+            condition: { type: String, required: true, trim: true },
+            severity: { type: String, enum: ["low", "medium", "high", "critical"], default: "medium" },
+        }],
         itemIds: {
             type: [mongoose.Schema.Types.ObjectId],
             required: true,
@@ -119,6 +125,12 @@ const reportSchema = new mongoose.Schema(
 );
 
 reportSchema.pre("validate", function () {
+    if (this.entityType !== "farm" && this.items?.length) {
+        this.itemIds = this.items.map((entry) => entry.item);
+        const order = ["low", "medium", "high", "critical"];
+        this.severity = order[Math.max(...this.items.map((entry) => order.indexOf(entry.severity)))];
+        this.condition = undefined;
+    }
     if (this.entityType === "farm" && !this.parentId) {
         throw new Error("parentId (farm) is required for farm reports");
     }

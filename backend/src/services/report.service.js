@@ -7,6 +7,8 @@ import Association from "../models/association.model.js";
 import { createLog, getLogsForEntities, humanize } from "./log.service.js";
 import emailQueue from "../queues/email.queue.js";
 import { EMAIL_JOBS } from "../queues/email.jobs.js";
+import { getReportItems, highestSeverity, normalizeReportItems } from "../utils/reportItems.js";
+import { createReportSchema } from "../schemas/report.schema.js";
 
 const STAGE_ROLES = ["aew", "coordinator"];
 
@@ -61,7 +63,16 @@ async function populateEntities(reports) {
 
     return reports.map((r) => ({
         ...r,
-        items: r.itemIds.map((id) => entityMap.get(String(id))).filter(Boolean),
+        items: r.entityType === "farm"
+            ? r.itemIds.map((id) => entityMap.get(String(id))).filter(Boolean)
+            : getReportItems(r).map((entry) => ({
+                ...entityMap.get(String(entry.item)),
+                item: entityMap.get(String(entry.item)) ?? entry.item,
+                itemId: String(entry.item),
+                condition: entry.condition,
+                severity: entry.severity,
+            })),
+        severity: r.entityType === "farm" ? r.severity : highestSeverity(getReportItems(r)),
         parent: r.parentId ? farmMap.get(String(r.parentId)) ?? null : null,
     }));
 }
@@ -107,7 +118,7 @@ async function getAssociationRecipient(associationId) {
     };
 }
 
-function mapItemsForEmail(entityType, docs) {
+function mapItemsForEmail(entityType, docs, report) {
     if (entityType === "farm") {
         return docs.map((doc) => ({
             label: doc.name,
@@ -117,6 +128,8 @@ function mapItemsForEmail(entityType, docs) {
     return docs.map((doc) => ({
         label: entityType === "livestock" ? doc.animal : doc.name,
         detail: doc.propertyNumber,
+        condition: getReportItems(report).find((entry) => String(entry.item) === String(doc._id))?.condition,
+        severity: getReportItems(report).find((entry) => String(entry.item) === String(doc._id))?.severity,
     }));
 }
 
@@ -139,7 +152,7 @@ async function sendReportApprovedEmail(report, role) {
             reportTitle: report.title,
             entityType: report.entityType,
             stage: humanize(role),
-            items: mapItemsForEmail(report.entityType, itemDocs),
+            items: mapItemsForEmail(report.entityType, itemDocs, report),
         },
     });
 }
@@ -147,6 +160,7 @@ async function sendReportApprovedEmail(report, role) {
 async function sendReportRejectedEmail(report, role, remarks) {
     const recipient = await getAssociationRecipient(report.association);
     if (!recipient) return;
+    const docs = await ENTITY_MODELS[report.entityType].find({ _id: { $in: report.itemIds } }).select(ENTITY_SELECT[report.entityType]).lean();
 
     await emailQueue.add(EMAIL_JOBS.REPORT_REJECTED, {
         type: EMAIL_JOBS.REPORT_REJECTED,
@@ -156,12 +170,13 @@ async function sendReportRejectedEmail(report, role, remarks) {
             reportTitle: report.title,
             stage: humanize(role),
             remarks: remarks || "",
+            items: mapItemsForEmail(report.entityType, docs, report),
         },
     });
 }
 
 export const createReport = async (data, actingUser) => {
-    const { associationId, ...reportData } = data;
+    const { associationId, ...reportData } = normalizeReportItems(data);
     const role = actingUser?.role;
 
     const resolvedAssociationId =
@@ -218,23 +233,40 @@ export const createReport = async (data, actingUser) => {
 };
 
 export const updateReport = async (id, data) => {
-    const { associationId, ...reportData } = data;
-    if (associationId !== undefined) {
-        reportData.association = associationId;
-    }
-
-    const report = await Report.findOneAndUpdate(
-        { _id: id, deletedAt: null },
-        { $set: reportData },
-        { new: true, runValidators: true }
-    );
-
+    const report = await Report.findOne({ _id: id, deletedAt: null });
     if (!report) {
         const notFoundError = new Error("Report not found");
         notFoundError.statusCode = 404;
         throw notFoundError;
     }
-
+    if (STAGE_ROLES.some((stage) => ["approved", "denied"].includes(report.approvalStatus[stage]?.status))) {
+        const error = new Error("Reviewed reports cannot be edited");
+        error.statusCode = 409;
+        throw error;
+    }
+    const merged = {
+        ...report.toObject(),
+        parentId: report.parentId ? String(report.parentId) : undefined,
+        itemIds: report.itemIds.map(String),
+        items: (data.entityType ?? report.entityType) === "farm" ? undefined : getReportItems(report).map((entry) => ({ itemId: String(entry.item), condition: entry.condition, severity: entry.severity })),
+        ...data,
+    };
+    const parsed = createReportSchema.safeParse(merged);
+    if (!parsed.success) {
+        const error = new Error(parsed.error.issues.map((issue) => issue.message).join("; "));
+        error.statusCode = 400;
+        throw error;
+    }
+    const { associationId, ...reportData } = normalizeReportItems(parsed.data);
+    const existing = await ENTITY_MODELS[reportData.entityType].countDocuments({ _id: { $in: reportData.itemIds }, deletedAt: null });
+    if (existing !== reportData.itemIds.length) {
+        const error = new Error("One or more selected items were not found");
+        error.statusCode = 404;
+        throw error;
+    }
+    report.set(reportData);
+    if (associationId !== undefined) report.association = associationId;
+    await report.save();
     return report;
 };
 
@@ -276,6 +308,24 @@ export const updateReportApproval = async (id, { status, remarks }, actingUser) 
         remarks: remarks || "",
     };
 
+    if (status === "approved" && report.entityType !== "farm") {
+        for (const entry of getReportItems(report)) {
+            await ENTITY_MODELS[report.entityType].updateOne(
+                { _id: entry.item, deletedAt: null },
+                {
+                    $set: {
+                        condition: entry.condition,
+                        ...(report.entityType === "livestock" ? { deceasedAt: entry.condition === "deceased" ? new Date() : null } : {}),
+                    },
+                    ...(report.entityType === "livestock" ? { $inc: { __v: 1 } } : {}),
+                },
+                { runValidators: true },
+            );
+        }
+    }
+
+    await report.save();
+
     const stageLabel = humanize(role);
     const decisionVerb = status === "approved" ? "approved" : "denied";
     const remarksSuffix = remarks ? ` Remarks: "${remarks}"` : "";
@@ -299,7 +349,6 @@ export const updateReportApproval = async (id, { status, remarks }, actingUser) 
         await sendReportRejectedEmail(report, role, remarks);
     }
 
-    await report.save();
     return report;
 };
 

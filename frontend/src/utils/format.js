@@ -20,13 +20,24 @@ export function fmtCoord(n, pos, neg) {
     return `${Math.abs(n).toFixed(4)}° ${dir}`;
 }
 
-export function fmtPendingSince(value, now = Date.now()) {
+export function fmtLongDate(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+export function fmtRequestedAt(value, now = Date.now()) {
     const submitted = new Date(value).getTime();
     if (!value || !Number.isFinite(submitted)) return "—";
     const minutes = Math.max(0, Math.floor((now - submitted) / 60000));
-    if (minutes < 1) return "just now";
+    if (minutes < 1) return "Just now";
     const hours = Math.floor(minutes / 60);
-    if (hours >= 24) return `${Math.floor(hours / 24)}d ${hours % 24}h`;
-    if (hours) return `${hours}h ${minutes % 60}m`;
+    if (hours >= 24) return `${Math.floor(hours / 24)}d`;
+    if (hours) return `${hours}hr`;
     return `${minutes}m`;
 }

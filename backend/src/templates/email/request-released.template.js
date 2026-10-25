@@ -1,6 +1,9 @@
+import { escapeHtml } from "../../utils/escapeHtml.js";
+
 export const requestReleasedTemplate = ({
   name,
   requestTitle,
+  requestedItems,
   entityType,
   items = [],
   isPartial,
@@ -65,7 +68,7 @@ export const requestReleasedTemplate = ({
 
               <p style="font-size:16px;line-height:1.7;color:#4b5563;">
                 This is to inform you that the ${entityType} item(s) under
-                your request <strong>"${requestTitle}"</strong>
+                your request <strong>"${requestTitle}"</strong> (${escapeHtml(requestedItems)})
                 ${
                   isPartial
                     ? "have been partially released and added to your association."

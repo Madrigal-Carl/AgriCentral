@@ -2,6 +2,7 @@ import {
     createRequest,
     updateRequest,
     updateRequestApproval,
+    revertRequestApproval,
     releaseRequest,
     deleteRequest,
     getRequests,
@@ -18,7 +19,7 @@ export const createRequestHandler = asyncHandler(async (req, res) => {
 });
 
 export const updateRequestHandler = asyncHandler(async (req, res) => {
-    const request = await updateRequest(req.params.id, req.body);
+    const request = await updateRequest(req.params.id, req.body, req.user);
 
     return res.status(200).json({
         message: "Request updated successfully",
@@ -45,7 +46,7 @@ export const releaseRequestHandler = asyncHandler(async (req, res) => {
 });
 
 export const deleteRequestHandler = asyncHandler(async (req, res) => {
-    const request = await deleteRequest(req.params.id);
+    const request = await deleteRequest(req.params.id, req.user);
 
     return res.status(200).json({
         message: "Request deleted successfully",
@@ -61,4 +62,9 @@ export const getRequestsHandler = asyncHandler(async (req, res) => {
         requests,
         pagination,
     });
+});
+
+export const revertRequestApprovalHandler = asyncHandler(async (req, res) => {
+    const request = await revertRequestApproval(req.params.id, req.body, req.user);
+    return res.status(200).json({ message: "Decision changed successfully", request });
 });

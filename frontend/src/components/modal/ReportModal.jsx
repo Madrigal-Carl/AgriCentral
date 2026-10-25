@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Wrench, Beef } from "lucide-react";
+import { getReportItems } from "@/utils/report";
+import { getErrorMessage } from "@/utils/getErrorMessage";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import useAuth from "@/hooks/useAuth";
@@ -62,6 +65,9 @@ function toFormShape(report) {
     itemIds: (report.itemIds ?? report.items ?? []).map((i) =>
       typeof i === "string" ? i : i._id,
     ),
+    items: report.entityType === "farm" ? [] : getReportItems(report).map((item) => ({
+      itemId: item.itemId, condition: item.condition ?? "", severity: item.severity,
+    })),
     condition: report.condition,
     details: report.details,
     files: report.attachments || [],
@@ -103,14 +109,17 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
     control,
     watch,
     setValue,
+    trigger,
     reset,
     formState: { errors },
   } = useForm({
     resolver,
+    mode: "onChange",
     defaultValues: {
       severity: "medium",
       entityType: normalizedInitial?.entityType || "farm",
       itemIds: [],
+      items: [],
       association: normalizedInitial?.association ?? "",
       ...normalizedInitial,
     },
@@ -121,6 +130,7 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
       severity: "medium",
       entityType: normalizedInitial?.entityType || "farm",
       itemIds: [],
+      items: [],
       association: normalizedInitial?.association ?? "",
       ...normalizedInitial,
     };
@@ -135,6 +145,24 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
   }, [normalizedInitial, reset]);
 
   const entityType = watch("entityType");
+  const selectedItems = watch("items") ?? [];
+  const ItemIcon = entityType === "equipment" ? Wrench : Beef;
+  const onItemsChange = (nextIds) => setValue("items", nextIds.map((itemId) =>
+    selectedItems.find((entry) => entry.itemId === itemId) ?? { itemId, condition: entityType === "livestock" ? "sick" : "damaged", severity: "medium" },
+  ), { shouldValidate: true, shouldDirty: true });
+  const onItemValueChange = (index, name, value) => {
+    setValue(`items.${index}.${name}`, value, { shouldDirty: true, shouldTouch: true });
+    // Validate the array too: selection-level errors live on its parent path,
+    // and validating only a child field can leave those old messages behind.
+    void trigger("items");
+  };
+  const onTypeChange = (value) => {
+    setValue("entityType", value, { shouldDirty: true });
+    setValue("items", []);
+    setValue("itemIds", []);
+    setValue("condition", "");
+    setValue("farm", "");
+  };
   const farmValue = watch("farm");
   const selectedAssociation =
     watch("association") || (isFar ? (user?.association ?? "") : "");
@@ -152,6 +180,7 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
   useEffect(() => {
     if (!normalizedInitial?.id && !normalizedInitial?._id) {
       setValue("itemIds", []);
+      setValue("items", []);
       setValue("condition", "");
       if (entityType !== "farm") setValue("farm", "");
     }
@@ -160,6 +189,7 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
   useEffect(() => {
     if (!normalizedInitial?.id && !normalizedInitial?._id) {
       setValue("itemIds", []);
+      setValue("items", []);
     }
   }, [farmValue, normalizedInitial]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -169,6 +199,7 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
       associationChangeRef.current !== selectedAssociation
     ) {
       setValue("itemIds", []);
+      setValue("items", []);
       setValue("condition", "");
       setValue("farm", "");
     }
@@ -227,18 +258,12 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
 
   const { mutateAsync: createMutateAsync, isPending: isCreating } =
     useCreateReport({
-      onError: (err) =>
-        setSubmitError(
-          err?.response?.data?.message || err.message || "Something went wrong",
-        ),
+      onError: (err) => setSubmitError(getErrorMessage(err)),
     });
 
   const { mutateAsync: updateMutateAsync, isPending: isUpdating } =
     useUpdateReport({
-      onError: (err) =>
-        setSubmitError(
-          err?.response?.data?.message || err.message || "Something went wrong",
-        ),
+      onError: (err) => setSubmitError(getErrorMessage(err)),
     });
 
   const busy = isCreating || isUpdating;
@@ -248,10 +273,10 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
     try {
       const payload = {
         title: values.title,
-        severity: values.severity,
         entityType: values.entityType,
-        condition: values.condition,
-        itemIds: values.itemIds,
+        ...(values.entityType === "farm"
+          ? { condition: values.condition, severity: values.severity, itemIds: values.itemIds }
+          : { items: values.items }),
         details: values.details,
         files: values.files, // hook resolves this into `attachments`
         ...(values.entityType === "farm" ? { parentId: values.farm } : {}),
@@ -271,9 +296,7 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
         onSave?.(toFormShape(report));
       }
     } catch (err) {
-      setSubmitError(
-        err?.response?.data?.message || err?.message || "Failed to save report",
-      );
+      setSubmitError(getErrorMessage(err, "Failed to save report"));
     }
   };
 
@@ -331,7 +354,7 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
               render={({ field }) => (
                 <FullSelect
                   value={field.value}
-                  onChange={field.onChange}
+                  onChange={onTypeChange}
                   options={ENTITY_TYPE_OPTIONS}
                 />
               )}
@@ -383,7 +406,7 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
           <Field
             label={entityType === "farm" ? "Crops" : "Items"}
             full
-            error={errors.itemIds?.message}
+            error={entityType === "farm" ? errors.itemIds?.message : selectedItems.length === 0 ? errors.items?.root?.message ?? errors.items?.message : undefined}
           >
             {associationRequiredButMissing ? (
               <div className="w-full border border-border bg-muted px-3 py-2.5 text-sm text-secondary">
@@ -395,12 +418,12 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
               </div>
             ) : (
               <Controller
-                name="itemIds"
+                name={entityType === "farm" ? "itemIds" : "items"}
                 control={control}
                 render={({ field }) => (
                   <MultiSelect
-                    values={field.value}
-                    onChange={field.onChange}
+                    values={entityType === "farm" ? field.value : selectedItems.map((entry) => entry.itemId)}
+                    onChange={entityType === "farm" ? field.onChange : onItemsChange}
                     options={itemOptions}
                     placeholder="Select items…"
                     searchPlaceholder="Search…"
@@ -410,7 +433,40 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
             )}
           </Field>
 
-          <Field label="Condition" error={errors.condition?.message}>
+          {entityType !== "farm" && selectedItems.length > 0 && (
+            <div className="sm:col-span-2 space-y-2">
+              {selectedItems.map((entry, index) => (
+                <div key={entry.itemId} className="flex items-center justify-between gap-3 w-full bg-surface border border-border px-3 py-2 flex-wrap">
+                  <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <ItemIcon className="h-4 w-4 text-accent" />
+                    {itemOptions.find((option) => option.value === entry.itemId)?.label ?? entry.itemId}
+                  </div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-2 w-full sm:w-auto">
+                    <div>
+                      <div role="group" aria-label="Item condition" className="flex items-center gap-2">
+                        <span className="label-eyebrow shrink-0">Condition</span>
+                        <Controller name={`items.${index}.condition`} control={control} render={({ field }) => (
+                          <FullSelect value={field.value} onChange={(value) => onItemValueChange(index, "condition", value)} options={conditionOptions} placeholder="Select condition…" />
+                        )} />
+                      </div>
+                      {errors.items?.[index]?.condition?.message && <p className="mt-1 text-xs text-red-600">{errors.items[index].condition.message}</p>}
+                    </div>
+                    <div>
+                      <div role="group" aria-label="Item severity" className="flex items-center gap-2">
+                        <span className="label-eyebrow shrink-0">Severity</span>
+                        <Controller name={`items.${index}.severity`} control={control} render={({ field }) => (
+                          <FullSelect value={field.value} onChange={(value) => onItemValueChange(index, "severity", value)} options={SEVERITY_OPTIONS} />
+                        )} />
+                      </div>
+                      {errors.items?.[index]?.severity?.message && <p className="mt-1 text-xs text-red-600">{errors.items[index].severity.message}</p>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {entityType === "farm" && <><Field label="Condition" error={errors.condition?.message}>
             <Controller
               name="condition"
               control={control}
@@ -438,7 +494,7 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
                 />
               )}
             />
-          </Field>
+          </Field></>}
 
           <Field label="Details" full error={errors.details?.message}>
             <textarea

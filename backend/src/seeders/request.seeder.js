@@ -1,4 +1,5 @@
 import Request from "../models/request.model.js";
+import { inventoryModels, inventoryKey, availabilityFilter } from "../services/availability.service.js";
 
 // Each entry sources its item(s) from the pool of *unassigned* livestock
 // or equipment (see the UNASSIGNED_* arrays in livestock.seeder.js /
@@ -224,20 +225,58 @@ export const seedRequests = async ({ livestocks, equipments, associations, users
             return item;
         });
 
+        const grouped = new Map();
+        for (const item of items) {
+            const key = item[inventoryKey(data.entityType)];
+            grouped.set(key, (grouped.get(key) ?? 0) + 1);
+        }
+        const approvalStatus = { coordinator: buildApproval(data.coordinatorStatus, coordinatorUser) };
+        if (data.coordinatorStatus === "approved") {
+            if (data.entityType === "equipment") {
+                approvalStatus.governor = buildApproval(data.governorStatus, governorUser);
+                if (data.governorStatus === "approved") approvalStatus.head = buildApproval(data.headStatus, headUser);
+            } else {
+                approvalStatus.head = buildApproval(data.headStatus, headUser);
+            }
+        }
         const request = await Request.create({
             association: defaultAssociation?._id ?? null,
             title: data.title,
             severity: data.severity,
             entityType: data.entityType,
-            entityIds: items.map((item) => item._id),
+            lines: [...grouped].map(([key, quantity]) => ({ key, quantity })),
+            entityIds: [],
             details: data.details,
-            approvalStatus: {
-                coordinator: buildApproval(data.coordinatorStatus, coordinatorUser),
-                governor: buildApproval(data.governorStatus, governorUser),
-                head: buildApproval(data.headStatus, headUser),
-            },
-            releaseStatus: data.releaseStatus,
+            approvalStatus,
+            releaseStatus: "pending",
         });
+
+        if (request.approvalStatus.head?.status === "approved") {
+            const Model = inventoryModels[data.entityType];
+            const selected = [];
+            for (const line of request.lines) {
+                const docs = await Model.find({ ...availabilityFilter(data.entityType), [inventoryKey(data.entityType)]: line.key })
+                    .sort({ createdAt: 1, propertyNumber: 1, _id: 1 }).limit(line.quantity);
+                if (docs.length !== line.quantity) break;
+                selected.push(...docs.map((doc) => doc._id));
+            }
+            const quantity = request.lines.reduce((total, line) => total + line.quantity, 0);
+            if (selected.length === quantity) {
+                await Model.updateMany({ _id: { $in: selected }, ...availabilityFilter(data.entityType) }, { $set: { reservedBy: request._id } });
+                request.entityIds = selected;
+                if (["released", "partial"].includes(data.releaseStatus)) {
+                    const released = data.releaseStatus === "released" ? selected : selected.slice(0, Math.max(1, Math.floor(quantity / 2)));
+                    await Model.updateMany({ _id: { $in: released }, reservedBy: request._id }, {
+                        $set: { association: request.association, status: "assigned" }, $unset: { reservedBy: "" },
+                    });
+                    request.releasedIds = released;
+                    request.releaseStatus = released.length === quantity ? "released" : "partial";
+                }
+            } else {
+                request.approvalStatus.head = { status: "pending" };
+            }
+            await request.save();
+        }
 
         requests.push(request);
         console.log(`  Seeded: ${request.title} (${request.entityType}, release: ${request.releaseStatus})`);

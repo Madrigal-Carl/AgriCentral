@@ -18,6 +18,9 @@ import {
 import {
   getReviewerRole,
   getReportStatus,
+  getReportItems,
+  getReportSeverity,
+  reportItemLabel,
   statusTone,
   statusLabel,
   REPORT_STATUS_OPTIONS,
@@ -28,6 +31,7 @@ import {
   useDeleteReport,
 } from "@/hooks/useReports";
 import useAuth from "@/hooks/useAuth";
+import { fmtRequestedAt } from "@/utils/format";
 
 const REPORT_TYPE_OPTIONS = [
   { value: "farm", label: "Crop" },
@@ -187,19 +191,25 @@ export function ReportsPage() {
           {
             key: "quantity",
             header: "Items",
-            cell: (r) => r.items?.length ?? r.itemIds?.length ?? 0,
+            cell: (r) => getReportItems(r).length,
           },
           {
             key: "condition",
             header: "Condition",
-            cell: (r) => r.condition ?? "—",
+            cell: (r) => r.entityType === "farm" ? r.condition ?? "—" : (
+              <ul className="space-y-1">{getReportItems(r).map((item) => <li key={item.itemId} className="flex flex-wrap items-center gap-2 text-xs">
+                <span>{reportItemLabel(r.entityType, item)}</span>
+                <StatusPill tone="info">{item.condition ?? "—"}</StatusPill>
+                <StatusPill tone={sevTone[item.severity]}>{sevLabel[item.severity]}</StatusPill>
+              </li>)}</ul>
+            ),
           },
           {
             key: "severity",
             header: "Severity",
             cell: (r) => (
-              <StatusPill tone={sevTone[r.severity]}>
-                {sevLabel[r.severity]}
+              <StatusPill tone={sevTone[getReportSeverity(r)]}>
+                {sevLabel[getReportSeverity(r)]}
               </StatusPill>
             ),
           },
@@ -214,6 +224,11 @@ export function ReportsPage() {
                 </StatusPill>
               );
             },
+          },
+          {
+            key: "submitted",
+            header: "Submitted",
+            cell: (r) => fmtRequestedAt(r.createdAt),
           },
           {
             key: "actions",

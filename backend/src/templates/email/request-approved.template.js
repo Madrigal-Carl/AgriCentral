@@ -1,6 +1,9 @@
+import { escapeHtml } from "../../utils/escapeHtml.js";
+
 export const requestApprovedTemplate = ({
   name,
   requestTitle,
+  requestedItems,
   entityType,
   items = [],
 }) => {
@@ -63,7 +66,7 @@ export const requestApprovedTemplate = ({
               <p style="font-size:16px;line-height:1.7;color:#4b5563;">
                 We are pleased to inform you that your request titled
                 <strong>"${requestTitle}"</strong> has been fully approved
-                by all reviewing stages.
+                by all reviewing stages. Requested: ${escapeHtml(requestedItems)}.
               </p>
 
               <p style="font-size:16px;line-height:1.7;color:#4b5563;">

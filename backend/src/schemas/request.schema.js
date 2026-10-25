@@ -18,11 +18,14 @@ export const createRequestSchema = z.object({
         .max(100, "Title must not exceed 100 characters"),
     severity: z.enum(SEVERITIES).optional().default("medium"),
     entityType: z.enum(ENTITY_TYPES, { required_error: "Entity type is required" }),
-    entityIds: z
-        .array(objectId("Invalid entity id"))
-        .min(1, "Select at least one item")
-        .refine((arr) => new Set(arr).size === arr.length, {
-            message: "Duplicate items are not allowed",
+    lines: z
+        .array(z.object({
+            key: z.string().trim().min(1, "Select a name/type").max(200),
+            quantity: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
+        }))
+        .min(1, "Select at least one name/type")
+        .refine((arr) => new Set(arr.map((line) => line.key)).size === arr.length, {
+            message: "Duplicate names/types are not allowed",
         }),
     details: z
         .string({ required_error: "Details are required" })
@@ -33,6 +36,7 @@ export const createRequestSchema = z.object({
 
 export const updateRequestSchema = createRequestSchema
     .partial()
+    .extend({ severity: z.enum(SEVERITIES).optional() })
     .refine((data) => Object.keys(data).length > 0, {
         message: "At least one field must be provided",
     });
@@ -71,4 +75,9 @@ export const getRequestsQuerySchema = z.object({
         .transform((v) => v === "true"),
     page: z.coerce.number().int().positive().optional().default(1),
     limit: z.coerce.number().int().positive().optional().default(10),
+});
+
+export const revertRequestApprovalSchema = z.object({
+    status: z.enum(APPROVAL_DECISIONS),
+    reason: z.string().trim().min(5, "Reason must be at least 5 characters").max(500, "Reason must not exceed 500 characters"),
 });

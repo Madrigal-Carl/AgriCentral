@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isMeaningfulName, MEANINGFUL_NAME_ERROR } from "../utils/meaningfulName.js";
+import { REPORT_CONDITIONS } from "../utils/reportItems.js";
 
 const SEVERITIES = ["low", "medium", "high", "critical"];
 const ENTITY_TYPES = ["farm", "livestock", "equipment"];
@@ -28,15 +29,19 @@ const baseReportObject = z.object({
     entityType: z.enum(ENTITY_TYPES, { required_error: "Entity type is required" }),
     parentId: objectId("Invalid farm id").optional(),
     condition: z
-        .string({ required_error: "Condition is required" })
+        .string()
         .trim()
-        .min(1, "Condition is required"),
+        .optional(),
     itemIds: z
         .array(objectId("Invalid item id"))
-        .min(1, "Select at least one item")
         .refine((arr) => new Set(arr).size === arr.length, {
             message: "Duplicate items are not allowed",
-        }),
+        }).optional(),
+    items: z.array(z.object({
+        itemId: objectId("Invalid item id"),
+        condition: z.string().trim().min(1, "Condition is required"),
+        severity: z.enum(SEVERITIES).default("medium"),
+    })).optional(),
     details: z
         .string({ required_error: "Details are required" })
         .trim()
@@ -45,16 +50,35 @@ const baseReportObject = z.object({
     attachments: z.array(attachmentSchema).optional().default([]),
 });
 
-export const createReportSchema = baseReportObject.refine(
-    (data) => data.entityType !== "farm" || !!data.parentId,
-    {
-        message: "parentId (farm) is required for farm reports",
-        path: ["parentId"],
-    },
-);
+export function refineReportItems(data, ctx, partial = false) {
+    const issue = (path, message) => ctx.addIssue({ code: "custom", path, message });
+    if (data.entityType === "farm") {
+        if (!partial && !data.parentId) issue(["parentId"], "parentId (farm) is required for farm reports");
+        if ((!partial || data.itemIds) && !data.itemIds?.length) issue(["itemIds"], "Select at least one crop");
+        if ((!partial || data.condition !== undefined) && !REPORT_CONDITIONS.farm.includes(data.condition)) issue(["condition"], "Select a crop condition");
+        if (data.items?.length) issue(["items"], "Use itemIds for farm reports");
+    } else if (data.entityType || data.items) {
+        if ((!partial || data.items) && !data.items?.length) issue(["items"], "Select at least one item");
+        const seen = new Set();
+        for (const [index, item] of (data.items ?? []).entries()) {
+            if (seen.has(item.itemId)) issue(["items", index, "itemId"], "Duplicate items are not allowed");
+            seen.add(item.itemId);
+            if (data.entityType && !REPORT_CONDITIONS[data.entityType]?.includes(item.condition)) {
+                issue(["items", index, "condition"], "Select a valid condition for this type");
+            }
+        }
+    }
+}
+
+export const createReportSchema = baseReportObject.superRefine(refineReportItems);
 
 export const updateReportSchema = baseReportObject
     .partial()
+    .extend({ severity: z.enum(SEVERITIES).optional(), attachments: z.array(attachmentSchema).optional() })
+    .superRefine((data, ctx) => {
+        // Partial updates are checked again against the persisted entity type in the service.
+        if (data.entityType || data.items) refineReportItems(data, ctx, true);
+    })
     .refine((data) => Object.keys(data).length > 0, {
         message: "At least one field must be provided",
     });

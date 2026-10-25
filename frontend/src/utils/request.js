@@ -1,4 +1,15 @@
+import { fmtLongDate } from "./format.js";
+
 const STAGE_ORDER = ["coordinator", "governor", "head"];
+
+// Format the previous-decision timestamp for display only; preserve the precise
+// timestamp in stored logs, and leave dates quoted in the reason/remarks alone.
+export function formatRequestHistoryMessage(message) {
+  return message.replace(
+    /(Previous decision: by [^\n]*? at )(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)(?=; remarks:)/g,
+    (_, prefix, date) => `${prefix}${fmtLongDate(date)}`,
+  );
+}
 
 // Mirrors the actual approval chain per entity type in
 // updateRequestApproval on the backend: equipment goes through all three
@@ -23,6 +34,7 @@ export function getOverallStatus(request) {
 // The stage currently awaiting review, or null if the request is fully
 // resolved (approved/denied) or hasn't been created with any stage yet.
 export function getCurrentStage(request) {
+    if (getOverallStatus(request) === "denied") return null;
     const stages = request.approvalStatus || {};
     return (
         STAGE_ORDER.find((stage) => stages[stage]?.status === "pending") ?? null
@@ -39,9 +51,12 @@ export function isFullyApproved(request) {
     return chain.every((stage) => stages[stage]?.status === "approved");
 }
 
-// All roles see the same overall pipeline status — a request stays
-// "pending" until head has approved it, regardless of who's viewing.
-export function getDisplayStatus(row) {
+// Reviewers see their own decision, not the next reviewer's pending stage.
+// Omitting role retains overall pipeline status for workflow/action guards.
+export function getDisplayStatus(row, role) {
+    if (["governor", "head"].includes(role)) {
+        return row.approvalStatus?.[role]?.status ?? getOverallStatus(row);
+    }
     return getOverallStatus(row);
 }
 
@@ -50,6 +65,25 @@ export const statusTone = {
     approved: "success",
     denied: "danger",
 };
+
+export function canRevertDecision(request, role) {
+    if (!["governor", "head"].includes(role) || request.releaseStatus !== "pending" || request.releasedIds?.length) return false;
+    const status = request.approvalStatus?.[role]?.status;
+    if (!["approved", "denied"].includes(status)) return false;
+    const head = request.approvalStatus?.head;
+    // Denied governors have not opened a head stage yet.
+    return role !== "governor" || head?.status === "pending" || (status === "denied" && !head);
+}
+
+export function getRequestLines(request) {
+    if (request.lines?.length) return request.lines;
+    const grouped = new Map();
+    for (const entity of request.entities ?? []) {
+        const key = entity.name ?? entity.animal;
+        grouped.set(key, (grouped.get(key) ?? 0) + 1);
+    }
+    return [...grouped].map(([key, quantity]) => ({ key, quantity }));
+}
 
 export const statusLabel = {
     pending: "Pending",

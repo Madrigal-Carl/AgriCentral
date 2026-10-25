@@ -51,14 +51,16 @@ const requestSchema = new mongoose.Schema(
             enum: ["livestock", "equipment"],
             required: true,
         },
-        entityIds: {
-            type: [mongoose.Schema.Types.ObjectId],
-            required: true,
-            validate: {
-                validator: (arr) => Array.isArray(arr) && arr.length > 0,
-                message: "At least one item must be selected",
-            },
-        },
+        lines: [{
+            _id: false,
+            key: { type: String, required: true, trim: true },
+            quantity: { type: Number, required: true, min: 1, validate: Number.isSafeInteger },
+        }],
+        // Bound by the system at head approval, never supplied by the client.
+        entityIds: { type: [mongoose.Schema.Types.ObjectId], default: [] },
+        releasedIds: { type: [mongoose.Schema.Types.ObjectId], default: [] },
+        // Serializes review/revert/release/edit on the same request.
+        operationLock: { type: String, select: false },
         details: {
             type: String,
             required: true,

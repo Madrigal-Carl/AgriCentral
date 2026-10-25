@@ -1,4 +1,5 @@
 import express from "express";
+import { getLivestockAvailabilityHandler } from "../controllers/availability.controller.js";
 import {
     createLivestockHandler,
     updateLivestockHandler,
@@ -18,6 +19,7 @@ import {
 import { authenticated, allowRoles, scopeByAssociationId } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
+router.get("/availability", authenticated, allowRoles("far"), getLivestockAvailabilityHandler);
 
 router.get("/", authenticated, allowRoles("far", "aew", "coordinator", "head", "admin"), scopeByAssociationId, validateGetLivestocksQuery, getLivestocksHandler);
 router.get("/available", authenticated, allowRoles("far", "aew", "coordinator", "head", "admin"), getAvailableLivestocksHandler);

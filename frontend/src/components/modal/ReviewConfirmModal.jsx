@@ -90,11 +90,13 @@ export function ReviewConfirmModal({ row, action, onCancel, onConfirm, busy, sub
                 className="w-full border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-secondary focus:border-foreground resize-y"
               />
             </Field>
-            <div className="flex flex-wrap items-center gap-2">
+            <div role="group" aria-label="Suggested denial reasons" className="mt-3 flex flex-wrap items-start gap-2">
               {["Out of Stock", "Item Under Maintenance", "Incomplete Requirements", "Not Eligible"].map((reason) => (
-                <Button key={reason} type="button" variant="outline" onClick={() => { setRemarks(reason); setError(null); }}>
+                <button key={reason} type="button" disabled={busy} aria-pressed={remarks === reason}
+                  className={`inline-flex max-w-full items-center justify-center rounded-md border border-border px-2.5 py-1.5 text-left text-xs font-medium text-foreground hover:bg-muted disabled:opacity-50 ${remarks === reason ? "bg-accent-soft" : "bg-surface"}`}
+                  onClick={() => { setRemarks(reason); setError(null); }}>
                   {reason}
-                </Button>
+                </button>
               ))}
             </div>
           </div>

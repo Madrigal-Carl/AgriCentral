@@ -24,3 +24,8 @@ export async function getAvailableEquipments() {
     const response = await api.get("/equipments/available");
     return response.data;
 }
+
+export async function getEquipmentAvailability() {
+  const response = await api.get("/equipments/availability");
+  return response.data;
+}

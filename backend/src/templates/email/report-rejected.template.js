@@ -1,8 +1,11 @@
+import { escapeHtml } from "../../utils/escapeHtml.js";
+
 export const reportRejectedTemplate = ({
   name,
   reportTitle,
   stage,
   remarks,
+  items = [],
 }) => `
 <!DOCTYPE html>
 <html lang="en">
@@ -56,9 +59,10 @@ export const reportRejectedTemplate = ({
                   Reason provided
                 </p>
                 <p style="margin:0;font-size:14px;line-height:1.6;color:#4b5563;">
-                  ${remarks || "No specific remarks were provided."}
+                  ${escapeHtml(remarks || "No specific remarks were provided.")}
                 </p>
               </div>
+              <ul>${items.map((item) => `<li>${escapeHtml(item.label)} (${escapeHtml(item.detail)})${item.condition ? ` — ${escapeHtml(item.condition)} · ${escapeHtml(item.severity)}` : ""}</li>`).join("")}</ul>
 
               <p style="font-size:14px;line-height:1.7;color:#6b7280;">
                 If you believe this decision was made in error, or would

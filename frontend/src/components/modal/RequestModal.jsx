@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Wrench, Beef } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -15,19 +16,17 @@ import {
   createRequestUpdateSchema,
 } from "@/schemas/request.schema";
 import { useCreateRequest, useUpdateRequest } from "@/hooks/useRequests";
-import { useAvailableLivestocks } from "@/hooks/useLivestocks";
-import { useAvailableEquipments } from "@/hooks/useEquipments";
-import { assignmentReason } from "@/utils/assignment";
+import { useLivestockAvailability } from "@/hooks/useLivestocks";
+import { useEquipmentAvailability } from "@/hooks/useEquipments";
+import { getRequestLines } from "@/utils/request";
+import { getErrorMessage } from "@/utils/getErrorMessage";
 
 function toFormShape(request) {
   return {
     title: request.title,
     severity: request.severity,
     entityType: request.entityType,
-    // entityIds comes back from the API as a plain array of id strings —
-    // no unwrapping needed here (unlike FarmModal's assignedFarmers, which
-    // is an array of {farmer, classification} objects).
-    entityIds: request.entityIds ?? [],
+    lines: getRequestLines(request),
     details: request.details,
   };
 }
@@ -35,8 +34,8 @@ function toFormShape(request) {
 export function RequestModal({ mode, initial, onClose, onSave }) {
   const [submitError, setSubmitError] = useState(null);
   const isEdit = mode === "edit";
-  const { data: livestockData } = useAvailableLivestocks();
-  const { data: equipmentData } = useAvailableEquipments();
+  const { data: livestockData, isPending: livestockLoading, error: livestockError } = useLivestockAvailability();
+  const { data: equipmentData, isPending: equipmentLoading, error: equipmentError } = useEquipmentAvailability();
 
   const normalizedInitial = useMemo(
     () => (initial ? toFormShape(initial) : initial),
@@ -46,16 +45,9 @@ export function RequestModal({ mode, initial, onClose, onSave }) {
   const resolver = useMemo(
     () =>
       zodResolver(
-        (isEdit ? createRequestUpdateSchema() : createRequestFormSchema()).refine(
-          (values) => !(values.entityIds ?? []).some((id) => {
-            const type = values.entityType ?? normalizedInitial?.entityType;
-            const items = type === "equipment" ? equipmentData?.equipments : livestockData?.livestocks;
-            return !!assignmentReason(type, items?.find((item) => item._id === id)?.condition);
-          }),
-          { message: "Select only assignable items", path: ["entityIds"] },
-        ),
+        (isEdit ? createRequestUpdateSchema : createRequestFormSchema)({ equipment: equipmentData, livestock: livestockData }),
       ),
-    [isEdit, normalizedInitial, equipmentData, livestockData],
+    [isEdit, equipmentData, livestockData],
   );
 
   const {
@@ -71,7 +63,7 @@ export function RequestModal({ mode, initial, onClose, onSave }) {
     defaultValues: {
       severity: "medium",
       entityType: "equipment",
-      entityIds: [],
+      lines: [],
       ...normalizedInitial,
     },
   });
@@ -81,7 +73,7 @@ export function RequestModal({ mode, initial, onClose, onSave }) {
       {
         severity: "medium",
         entityType: "equipment",
-        entityIds: [],
+        lines: [],
         ...normalizedInitial,
       },
       { keepDirty: false, keepDirtyValues: false },
@@ -89,46 +81,38 @@ export function RequestModal({ mode, initial, onClose, onSave }) {
   }, [normalizedInitial, reset]);
 
   const entityType = watch("entityType");
-  const entityIds = watch("entityIds") || [];
+  const lines = watch("lines") || [];
+  const stock = (entityType === "equipment" ? equipmentData : livestockData) ?? [];
+  const loadingStock = entityType === "equipment" ? equipmentLoading : livestockLoading;
+  const stockError = entityType === "equipment" ? equipmentError : livestockError;
+  const ItemIcon = entityType === "equipment" ? Wrench : Beef;
+  const itemOptions = stock.map((entry) => ({
+    value: entry.name ?? entry.animal,
+    label: `${entry.name ?? entry.animal} — ${entry.available} available`,
+    disabled: entry.available === 0,
+  }));
+  const onLinesChange = (keys) => setValue("lines", keys.map((key) =>
+    lines.find((line) => line.key === key) ?? { key, quantity: 1 },
+  ), { shouldValidate: true, shouldDirty: true });
 
-  const itemOptions =
-    entityType === "equipment"
-      ? (equipmentData?.equipments ?? []).map((e) => ({
-          value: e._id,
-          label: e.name + (assignmentReason("equipment", e.condition) ? ` — ${assignmentReason("equipment", e.condition)}` : ""),
-          disabled: !!assignmentReason("equipment", e.condition),
-          reason: assignmentReason("equipment", e.condition),
-        }))
-      : (livestockData?.livestocks ?? []).map((l) => ({
-          value: l._id,
-          label: l.animal + (assignmentReason("livestock", l.condition) ? ` — ${assignmentReason("livestock", l.condition)}` : ""),
-          disabled: !!assignmentReason("livestock", l.condition),
-          reason: assignmentReason("livestock", l.condition),
-        }));
-
-  // Switching type invalidates the previous selection since livestock and
-  // equipment ids live in entirely different collections — a request can
-  // only target one type, never both (see request.model.js).
+  // Names/types belong to different inventory pools; never carry lines
+  // across an entity-type change.
   const onTypeChange = (v) => {
     setValue("entityType", v);
-    setValue("entityIds", [], { shouldValidate: true });
+    setValue("lines", [], { shouldValidate: true, shouldDirty: true });
   };
 
   const { mutateAsync: createMutateAsync, isPending: isCreating } =
     useCreateRequest({
       onError: (err) => {
-        setSubmitError(
-          err?.response?.data?.message || err.message || "Something went wrong",
-        );
+        setSubmitError(getErrorMessage(err));
       },
     });
 
   const { mutateAsync: updateMutateAsync, isPending: isUpdating } =
     useUpdateRequest({
       onError: (err) => {
-        setSubmitError(
-          err?.response?.data?.message || err.message || "Something went wrong",
-        );
+        setSubmitError(getErrorMessage(err));
       },
     });
 
@@ -139,7 +123,7 @@ export function RequestModal({ mode, initial, onClose, onSave }) {
         title: values.title,
         severity: values.severity,
         entityType: values.entityType,
-        entityIds: values.entityIds,
+        lines: values.lines,
         details: values.details,
       };
 
@@ -154,15 +138,11 @@ export function RequestModal({ mode, initial, onClose, onSave }) {
         onSave?.(request);
       }
     } catch (err) {
-      setSubmitError(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Failed to save request",
-      );
+      setSubmitError(getErrorMessage(err, "Failed to save request"));
     }
   };
 
-  const busy = isCreating || isUpdating;
+  const busy = isCreating || isUpdating || loadingStock || !!stockError;
 
   return (
     <ModalShell
@@ -230,24 +210,49 @@ export function RequestModal({ mode, initial, onClose, onSave }) {
           <Field
             label={entityType === "equipment" ? "Equipment" : "Livestock"}
             full
-            error={errors.entityIds?.message}
+            error={errors.lines?.message || stockError?.message}
           >
             <Controller
-              name="entityIds"
+              name="lines"
               control={control}
               render={() => (
                 <MultiSelect
-                  values={entityIds}
-                  onChange={(next) =>
-                    setValue("entityIds", next, { shouldValidate: true })
-                  }
+                  values={lines.map((line) => line.key)}
+                  onChange={onLinesChange}
                   options={itemOptions}
-                  placeholder={`Select ${entityType}…`}
+                  placeholder={loadingStock ? "Loading availability…" : `Select ${entityType} names/types…`}
                   searchPlaceholder={`Search ${entityType}…`}
                 />
               )}
             />
           </Field>
+
+          {lines.length > 0 && (
+            <div className="sm:col-span-2 space-y-2">
+              {lines.map((line, index) => {
+                const available = stock.find((entry) => (entry.name ?? entry.animal) === line.key)?.available ?? 0;
+                const quantityError = errors.lines?.[index]?.quantity?.message || (line.quantity > available ? `Only ${available} available` : undefined);
+                return (
+                  <div key={line.key} className="flex items-center justify-between gap-3 w-full bg-surface border border-border px-3 py-2 flex-wrap">
+                    <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                      <ItemIcon className="h-4 w-4 text-accent" />{line.key}
+                    </div>
+                    <div className="w-full sm:w-auto">
+                      <div className="flex items-center gap-3">
+                        <label htmlFor={`request-quantity-${index}`} className="label-eyebrow shrink-0">Quantity</label>
+                        <div className="w-24">
+                          <TextInput id={`request-quantity-${index}`} type="number" min={1} max={available} step={1} aria-label={`Quantity of ${line.key}`}
+                            aria-invalid={!!quantityError}
+                            {...register(`lines.${index}.quantity`, { valueAsNumber: true })} />
+                        </div>
+                      </div>
+                      {quantityError && <p className="mt-1 text-xs text-red-600">{quantityError}</p>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           <Field label="Details" full error={errors.details?.message}>
             <textarea

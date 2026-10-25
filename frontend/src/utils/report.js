@@ -21,6 +21,30 @@ export const statusTone = {
     denied: "danger",
 };
 
+export function getReportItems(report) {
+    const items = report.items?.length ? report.items : (report.itemIds ?? []).map((id) => ({ _id: id }));
+    return items.map((entry) => {
+        const entity = entry.item && typeof entry.item === "object" ? entry.item : entry;
+        return {
+            ...entity,
+            itemId: String(entry.itemId ?? entity._id ?? entry.item),
+            condition: entry.condition ?? report.condition,
+            severity: entry.severity ?? report.severity ?? "medium",
+        };
+    });
+}
+
+export function getReportSeverity(report) {
+    if (report.entityType === "farm") return report.severity;
+    const order = ["low", "medium", "high", "critical"];
+    return order[Math.max(0, ...getReportItems(report).map((item) => order.indexOf(item.severity)))];
+}
+
+export function reportItemLabel(type, item) {
+    const name = type === "livestock" ? item.animal : item.name;
+    return name ? `${name}${item.propertyNumber ? ` (${item.propertyNumber})` : ""}` : item.itemId;
+}
+
 export const statusLabel = {
     pending: "Pending",
     approved: "Approved",

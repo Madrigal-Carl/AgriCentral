@@ -30,6 +30,7 @@ const emailWorker = new Worker(
           html: requestApprovedTemplate({
             name: data.name,
             requestTitle: data.requestTitle,
+            requestedItems: data.requestedItems,
             entityType: data.entityType,
             items: data.items,
           }),
@@ -45,6 +46,7 @@ const emailWorker = new Worker(
           html: requestReleasedTemplate({
             name: data.name,
             requestTitle: data.requestTitle,
+            requestedItems: data.requestedItems,
             entityType: data.entityType,
             items: data.items,
             isPartial: data.isPartial,
@@ -59,6 +61,7 @@ const emailWorker = new Worker(
           html: requestRejectedTemplate({
             name: data.name,
             requestTitle: data.requestTitle,
+            requestedItems: data.requestedItems,
             stage: data.stage,
             remarks: data.remarks,
           }),
@@ -88,6 +91,7 @@ const emailWorker = new Worker(
             reportTitle: data.reportTitle,
             stage: data.stage,
             remarks: data.remarks,
+            items: data.items,
           }),
         });
       },

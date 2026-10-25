@@ -2,6 +2,7 @@ import {
     createRequestSchema,
     updateRequestSchema,
     updateRequestApprovalSchema,
+    revertRequestApprovalSchema,
     requestIdParamSchema,
     getRequestsQuerySchema,
 } from "../schemas/request.schema.js";
@@ -57,5 +58,6 @@ const validateQuery = (schema) => (req, res, next) => {
 export const validateCreateRequest = validate(createRequestSchema);
 export const validateUpdateRequest = validate(updateRequestSchema);
 export const validateUpdateRequestApproval = validate(updateRequestApprovalSchema);
+export const validateRevertRequestApproval = validate(revertRequestApprovalSchema);
 export const validateRequestIdParam = validateParams(requestIdParamSchema);
 export const validateGetRequestsQuery = validateQuery(getRequestsQuerySchema);

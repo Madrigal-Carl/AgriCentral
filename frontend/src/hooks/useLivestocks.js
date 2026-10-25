@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
     getLivestocks,
     getAvailableLivestocks,
+    getLivestockAvailability,
     createLivestock,
     updateLivestock,
     deleteLivestock,
@@ -46,6 +47,10 @@ export function useLivestock(id, options = {}) {
         enabled: !!id,
         ...options,
     });
+}
+
+export function useLivestockAvailability(options = {}) {
+  return useQuery({ queryKey: [...livestockKeys.all, "availability"], queryFn: getLivestockAvailability, ...options });
 }
 
 export function useLivestockMothers(filters, options = {}) {
