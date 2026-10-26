@@ -4,6 +4,7 @@ import {
     updateFarmHandler,
     deleteFarmHandler,
     getFarmsHandler,
+    getFarmMapHandler,
 } from "../controllers/farm.controller.js";
 import {
     validateCreateFarm,
@@ -15,6 +16,7 @@ import { authenticated, allowRoles, scopeByAssociationId } from "../middlewares/
 
 const router = express.Router();
 
+router.get("/map", authenticated, allowRoles("far", "aew", "coordinator", "head", "admin"), scopeByAssociationId, validateGetFarmsQuery, getFarmMapHandler);
 router.get("/", authenticated, allowRoles("far", "aew", "head", "admin"), scopeByAssociationId, validateGetFarmsQuery, getFarmsHandler);
 router.post("/", authenticated, allowRoles("far", "aew", "admin"), validateCreateFarm, createFarmHandler);
 router.patch("/:id", authenticated, allowRoles("far", "aew", "admin"), validateFarmIdParam, validateUpdateFarm, updateFarmHandler);

@@ -36,16 +36,14 @@ const ENTITY_TYPE_OPTIONS = [
   { value: "equipment", label: "Equipment" },
 ];
 
-// Crop has no dedicated "condition" field on its own model — the closest
-// analog is the status a crop carries while attached to a farm
-// (farmCropSchema.status), so this is hardcoded to mirror that enum
-// rather than pulled from a shared constant.
+// Existing informational conditions remain available alongside map events.
 const CROP_CONDITION_OPTIONS = [
   { value: "planted", label: "Planted" },
   { value: "growing", label: "Growing" },
   { value: "withered", label: "Withered" },
   { value: "harvested", label: "Harvested" },
   { value: "damaged", label: "Damaged" },
+  { value: "destroyed", label: "Destroyed" },
 ];
 
 const CONDITION_OPTIONS_BY_TYPE = {
@@ -56,19 +54,23 @@ const CONDITION_OPTIONS_BY_TYPE = {
 
 // Maps a backend report record onto the form's field names.
 function toFormShape(report) {
+  const itemIds = (report.itemIds ?? report.items ?? []).map((item) => typeof item === "string" ? item : item._id);
   return {
     id: report._id,
     title: report.title,
     severity: report.severity,
     entityType: report.entityType,
     farm: report.parentId ?? report.parent?._id ?? "",
-    itemIds: (report.itemIds ?? report.items ?? []).map((i) =>
-      typeof i === "string" ? i : i._id,
-    ),
+    itemIds,
     items: report.entityType === "farm" ? [] : getReportItems(report).map((item) => ({
       itemId: item.itemId, condition: item.condition ?? "", severity: item.severity,
     })),
     condition: report.condition,
+    reportedAt: (report.reportedAt ?? report.createdAt)?.slice(0, 10),
+    cropEntries: report.entityType === "farm" ? itemIds.map((crop) => {
+      const entry = report.cropEntries?.find((entry) => (entry.crop?._id ?? entry.crop) === crop);
+      return { crop, quantity: entry?.quantity ?? "", yieldKg: entry?.yieldKg ?? "" };
+    }) : [],
     details: report.details,
     files: report.attachments || [],
     association: report.association?._id ?? report.association ?? "",
@@ -120,6 +122,8 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
       entityType: normalizedInitial?.entityType || "farm",
       itemIds: [],
       items: [],
+      cropEntries: [],
+      reportedAt: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10),
       association: normalizedInitial?.association ?? "",
       ...normalizedInitial,
     },
@@ -131,6 +135,8 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
       entityType: normalizedInitial?.entityType || "farm",
       itemIds: [],
       items: [],
+      cropEntries: [],
+      reportedAt: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10),
       association: normalizedInitial?.association ?? "",
       ...normalizedInitial,
     };
@@ -146,6 +152,13 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
 
   const entityType = watch("entityType");
   const selectedItems = watch("items") ?? [];
+  const selectedCropIds = watch("itemIds") ?? [];
+  const selectedCropEntries = watch("cropEntries") ?? [];
+  const condition = watch("condition");
+  const onCropsChange = (ids) => {
+    setValue("itemIds", ids, { shouldDirty: true, shouldValidate: true });
+    setValue("cropEntries", ids.map((crop) => selectedCropEntries.find((entry) => entry.crop === crop) ?? { crop, quantity: "", yieldKg: "" }), { shouldDirty: true, shouldValidate: true });
+  };
   const ItemIcon = entityType === "equipment" ? Wrench : Beef;
   const onItemsChange = (nextIds) => setValue("items", nextIds.map((itemId) =>
     selectedItems.find((entry) => entry.itemId === itemId) ?? { itemId, condition: entityType === "livestock" ? "sick" : "damaged", severity: "medium" },
@@ -160,6 +173,7 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
     setValue("entityType", value, { shouldDirty: true });
     setValue("items", []);
     setValue("itemIds", []);
+    setValue("cropEntries", []);
     setValue("condition", "");
     setValue("farm", "");
   };
@@ -180,6 +194,7 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
   useEffect(() => {
     if (!normalizedInitial?.id && !normalizedInitial?._id) {
       setValue("itemIds", []);
+      setValue("cropEntries", []);
       setValue("items", []);
       setValue("condition", "");
       if (entityType !== "farm") setValue("farm", "");
@@ -189,6 +204,7 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
   useEffect(() => {
     if (!normalizedInitial?.id && !normalizedInitial?._id) {
       setValue("itemIds", []);
+      setValue("cropEntries", []);
       setValue("items", []);
     }
   }, [farmValue, normalizedInitial]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -199,6 +215,7 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
       associationChangeRef.current !== selectedAssociation
     ) {
       setValue("itemIds", []);
+      setValue("cropEntries", []);
       setValue("items", []);
       setValue("condition", "");
       setValue("farm", "");
@@ -248,10 +265,10 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
     }
     if (entityType === "farm" && farmValue) {
       const farm = (farmsData?.farms ?? []).find((f) => f._id === farmValue);
-      return (farm?.crops ?? []).map((c) => ({
+      return [...new Map((farm?.crops ?? []).map((c) => ({
         value: c.crop?._id ?? c.crop,
-        label: `${c.crop.name}`,
-      }));
+        label: c.crop?.name ?? "Unknown crop",
+      })).map((option) => [option.value, option])).values()];
     }
     return [];
   }, [entityType, farmValue, livestockData, equipmentData, farmsData]);
@@ -275,7 +292,15 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
         title: values.title,
         entityType: values.entityType,
         ...(values.entityType === "farm"
-          ? { condition: values.condition, severity: values.severity, itemIds: values.itemIds }
+          ? {
+              condition: values.condition, severity: values.severity, itemIds: values.itemIds,
+              reportedAt: `${values.reportedAt}T00:00:00.000Z`,
+              cropEntries: values.cropEntries.map((entry) => ({
+                crop: entry.crop,
+                ...(["planted", "destroyed"].includes(values.condition) ? { quantity: entry.quantity } : {}),
+                ...(values.condition === "harvested" ? { yieldKg: entry.yieldKg } : {}),
+              })),
+            }
           : { items: values.items }),
         details: values.details,
         files: values.files, // hook resolves this into `attachments`
@@ -423,7 +448,7 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
                 render={({ field }) => (
                   <MultiSelect
                     values={entityType === "farm" ? field.value : selectedItems.map((entry) => entry.itemId)}
-                    onChange={entityType === "farm" ? field.onChange : onItemsChange}
+                    onChange={entityType === "farm" ? onCropsChange : onItemsChange}
                     options={itemOptions}
                     placeholder="Select items…"
                     searchPlaceholder="Search…"
@@ -432,6 +457,25 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
               />
             )}
           </Field>
+
+          {entityType === "farm" && <>
+            <Field label="Report date" full error={errors.reportedAt?.message}>
+              <TextInput type="date" {...register("reportedAt")} />
+            </Field>
+            <p className="text-xs text-secondary sm:col-span-2">Map values change only after AEW and Coordinator approval. Editing a crop report requires both approvals again.</p>
+            {selectedCropIds.map((crop, index) => (
+              <div key={crop} className="sm:col-span-2 border border-border p-3 space-y-2">
+                <div className="text-sm font-medium text-foreground">{itemOptions.find((option) => option.value === crop)?.label ?? crop}</div>
+                {["planted", "destroyed"].includes(condition) && <Field label={condition === "destroyed" ? "Destroyed quantity (crop units)" : "Planted quantity (crop units)"} error={errors.cropEntries?.[index]?.quantity?.message}>
+                  <TextInput type="number" min="0" step="any" {...register(`cropEntries.${index}.quantity`)} />
+                </Field>}
+                {condition === "harvested" && <Field label="Yielded kg" error={errors.cropEntries?.[index]?.yieldKg?.message}>
+                  <TextInput type="number" min="0" step="any" {...register(`cropEntries.${index}.yieldKg`)} />
+                </Field>}
+              </div>
+            ))}
+            {(errors.cropEntries?.message || errors.cropEntries?.root?.message) && <p className="text-xs text-red-600 sm:col-span-2">{errors.cropEntries.message ?? errors.cropEntries.root.message}</p>}
+          </>}
 
           {entityType !== "farm" && selectedItems.length > 0 && (
             <div className="sm:col-span-2 space-y-2">

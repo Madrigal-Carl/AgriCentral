@@ -5,6 +5,8 @@ import User from "../models/user.model.js";
 import Association from "../models/association.model.js";
 import { validateLocation, LOCATION_POPULATE, CROP_TYPE_POPULATE } from "../utils/maintenanceLinks.js";
 import HarvestLog from "../models/harvest.model.js";
+import Report from "../models/report.model.js";
+import { APPROVED_FARM_REPORT_FILTER, deriveFarmReportTotals } from "../utils/farmReportTotals.js";
 import { createLog, getLogsForEntities, humanize } from "./log.service.js";
 
 const CROP_POPULATE = { path: "crops.crop", populate: CROP_TYPE_POPULATE };
@@ -542,6 +544,36 @@ export const restoreFarm = async (id) => {
     toRestore.deletedAt = null;
     await toRestore.save();
     return toRestore;
+};
+
+export const getFarmMap = async ({ search, crop, associationId }) => {
+    const filter = { deletedAt: null };
+    if (associationId) filter.association = associationId;
+    if (search) {
+        const regex = new RegExp(escapeRegex(search), "i");
+        filter.$or = [{ tag: regex }, { address: regex }];
+    }
+    const farms = await Farm.find(filter)
+        .select("tag address latitude longitude association assignedFarmers")
+        .sort({ createdAt: -1 })
+        .populate([FARMER_POPULATE, ASSOCIATION_POPULATE]);
+    if (!farms.length) return { farms: [] };
+
+    // One report query and one crop query for the entire map, never per marker.
+    const reports = await Report.find({
+        ...APPROVED_FARM_REPORT_FILTER,
+        parentId: { $in: farms.map((farm) => farm._id) },
+    }).select("parentId association entityType condition itemIds cropEntries reportedAt createdAt approvalStatus deletedAt").lean();
+    const farmAssociations = new Map(farms.map((farm) => [String(farm._id), String(farm.association?._id ?? farm.association)]));
+    const scopedReports = reports.filter((report) => String(report.association) === farmAssociations.get(String(report.parentId)));
+    const cropIds = [...new Set(scopedReports.flatMap((report) => report.itemIds.map(String)))];
+    const crops = cropIds.length ? await Crop.find({ _id: { $in: cropIds } }).select("name cropType").populate(CROP_TYPE_POPULATE).lean() : [];
+    const totals = deriveFarmReportTotals(scopedReports, crops);
+    const mapped = farms.map((farm) => {
+        const crops = [...(totals.get(String(farm._id))?.values() ?? [])].sort((a, b) => a.name.localeCompare(b.name));
+        return { ...toFarmObject(farm), crops, yieldKg: crops.reduce((sum, crop) => sum + crop.yieldKg, 0) };
+    });
+    return { farms: crop ? mapped.filter((farm) => farm.crops.some((entry) => entry.cropType === crop)) : mapped };
 };
 
 export const getFarms = async ({ search, crop, associationId, all, page, limit, includeDeleted = false }) => {

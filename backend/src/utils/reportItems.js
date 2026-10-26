@@ -1,5 +1,5 @@
 export const REPORT_CONDITIONS = {
-    farm: ["planted", "growing", "withered", "harvested", "damaged"],
+    farm: ["planted", "growing", "withered", "harvested", "damaged", "destroyed"],
     equipment: ["excellent", "good", "maintenance", "damaged", "unusable"],
     livestock: ["healthy", "pregnant", "sick", "injured", "deceased"],
 };
@@ -21,5 +21,5 @@ export function normalizeReportItems(data) {
     const items = (data.items ?? []).map((entry) => ({
         item: entry.itemId ?? entry.item, condition: entry.condition, severity: entry.severity ?? "medium",
     }));
-    return { ...data, items, itemIds: items.map((entry) => entry.item), severity: highestSeverity(items), condition: undefined, parentId: null };
+    return { ...data, items, itemIds: items.map((entry) => entry.item), severity: highestSeverity(items), condition: undefined, parentId: null, cropEntries: [], reportedAt: undefined };
 }

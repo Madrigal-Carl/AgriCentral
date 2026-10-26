@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
     getFarms,
+    getFarmMap,
     createFarm,
     updateFarm,
     deleteFarm,
@@ -67,5 +68,13 @@ export function useDeleteFarm(options = {}) {
             options.onSuccess?.(data, variables, context);
         },
         onError: options.onError,
+    });
+}
+
+export function useFarmMap(filters = {}, options = {}) {
+    return useQuery({
+        queryKey: [...farmKeys.lists(), "map", filters],
+        queryFn: () => getFarmMap(filters),
+        ...options,
     });
 }

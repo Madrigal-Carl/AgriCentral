@@ -3,6 +3,7 @@ import {
     updateFarm,
     deleteFarm,
     getFarms,
+    getFarmMap,
 } from "../services/farm.service.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
@@ -41,4 +42,9 @@ export const getFarmsHandler = asyncHandler(async (req, res) => {
         farms,
         pagination,
     });
+});
+
+export const getFarmMapHandler = asyncHandler(async (req, res) => {
+    const { farms } = await getFarmMap(req.query);
+    return res.status(200).json({ message: "Farm map fetched successfully", farms });
 });

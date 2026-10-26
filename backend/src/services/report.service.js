@@ -1,4 +1,5 @@
 import Report from "../models/report.model.js";
+import { randomUUID } from "node:crypto";
 import Farm from "../models/farm.model.js";
 import Crop from "../models/crop.model.js";
 import Livestock from "../models/livestock.model.js";
@@ -10,8 +11,52 @@ import { EMAIL_JOBS } from "../queues/email.jobs.js";
 import { getReportItems, highestSeverity, normalizeReportItems } from "../utils/reportItems.js";
 import { createReportSchema } from "../schemas/report.schema.js";
 import { CROP_TYPE_POPULATE, EQUIPMENT_TYPE_POPULATE, ANIMAL_POPULATE } from "../utils/maintenanceLinks.js";
+import { hasFarmReportMeasurements, isFarmReportApproved } from "../utils/farmReportTotals.js";
 
 const STAGE_ROLES = ["aew", "coordinator"];
+
+function fail(message, statusCode = 409) {
+    const error = new Error(message);
+    error.statusCode = statusCode;
+    throw error;
+}
+
+async function withReportLock(id, action) {
+    const token = randomUUID();
+    const report = await Report.findOneAndUpdate(
+        { _id: id, deletedAt: null, operationLock: null },
+        { $set: { operationLock: token } },
+        { returnDocument: "after", timestamps: false },
+    );
+    if (!report) {
+        if (!await Report.exists({ _id: id, deletedAt: null })) fail("Report not found", 404);
+        fail("This report is being updated. Please try again.");
+    }
+    try {
+        return await action(report);
+    } finally {
+        await Report.updateOne({ _id: id, operationLock: token }, { $unset: { operationLock: "" } }, { timestamps: false });
+    }
+}
+
+async function assertCanManageFarmReport(report, actingUser) {
+    if (report.entityType !== "farm") return;
+    if (!["far", "aew"].includes(actingUser?.role)) fail("Only FAR or AEW users can manage crop reports", 403);
+    if (actingUser.role === "far") {
+        const associationId = await resolveFarAssociationId(actingUser._id);
+        if (!associationId || String(report.association) !== associationId) fail("You may only manage your association's crop reports", 403);
+    }
+}
+
+async function validateFarmReport(data, associationId) {
+    const farm = await Farm.findOne({ _id: data.parentId, deletedAt: null }).select("association crops.crop").lean();
+    if (!farm) fail("Selected farm was not found", 404);
+    if (!associationId || String(farm.association) !== String(associationId)) fail("The farm must belong to the report's association", 403);
+    const farmCrops = new Set(farm.crops.map((entry) => String(entry.crop)));
+    if (data.itemIds.some((id) => !farmCrops.has(String(id)))) fail("Selected crops must belong to the selected farm", 400);
+    const crops = await Crop.find({ _id: { $in: data.itemIds }, deletedAt: null }).select("association").lean();
+    if (crops.length !== data.itemIds.length || crops.some((crop) => String(crop.association) !== String(associationId))) fail("Selected crops must belong to the report's association", 400);
+}
 
 // entityType here describes what's being reported ON, not who submitted it.
 // "farm" reports are actually about specific crops within a farm (parentId),
@@ -179,6 +224,7 @@ async function sendReportRejectedEmail(report, role, remarks) {
 export const createReport = async (data, actingUser) => {
     const { associationId, ...reportData } = normalizeReportItems(data);
     const role = actingUser?.role;
+    if (!["far", "aew"].includes(role)) fail("Only FAR or AEW users can submit reports", 403);
 
     const resolvedAssociationId =
         role === "far"
@@ -197,24 +243,19 @@ export const createReport = async (data, actingUser) => {
     }
 
     if (reportData.entityType === "farm") {
-        const farmExists = await Farm.exists({ _id: reportData.parentId, deletedAt: null });
-        if (!farmExists) {
-            const error = new Error("Selected farm was not found");
-            error.statusCode = 404;
-            throw error;
-        }
+        await validateFarmReport(reportData, resolvedAssociationId);
     }
 
-    // Single-stage approval depending on who submitted — far's reports
-    // stop at aew, aew's reports go to coordinator. Never both.
+    // Every crop report starts at AEW; other entity types retain their workflow.
     const initialApprovalStatus =
-        role === "far"
+        reportData.entityType === "farm" || role === "far"
             ? { aew: { status: "pending" } }
             : { coordinator: { status: "pending" } };
 
     const report = await Report.create({
         ...reportData,
         association: resolvedAssociationId || undefined,
+        submittedByRole: role,
         approvalStatus: initialApprovalStatus,
     });
 
@@ -233,14 +274,10 @@ export const createReport = async (data, actingUser) => {
     return report;
 };
 
-export const updateReport = async (id, data) => {
-    const report = await Report.findOne({ _id: id, deletedAt: null });
-    if (!report) {
-        const notFoundError = new Error("Report not found");
-        notFoundError.statusCode = 404;
-        throw notFoundError;
-    }
-    if (STAGE_ROLES.some((stage) => ["approved", "denied"].includes(report.approvalStatus[stage]?.status))) {
+export const updateReport = async (id, data, actingUser) => withReportLock(id, async (report) => {
+    await assertCanManageFarmReport(report, actingUser);
+    if ((report.entityType === "farm" || data.entityType === "farm") && data.entityType && data.entityType !== report.entityType) fail("A crop report's type cannot be changed", 400);
+    if (report.entityType !== "farm" && STAGE_ROLES.some((stage) => ["approved", "denied"].includes(report.approvalStatus[stage]?.status))) {
         const error = new Error("Reviewed reports cannot be edited");
         error.statusCode = 409;
         throw error;
@@ -249,6 +286,8 @@ export const updateReport = async (id, data) => {
         ...report.toObject(),
         parentId: report.parentId ? String(report.parentId) : undefined,
         itemIds: report.itemIds.map(String),
+        cropEntries: report.cropEntries?.map((entry) => ({ crop: String(entry.crop), quantity: entry.quantity, yieldKg: entry.yieldKg })),
+        reportedAt: report.reportedAt?.toISOString(),
         items: (data.entityType ?? report.entityType) === "farm" ? undefined : getReportItems(report).map((entry) => ({ itemId: String(entry.item), condition: entry.condition, severity: entry.severity })),
         ...data,
     };
@@ -265,106 +304,82 @@ export const updateReport = async (id, data) => {
         error.statusCode = 404;
         throw error;
     }
+    if (report.entityType === "farm") {
+        const association = actingUser.role === "far" ? report.association : associationId ?? report.association;
+        await validateFarmReport(reportData, association);
+        reportData.association = association;
+    }
     report.set(reportData);
-    if (associationId !== undefined) report.association = associationId;
+    if (associationId !== undefined && actingUser?.role !== "far") report.association = associationId;
+    if (report.entityType === "farm") report.approvalStatus = { aew: { status: "pending" } };
     await report.save();
+    if (report.entityType === "farm") await createLog({
+        entityType: "report", entityId: report._id, association: report.association,
+        message: `Crop report "${report.title}" was edited. Previous approvals were invalidated; AEW and Coordinator approval are required again.`,
+    });
     return report;
-};
+});
 
 export const updateReportApproval = async (id, { status, remarks }, actingUser) => {
     const role = actingUser?.role;
+    if (!STAGE_ROLES.includes(role)) fail("Only aew or coordinator users can review reports", 403);
+    if (!["approved", "denied"].includes(status)) fail("Invalid review decision", 400);
 
-    if (!STAGE_ROLES.includes(role)) {
-        const error = new Error("Only aew or coordinator users can review reports");
-        error.statusCode = 403;
-        throw error;
-    }
+    return withReportLock(id, async (report) => {
+        const currentStageEntry = report.approvalStatus?.[role];
+        if (!currentStageEntry) fail("This report is not currently awaiting your review", 403);
+        const withdrawingApproval = report.entityType === "farm" && role === "coordinator"
+            && status === "denied" && isFarmReportApproved(report);
+        if (currentStageEntry.status !== "pending" && !withdrawingApproval) fail("This report has already been reviewed");
 
-    const report = await Report.findOne({ _id: id, deletedAt: null });
-
-    if (!report) {
-        const notFoundError = new Error("Report not found");
-        notFoundError.statusCode = 404;
-        throw notFoundError;
-    }
-
-    const currentStageEntry = report.approvalStatus?.[role];
-
-    if (!currentStageEntry) {
-        const error = new Error("This report is not currently awaiting your review");
-        error.statusCode = 403;
-        throw error;
-    }
-
-    if (currentStageEntry.status !== "pending") {
-        const error = new Error("This report has already been reviewed");
-        error.statusCode = 409;
-        throw error;
-    }
-
-    report.approvalStatus[role] = {
-        status,
-        approvedBy: actingUser._id,
-        approvedAt: new Date(),
-        remarks: remarks || "",
-    };
-
-    if (status === "approved" && report.entityType !== "farm") {
-        for (const entry of getReportItems(report)) {
-            await ENTITY_MODELS[report.entityType].updateOne(
-                { _id: entry.item, deletedAt: null },
-                {
-                    $set: {
-                        condition: entry.condition,
-                        ...(report.entityType === "livestock" ? { deceasedAt: entry.condition === "deceased" ? new Date() : null } : {}),
-                    },
-                    ...(report.entityType === "livestock" ? { $inc: { __v: 1 } } : {}),
-                },
-                { runValidators: true },
-            );
+        if (report.entityType === "farm") {
+            if (STAGE_ROLES.some((stage) => report.approvalStatus[stage]?.status === "denied")) fail("A denied report must be edited and submitted for review again");
+            if (role === "coordinator" && report.approvalStatus.aew?.status !== "approved") fail("AEW must approve the crop report first", 403);
+            if (role === "aew" && report.approvalStatus.coordinator?.status === "approved") fail("Coordinator has already acted");
+            if (status === "denied" && (!remarks || remarks.trim().length < 5)) fail("Denial remarks must contain at least 5 characters", 400);
+            if (status === "approved" && !hasFarmReportMeasurements(report)) fail("Correct this legacy crop report's date and measurements before approval", 400);
         }
-    }
 
-    await report.save();
+        report.approvalStatus[role] = { status, approvedBy: actingUser._id, approvedAt: new Date(), remarks: remarks || "" };
+        if (report.entityType === "farm" && role === "aew") {
+            report.approvalStatus.coordinator = status === "approved" ? { status: "pending" } : undefined;
+        }
 
-    const stageLabel = humanize(role);
-    const decisionVerb = status === "approved" ? "approved" : "denied";
-    const remarksSuffix = remarks ? ` Remarks: "${remarks}"` : "";
+        if (status === "approved" && report.entityType !== "farm") {
+            for (const entry of getReportItems(report)) {
+                await ENTITY_MODELS[report.entityType].updateOne(
+                    { _id: entry.item, deletedAt: null },
+                    {
+                        $set: {
+                            condition: entry.condition,
+                            ...(report.entityType === "livestock" ? { deceasedAt: entry.condition === "deceased" ? new Date() : null } : {}),
+                        },
+                        ...(report.entityType === "livestock" ? { $inc: { __v: 1 } } : {}),
+                    },
+                    { runValidators: true },
+                );
+            }
+        }
 
-    // Single decision, full stop — aew approving a far report and
-    // coordinator approving an aew report both terminate here. No
-    // chaining to a next stage (unlike the multi-stage request flow).
-    await createLog({
-        entityType: "report",
-        entityId: report._id,
-        association: report.association,
-        message: `${stageLabel} has ${decisionVerb} the report "${report.title}".${remarksSuffix}`,
+        // Missing legacy measurements must block approval, not rejection.
+        const rejectingLegacy = report.entityType === "farm" && status === "denied" && !hasFarmReportMeasurements(report);
+        await report.save({ validateBeforeSave: !rejectingLegacy });
+        await createLog({
+            entityType: "report", entityId: report._id, association: report.association,
+            message: `${humanize(role)} has ${status} the report "${report.title}".${remarks ? ` Remarks: "${remarks}"` : ""}`,
+        });
+        // AEW approval is intermediate for crop reports, not a final outcome.
+        if (status === "approved" && (report.entityType !== "farm" || role === "coordinator")) await sendReportApprovedEmail(report, role);
+        else if (status === "denied") await sendReportRejectedEmail(report, role, remarks);
+        return report;
     });
-
-    // Terminal either way (approve or deny) — send the association's
-    // user their outcome email right away rather than waiting on any
-    // further stage, since reports never chain past a single reviewer.
-    if (status === "approved") {
-        await sendReportApprovedEmail(report, role);
-    } else {
-        await sendReportRejectedEmail(report, role, remarks);
-    }
-
-    return report;
 };
 
-export const deleteReport = async (id) => {
-    const report = await Report.findOneAndUpdate(
-        { _id: id, deletedAt: null },
-        { $set: { deletedAt: new Date() } },
-        { new: true }
-    );
-
-    if (!report) {
-        const notFoundError = new Error("Report not found");
-        notFoundError.statusCode = 404;
-        throw notFoundError;
-    }
+export const deleteReport = async (id, actingUser) => withReportLock(id, async (report) => {
+    await assertCanManageFarmReport(report, actingUser);
+    // Legacy reports without measurements can still be removed.
+    report.deletedAt = new Date();
+    await Report.updateOne({ _id: report._id }, { $set: { deletedAt: report.deletedAt } });
 
     await createLog({
         entityType: "report",
@@ -374,7 +389,7 @@ export const deleteReport = async (id) => {
     });
 
     return report;
-};
+});
 
 function buildOverallStatusFilter(status) {
     const DENIED_AT_ANY_STAGE = [
@@ -387,25 +402,26 @@ function buildOverallStatusFilter(status) {
     ];
 
     if (status === "denied") return { $or: DENIED_AT_ANY_STAGE };
-    if (status === "approved") return { $or: APPROVED_AT_ANY_STAGE };
-    return { $nor: [...DENIED_AT_ANY_STAGE, ...APPROVED_AT_ANY_STAGE] };
+    const FINAL_APPROVAL = [
+        { entityType: "farm", "approvalStatus.aew.status": "approved", "approvalStatus.coordinator.status": "approved" },
+        { entityType: { $ne: "farm" }, $or: APPROVED_AT_ANY_STAGE, $nor: DENIED_AT_ANY_STAGE },
+    ];
+    if (status === "approved") return { $or: FINAL_APPROVAL };
+    return { $nor: [...DENIED_AT_ANY_STAGE, ...FINAL_APPROVAL] };
 }
 
-// stage means "who submitted it", not "who reviews it":
-//   - "far" -> reports submitted by a far user (only ever get an aew subdoc)
-//   - "aew" -> reports submitted by an aew user (only ever get a
-//              coordinator subdoc)
-// far's own view is also scoped by association (there's exactly one far
-// per association, so association + submittedByRole=far pins it down
-// even though an aew report in that same association shares the
-// association field). aew and coordinator are never association-scoped
-// — they operate across every association (see scopeReportsByRole).
+// Retain submitter filters, with a dedicated Coordinator review queue.
+// Legacy single-stage documents use their old subdocument shape as a fallback.
 function buildSubmittedByRoleFilter(stage) {
+    if (stage === "coordinator") return { $or: [
+        { entityType: "farm", "approvalStatus.aew.status": "approved" },
+        { entityType: { $ne: "farm" }, "approvalStatus.coordinator": { $exists: true } },
+    ] };
     if (stage === "far") {
-        return { "approvalStatus.aew": { $exists: true } };
+        return { $or: [{ submittedByRole: "far" }, { submittedByRole: { $exists: false }, "approvalStatus.aew": { $exists: true } }] };
     }
     if (stage === "aew") {
-        return { "approvalStatus.coordinator": { $exists: true } };
+        return { $or: [{ submittedByRole: "aew" }, { submittedByRole: { $exists: false }, "approvalStatus.coordinator": { $exists: true } }] };
     }
     return {};
 }
@@ -436,8 +452,10 @@ export const getReports = async ({
     if (associationId) filter.association = associationId;
     if (search) filter.title = new RegExp(escapeRegex(search), "i");
 
-    if (stage) Object.assign(filter, buildSubmittedByRoleFilter(stage));
-    if (status) Object.assign(filter, buildOverallStatusFilter(status));
+    if (stage || status) filter.$and = [
+        ...(stage ? [buildSubmittedByRoleFilter(stage)] : []),
+        ...(status ? [buildOverallStatusFilter(status)] : []),
+    ];
 
     if (all) {
         const reports = await Report.find(filter)

@@ -3,7 +3,7 @@ import { DefList, Section } from "@/components/drawer";
 import { StatusPill } from "@/components/public";
 import { fmtDate } from "@/utils/format";
 import { typeTone, typeLabel, sevTone, sevLabel, healthTone, condTone } from "@/constants/data";
-import { getReportStatus, getReportItems, getReportSeverity, reportItemLabel, statusTone, statusLabel } from "@/utils/report";
+import { getReportStatus, getReportItems, getReportSeverity, getSubmittedByRole, reportItemLabel, statusTone, statusLabel } from "@/utils/report";
 import { Button } from "@/components/ui";
 
 // Attachments are { url, publicId, resourceType } objects — there's no
@@ -30,17 +30,7 @@ function itemLabel(entityType, item) {
     return `${item.name} (${item.propertyNumber})`;
   }
   // farm reports are actually about crops
-  return `${item.quantity} ${item.name}`;
-}
-
-// approvalStatus only ever has one of these two subdocs, and which one
-// tells you who submitted the report: a far-submitted report only ever
-// gets an aew subdoc, an aew-submitted report only ever gets a
-// coordinator subdoc (see createReport / buildSubmittedByRoleFilter).
-function submittedByRole(row) {
-  if (row.approvalStatus?.aew) return "far";
-  if (row.approvalStatus?.coordinator) return "aew";
-  return null;
+  return `${item.name ?? "Unknown crop"}${item.reportedQuantity != null ? ` — ${item.reportedQuantity} crop units` : ""}${item.yieldKg != null ? ` — ${item.yieldKg} kg yielded` : ""}`;
 }
 
 export function ReportDrawer({ row, onClose, onApprove, onDeny }) {
@@ -49,7 +39,7 @@ export function ReportDrawer({ row, onClose, onApprove, onDeny }) {
   const severity = getReportSeverity(row);
   const files = row.attachments ?? row.files ?? [];
   const history = row.history ?? [];
-  const submitterRole = submittedByRole(row);
+  const submitterRole = getSubmittedByRole(row);
 
   return (
     <div className="fixed inset-0 z-50" onClick={onClose}>
@@ -106,7 +96,8 @@ export function ReportDrawer({ row, onClose, onApprove, onDeny }) {
                 ...(row.entityType === "farm" && row.parent
                   ? [["Farm", `${row.parent.tag} — ${row.parent.address}`]]
                   : []),
-                ["Date", fmtDate(row.createdAt)],
+                ["Submitted", fmtDate(row.createdAt)],
+                ...(row.entityType === "farm" ? [["Report date", fmtDate(row.reportedAt ?? row.createdAt)]] : []),
               ]}
             />
           </Section>
@@ -136,6 +127,22 @@ export function ReportDrawer({ row, onClose, onApprove, onDeny }) {
               <div className="text-sm text-secondary">No items listed.</div>
             )}
           </Section>
+
+          {row.entityType === "farm" && <Section icon={Info} title="Approvals">
+            <div className="space-y-2">
+              {["aew", "coordinator"].map((stage) => {
+                const entry = row.approvalStatus?.[stage];
+                return <div key={stage} className="border border-border p-3 text-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <span>{stage === "aew" ? "AEW" : "Coordinator"}</span>
+                    {entry ? <StatusPill tone={statusTone[entry.status]}>{statusLabel[entry.status]}</StatusPill> : <span className="text-xs text-secondary">Awaiting AEW approval</span>}
+                  </div>
+                  {entry?.approvedAt && <p className="mt-1 text-xs text-secondary">{fmtDate(entry.approvedAt)}</p>}
+                  {entry?.remarks && <p className="mt-1 whitespace-pre-wrap">{entry.remarks}</p>}
+                </div>;
+              })}
+            </div>
+          </Section>}
 
           <Section icon={FileText} title="Details">
             <p className="whitespace-pre-wrap text-sm text-foreground">

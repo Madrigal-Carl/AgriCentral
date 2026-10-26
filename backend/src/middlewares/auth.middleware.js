@@ -183,9 +183,8 @@ export const scopeByApprovalStage = (req, res, next) => {
   next();
 };
 
-// Reports don't use the request flow's stage-chain (coordinator ->
-// governor -> head). Instead, "stage" here means "who submitted the
-// report":
+// Crop reports use AEW -> Coordinator; other reports keep one reviewer.
+// "stage" supports both submitter visibility and the Coordinator queue:
 //   far         -> pinned to their own association AND to far-submitted
 //                  reports only (an aew report can share that same
 //                  association, so association alone can't isolate
@@ -193,8 +192,8 @@ export const scopeByApprovalStage = (req, res, next) => {
 //   aew         -> sees every far-submitted report (any association, any
 //                  status, reviewable or already decided) plus every
 //                  aew-submitted report. No association restriction.
-//   coordinator -> sees only aew-submitted reports, across every
-//                  association. No association restriction either.
+//   coordinator -> sees crop reports already approved by AEW, plus
+//                  non-crop reports assigned to Coordinator, across associations.
 //
 // Note: there is no `association` field on the User model — a far
 // user's association has to be looked up from the Association
@@ -220,7 +219,7 @@ export const scopeReportsByRole = async (req, res, next) => {
       delete query.stage;
     } else if (role === "coordinator") {
       delete query.associationId;
-      query.stage = "aew";
+      query.stage = "coordinator";
     } else {
       delete query.associationId;
       delete query.stage;

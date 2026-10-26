@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, useEffect } from "react";
 import { Wheat, Search } from "lucide-react";
 import { PageHeader } from "@/components/public";
 import { Select } from "@/components/ui";
-import { useFarms } from "@/hooks/useFarms";
+import { useFarmMap } from "@/hooks/useFarms";
 import { useLookups, lookupOptions } from "@/hooks/useLookups";
 import { BOAC_CENTER } from "@/constants/data";
 
@@ -36,7 +36,7 @@ function popupHtml(farm) {
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 0;">
           <span style="font-size:13px;color:#0f172a;font-weight:500;">${escapeHtml(c.name)}</span>
           <span style="font-size:12px;font-weight:600;color:#64748b;">
-            ${c.planted.toLocaleString()} planted
+             ${c.count.toLocaleString()} standing · ${c.yieldKg.toLocaleString()} kg yielded
           </span>
         </div>`,
     )
@@ -63,7 +63,7 @@ function popupHtml(farm) {
       </div>
       <div style="border-top:1px solid #e2e8f0;padding-top:6px;margin-bottom:6px;">
         <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#64748b;margin-bottom:2px;">
-          Yielded Crops
+           Yielded kg · approved reports
         </div>
         <div style="font-size:15px;font-weight:700;color:#0f172a;">
           ${farm.yieldKg.toLocaleString()} kg
@@ -73,7 +73,7 @@ function popupHtml(farm) {
         <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#64748b;margin-bottom:2px;">
           Crops
         </div>
-        ${crops || '<div style="font-size:12px;color:#64748b;">No crops</div>'}
+         ${crops || '<div style="font-size:12px;color:#64748b;">No fully approved crop reports</div>'}
       </div>
     </div>
   `;
@@ -185,12 +185,8 @@ export function FarmMapsPage() {
   const [search, setSearch] = useState("");
   const [cropFilter, setCropFilter] = useState("");
 
-  // The backend already resolves `search` (tag/address) and `crop` (crop
-  // name) into a farm filter server-side (see getFarms in farm.service.js),
-  // so both are sent straight through as query params rather than
-  // re-filtered client-side.
-  const { data, isError, error } = useFarms({
-    all: true,
+  // Map-specific data is derived from fully approved reports on the backend.
+  const { data, isError, error } = useFarmMap({
     ...(search ? { search } : {}),
     ...(cropFilter ? { crop: cropFilter } : {}),
   });
@@ -210,18 +206,8 @@ export function FarmMapsPage() {
       farmers: (f.assignedFarmers || []).map((a) =>
         typeof a.farmer === "string" ? a.farmer : a.farmer?.fullName,
       ),
-      crops: (f.crops || []).map((c) => ({
-        name:
-          typeof c.crop === "string"
-            ? c.crop
-            : (c.crop?.name ?? "Unknown crop"),
-        planted: c.quantities?.planted || 0,
-        yield: c.quantities?.harvested || 0,
-      })),
-      yieldKg: (f.crops || []).reduce(
-        (sum, c) => sum + (c.quantities?.harvested || 0),
-        0,
-      ),
+      crops: f.crops ?? [],
+      yieldKg: f.yieldKg ?? 0,
     }));
   }, [data]);
 
@@ -233,7 +219,7 @@ export function FarmMapsPage() {
     <div>
       <PageHeader
         title="Farm Maps"
-        subtitle="Geospatial view of all farms. Hover a pin to see the farmer and crops."
+        subtitle="Farm crops and yielded kg from reports approved by both AEW and Coordinator."
       />
 
       {isError && (
@@ -266,7 +252,7 @@ export function FarmMapsPage() {
 
       <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-secondary">
         <Wheat className="h-3.5 w-3.5 text-accent" />
-        <span>Pins show farm location, farmer, and planted crops.</span>
+        <span>Pins show standing crops and cumulative yielded kg from fully approved reports only.</span>
       </div>
     </div>
   );

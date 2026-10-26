@@ -17,6 +17,7 @@ import {
 } from "@/components/modal";
 import {
   getReviewerRole,
+  canWithdrawFarmApproval,
   getReportStatus,
   getReportItems,
   getReportSeverity,
@@ -244,8 +245,9 @@ export function ReportsPage() {
                 role === reviewerRole &&
                 reportStatus === "pending";
 
-              const canEditThis = can.edit && reportStatus === "pending";
-              const canDeleteThis = can.delete && reportStatus === "pending";
+              const canEditThis = can.edit && (r.entityType === "farm" || reportStatus === "pending");
+              const canDeleteThis = can.delete && (r.entityType === "farm" || reportStatus === "pending");
+              const canWithdrawThis = can.review && canWithdrawFarmApproval(r, role);
 
               return (
                 <RowActions
@@ -253,7 +255,7 @@ export function ReportsPage() {
                   onEdit={canEditThis ? () => openEdit(r) : undefined}
                   onDelete={canDeleteThis ? () => askDelete(r) : undefined}
                   onApprove={canReviewThis ? () => askApprove(r) : undefined}
-                  onDeny={canReviewThis ? () => askDeny(r) : undefined}
+                  onDeny={canReviewThis || canWithdrawThis ? () => askDeny(r) : undefined}
                 />
               );
             },
@@ -271,7 +273,7 @@ export function ReportsPage() {
       )}
       {drawer && <ReportDrawer row={drawer} onClose={() => setDrawer(null)}
         onApprove={can.review && role === getReviewerRole(drawer) && getReportStatus(drawer) === "pending" ? () => askApprove(drawer) : undefined}
-        onDeny={can.review && role === getReviewerRole(drawer) && getReportStatus(drawer) === "pending" ? () => askDeny(drawer) : undefined}
+        onDeny={can.review && ((role === getReviewerRole(drawer) && getReportStatus(drawer) === "pending") || canWithdrawFarmApproval(drawer, role)) ? () => askDeny(drawer) : undefined}
       />}
       {confirmDelete && can.delete && (
         <DeleteConfirmModal

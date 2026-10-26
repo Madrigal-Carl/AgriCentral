@@ -32,6 +32,12 @@ const baseReportObject = z.object({
         .string()
         .trim()
         .optional(),
+    reportedAt: z.string().datetime({ offset: true, message: "Select a valid report date" }).optional(),
+    cropEntries: z.array(z.object({
+        crop: objectId("Invalid crop id"),
+        quantity: z.number().finite().positive("Quantity must be greater than zero").optional(),
+        yieldKg: z.number().finite().positive("Yield kg must be greater than zero").optional(),
+    })).optional(),
     itemIds: z
         .array(objectId("Invalid item id"))
         .refine((arr) => new Set(arr).size === arr.length, {
@@ -57,6 +63,18 @@ export function refineReportItems(data, ctx, partial = false) {
         if ((!partial || data.itemIds) && !data.itemIds?.length) issue(["itemIds"], "Select at least one crop");
         if ((!partial || data.condition !== undefined) && !REPORT_CONDITIONS.farm.includes(data.condition)) issue(["condition"], "Select a crop condition");
         if (data.items?.length) issue(["items"], "Use itemIds for farm reports");
+        if (!partial && !data.reportedAt) issue(["reportedAt"], "Report date is required");
+        if (!partial || data.cropEntries) {
+            const entries = data.cropEntries ?? [];
+            if (!entries.length) issue(["cropEntries"], "Enter measurements for each selected crop");
+            const ids = entries.map((entry) => entry.crop);
+            if (new Set(ids).size !== ids.length) issue(["cropEntries"], "Duplicate crops are not allowed");
+            if (!partial && (ids.length !== data.itemIds?.length || ids.some((id) => !data.itemIds?.includes(id)))) issue(["cropEntries"], "Measurements must match the selected crops");
+            entries.forEach((entry, index) => {
+                if (["planted", "destroyed"].includes(data.condition) && entry.quantity === undefined) issue(["cropEntries", index, "quantity"], "Quantity is required");
+                if (data.condition === "harvested" && entry.yieldKg === undefined) issue(["cropEntries", index, "yieldKg"], "Harvested yield (kg) is required");
+            });
+        }
     } else if (data.entityType || data.items) {
         if ((!partial || data.items) && !data.items?.length) issue(["items"], "Select at least one item");
         const seen = new Set();

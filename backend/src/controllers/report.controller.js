@@ -17,7 +17,7 @@ export const createReportHandler = asyncHandler(async (req, res) => {
 });
 
 export const updateReportHandler = asyncHandler(async (req, res) => {
-    const report = await updateReport(req.params.id, req.body);
+    const report = await updateReport(req.params.id, req.body, req.user);
 
     return res.status(200).json({
         message: "Report updated successfully",
@@ -35,7 +35,7 @@ export const updateReportApprovalHandler = asyncHandler(async (req, res) => {
 });
 
 export const deleteReportHandler = asyncHandler(async (req, res) => {
-    const report = await deleteReport(req.params.id);
+    const report = await deleteReport(req.params.id, req.user);
 
     return res.status(200).json({
         message: "Report deleted successfully",

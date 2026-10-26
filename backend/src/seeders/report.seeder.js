@@ -207,6 +207,9 @@ export const seedReports = async ({ farms, livestocks, equipments, users } = {})
             severity: data.severity,
             entityType: data.entityType,
             parentId: data.entityType === "farm" ? items[0]._id : null,
+            reportedAt: data.entityType === "farm" ? new Date() : undefined,
+            cropEntries: data.entityType === "farm" ? items.flatMap((farm) => farm.crops.map((entry) => ({ crop: entry.crop }))) : [],
+            submittedByRole: data.entityType === "farm" || data.coordinatorStatus === "pending" ? "far" : "aew",
             condition: data.entityType === "farm" ? data.condition : undefined,
             itemIds: data.entityType === "farm"
                 ? items.flatMap((farm) => farm.crops.map((entry) => entry.crop))
@@ -216,7 +219,12 @@ export const seedReports = async ({ farms, livestocks, equipments, users } = {})
             })),
             details: data.details,
             approvalStatus: {
-                ...(data.coordinatorStatus === "pending"
+                ...(data.entityType === "farm"
+                    ? {
+                        aew: buildApproval(data.aewStatus, aewUser),
+                        ...(data.aewStatus === "approved" ? { coordinator: buildApproval(data.coordinatorStatus, coordinatorUser) } : {}),
+                    }
+                    : data.coordinatorStatus === "pending"
                     ? { aew: buildApproval(data.aewStatus, aewUser) }
                     : { coordinator: buildApproval(data.coordinatorStatus, coordinatorUser) }),
             },

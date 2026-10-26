@@ -9,6 +9,7 @@ import {
 import { uploadToCloudinary } from "@/services/upload.service";
 import { equipmentKeys } from "@/hooks/useEquipments";
 import { livestockKeys } from "@/hooks/useLivestocks";
+import { farmKeys } from "@/hooks/useFarms";
 
 /* ---------------- Query Keys ---------------- */
 export const reportKeys = {
@@ -62,6 +63,7 @@ export function useCreateReport(options = {}) {
             return createReport({ ...formValues, attachments });
         },
         onSuccess: (data, variables, context) => {
+            queryClient.invalidateQueries({ queryKey: farmKeys.all });
             queryClient.invalidateQueries({ queryKey: reportKeys.lists() });
             options.onSuccess?.(data, variables, context);
         },
@@ -78,6 +80,7 @@ export function useUpdateReport(options = {}) {
             return updateReport(id, { ...formValues, attachments });
         },
         onSuccess: (data, variables, context) => {
+            queryClient.invalidateQueries({ queryKey: farmKeys.all });
             queryClient.invalidateQueries({ queryKey: reportKeys.lists() });
             queryClient.invalidateQueries({
                 queryKey: reportKeys.detail(variables.id),
@@ -94,6 +97,7 @@ export function useUpdateReportApproval(options = {}) {
     return useMutation({
         mutationFn: ({ id, ...data }) => updateReportApproval(id, data),
         onSuccess: (data, variables, context) => {
+            queryClient.invalidateQueries({ queryKey: farmKeys.all });
             queryClient.invalidateQueries({ queryKey: equipmentKeys.all });
             queryClient.invalidateQueries({ queryKey: livestockKeys.all });
             queryClient.invalidateQueries({ queryKey: ["analytics"] });
@@ -114,6 +118,7 @@ export function useDeleteReport(options = {}) {
     return useMutation({
         mutationFn: (id) => deleteReport(id),
         onSuccess: (data, variables, context) => {
+            queryClient.invalidateQueries({ queryKey: farmKeys.all });
             queryClient.invalidateQueries({ queryKey: reportKeys.lists() });
             queryClient.removeQueries({ queryKey: reportKeys.detail(variables) });
             options.onSuccess?.(data, variables, context);

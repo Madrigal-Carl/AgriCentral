@@ -19,3 +19,8 @@ export async function deleteFarm(id) {
     const response = await api.delete(`/farms/${id}`);
     return response.data;
 }
+
+export async function getFarmMap(params) {
+    const response = await api.get("/farms/map", { params });
+    return response.data;
+}
