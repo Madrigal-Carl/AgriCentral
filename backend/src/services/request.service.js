@@ -33,12 +33,13 @@ function fail(message, statusCode = 409) {
 
 // The inventory writes use compare-and-set filters; this separate request-level
 // lock also prevents a release racing a revert (or two decisions on one stage).
-async function withRequestLock(id, action, { skipIfBusy = false, timestamps = true } = {}) {
+async function withRequestLock(id, action, { skipIfBusy = false } = {}) {
     const token = randomUUID();
+    // Only successful request saves count as activity, not lock bookkeeping.
     const request = await Request.findOneAndUpdate(
         { _id: id, deletedAt: null, operationLock: null },
         { $set: { operationLock: token } },
-        { new: true, timestamps },
+        { new: true, timestamps: false },
     );
     if (!request) {
         if (skipIfBusy) return false;
@@ -48,7 +49,7 @@ async function withRequestLock(id, action, { skipIfBusy = false, timestamps = tr
     try {
         return await action(request);
     } finally {
-        await Request.updateOne({ _id: id, operationLock: token }, { $unset: { operationLock: "" } }, { timestamps });
+        await Request.updateOne({ _id: id, operationLock: token }, { $unset: { operationLock: "" } }, { timestamps: false });
     }
 }
 
@@ -337,53 +338,25 @@ export async function autoDenyStaleRequests() {
     const days = Number(process.env.AUTO_DENY_DAYS ?? 7);
     if (!Number.isFinite(days) || days <= 0) throw new Error("AUTO_DENY_DAYS must be a positive number");
     const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-    const candidates = await Request.aggregate([
-        {
-            $match: {
-                deletedAt: null,
-                releaseStatus: "pending",
-                ...buildOverallStatusFilter("pending"),
-                $or: STAGE_ORDER.map((stage) => ({
-                    [`approvalStatus.${stage}.status`]: "pending",
-                    $or: [
-                        { [`approvalStatus.${stage}.createdAt`]: { $lte: cutoff } },
-                        { [`approvalStatus.${stage}.createdAt`]: null, updatedAt: { $lte: cutoff } },
-                    ],
-                })),
-            },
-        },
-        {
-            $set: {
-                // Sort by the pending stage's age, not the request's submission date.
-                pendingSince: {
-                    $min: STAGE_ORDER.map((stage) => ({
-                        $cond: [
-                            { $eq: [`$approvalStatus.${stage}.status`, "pending"] },
-                            { $ifNull: [`$approvalStatus.${stage}.createdAt`, "$updatedAt"] },
-                            null,
-                        ],
-                    })),
-                },
-            },
-        },
-        { $sort: { pendingSince: 1, _id: 1 } },
-        { $project: { _id: 1 } },
-    ]).limit(50);
+    const candidates = await Request.find({
+        deletedAt: null,
+        releaseStatus: "pending",
+        updatedAt: { $lte: cutoff },
+        ...buildOverallStatusFilter("pending"),
+        $or: STAGE_ORDER.map((stage) => ({ [`approvalStatus.${stage}.status`]: "pending" })),
+    }).sort({ updatedAt: 1, _id: 1 }).limit(50).select("_id").lean();
     const summary = { scanned: candidates.length, denied: 0, skipped: 0, failed: 0 };
     const remarks = `Automatically denied: no action was taken within ${days} days.`;
 
     for (const candidate of candidates) {
         try {
-            // Lock bookkeeping must not reset the legacy updatedAt fallback clock.
             const denied = await withRequestLock(candidate._id, async (request) => {
                 if (request.deletedAt || request.releaseStatus !== "pending"
                     || request.approvalStatus.head?.status === "approved"
                     || STAGE_ORDER.some((stage) => request.approvalStatus[stage]?.status === "denied")) return false;
-                const role = STAGE_ORDER.find((stage) => {
-                    const entry = request.approvalStatus[stage];
-                    const pendingSince = entry?.createdAt ?? request.updatedAt;
-                    return entry?.status === "pending" && pendingSince && pendingSince <= cutoff;
-                });
+                // A successful edit/decision since selection resets the inactivity clock.
+                if (!request.updatedAt || !(request.updatedAt <= cutoff)) return false;
+                const role = STAGE_ORDER.find((stage) => request.approvalStatus[stage]?.status === "pending");
                 if (!role) return false;
 
                 await applyDecision(request, "denied", remarks, { role, _id: null });
@@ -393,7 +366,7 @@ export async function autoDenyStaleRequests() {
                 });
                 await sendRequestRejectedEmail(request, role, remarks, { autoDenied: true, autoDenyDays: days });
                 return true;
-            }, { skipIfBusy: true, timestamps: false });
+            }, { skipIfBusy: true });
             if (denied) summary.denied++;
             else summary.skipped++;
         } catch (error) {
