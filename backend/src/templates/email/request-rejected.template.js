@@ -6,6 +6,8 @@ export const requestRejectedTemplate = ({
   requestedItems,
   stage,
   remarks,
+  autoDenied = false,
+  autoDenyDays = 7,
 }) => `
 <!DOCTYPE html>
 <html lang="en">
@@ -45,13 +47,15 @@ export const requestRejectedTemplate = ({
           <tr>
             <td style="padding:40px 32px;">
               <p style="font-size:16px;color:#111827;margin-top:0;">
-                Dear ${name || "there"},
+                Dear ${escapeHtml(name || "there")},
               </p>
 
               <p style="font-size:16px;line-height:1.7;color:#4b5563;">
                 We regret to inform you that your request titled
-                <strong>"${requestTitle}"</strong> has been denied at the
-                <strong>${stage}</strong> review stage. Requested: ${escapeHtml(requestedItems)}.
+                <strong>"${escapeHtml(requestTitle)}"</strong> has been denied
+                ${autoDenied
+                  ? `automatically because no action was taken within ${escapeHtml(autoDenyDays)} days`
+                  : `at the <strong>${escapeHtml(stage)}</strong> review stage`}. Requested: ${escapeHtml(requestedItems)}.
               </p>
 
               <div style="margin:24px 0;padding:16px 20px;background:#fef2f2;border-left:4px solid #dc2626;border-radius:6px;">

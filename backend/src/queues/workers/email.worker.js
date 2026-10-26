@@ -64,6 +64,8 @@ const emailWorker = new Worker(
             requestedItems: data.requestedItems,
             stage: data.stage,
             remarks: data.remarks,
+            autoDenied: data.autoDenied,
+            autoDenyDays: data.autoDenyDays,
           }),
         });
       },

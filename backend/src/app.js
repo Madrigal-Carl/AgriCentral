@@ -16,6 +16,7 @@ import userRoutes from "./routes/user.routes.js";
 import equipmentRoutes from "./routes/equipment.routes.js";
 import livestockRoutes from "./routes/livestock.routes.js";
 import requestRoutes from "./routes/request.routes.js";
+import cronRoutes from "./routes/cron.routes.js";
 import reportRoutes from "./routes/report.routes.js";
 import analyticRoutes from "./routes/analytics.routes.js";
 import { maintenanceRoutes, lookupRoutes } from "./routes/maintenance.routes.js";
@@ -59,6 +60,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/equipments", equipmentRoutes);
 app.use("/api/livestocks", livestockRoutes);
 app.use("/api/requests", requestRoutes);
+app.use("/api/cron", cronRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/analytics", analyticRoutes);
 for (const type of ["municipalities", "barangays", "crops", "equipments", "animals", "breeds", "colors"]) {
