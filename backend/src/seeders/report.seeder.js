@@ -208,7 +208,10 @@ export const seedReports = async ({ farms, livestocks, equipments, users } = {})
             entityType: data.entityType,
             parentId: data.entityType === "farm" ? items[0]._id : null,
             reportedAt: data.entityType === "farm" ? new Date() : undefined,
-            cropEntries: data.entityType === "farm" ? items.flatMap((farm) => farm.crops.map((entry) => ({ crop: entry.crop }))) : [],
+            cropEntries: data.entityType === "farm" ? items.flatMap((farm) => farm.crops.map((entry) => ({
+                crop: entry.crop, condition: data.condition, severity: data.severity,
+                quantity: Math.max(1, entry.quantities?.[data.condition] ?? entry.quantities?.planted ?? 1),
+            }))) : [],
             submittedByRole: data.entityType === "farm" || data.coordinatorStatus === "pending" ? "far" : "aew",
             condition: data.entityType === "farm" ? data.condition : undefined,
             itemIds: data.entityType === "farm"

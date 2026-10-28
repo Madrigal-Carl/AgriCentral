@@ -59,13 +59,24 @@ async function runSeeders() {
         throw new Error("MONGO_URI is not set in your environment/.env file");
     }
 
-    await mongoose.connect(mongoUri);
+    // Apply indexes explicitly after wiping so old duplicate positions cannot
+    // cause an automatic index build to race the reset.
+    await mongoose.connect(mongoUri, { autoIndex: false });
     console.log("Connected to MongoDB\n");
 
     console.log("Wiping existing data...");
     for (const seeder of [...SEEDERS].reverse()) {
         console.log(`- ${seeder.name}`);
         await seeder.wipe();
+    }
+    console.log("");
+
+    console.log("Synchronizing database indexes...");
+    for (const Model of Object.values(mongoose.models)) {
+        // deleteMany() preserves old indexes. Reconcile changed partial filters
+        // and obsolete definitions before creating the current schema indexes.
+        const dropped = await Model.syncIndexes();
+        console.log(`  ${Model.modelName}: indexes synchronized${dropped.length ? ` (replaced/removed: ${dropped.join(", ")})` : ""}.`);
     }
     console.log("");
 

@@ -128,11 +128,12 @@ farmerSchema.virtual("fullName").get(function () {
 farmerSchema.index(
     { association: 1, position: 1 },
     {
+        name: "unique_active_farmer_position",
         unique: true,
         partialFilterExpression: {
             deletedAt: null,
             association: { $type: "objectId" },
-            position: { $in: ["president", "vice_president", "secretary", "treasurer", "auditor", "pio", "project_manager"] },
+            position: { $in: ["president", "vice_president", "secretary", "treasurer", "auditor", "pio", "project_manager", "director"] },
         },
     },
 );

@@ -35,7 +35,6 @@ const baseReportForm = z.object({
         .trim()
         .max(100, "Title must not exceed 100 characters")
         .refine(isMeaningfulName, MEANINGFUL_NAME_ERROR),
-    severity: z.enum(SEVERITIES).default("medium"),
     entityType: z.enum(ENTITY_TYPES, { required_error: "Select a type" }),
     farm: z.union([objectId("Select a farm"), z.literal("")]).optional(),
     itemIds: z
@@ -46,12 +45,12 @@ const baseReportForm = z.object({
         condition: z.string().trim().min(1, "Select a condition"),
         severity: z.enum(SEVERITIES).default("medium"),
     })).optional(),
-    condition: z.string().optional(),
     reportedAt: z.string().optional(),
     cropEntries: z.array(z.object({
         crop: objectId("Invalid crop"),
+        condition: z.enum(["planted", "growing", "withered", "harvested", "damaged", "destroyed"], { error: "Select a crop stage" }),
+        severity: z.enum(SEVERITIES).default("medium"),
         quantity: z.preprocess((value) => value === "" || value == null ? undefined : value, z.coerce.number().finite().positive("Quantity must be greater than zero").optional()),
-        yieldKg: z.preprocess((value) => value === "" || value == null ? undefined : value, z.coerce.number().finite().positive("Yield kg must be greater than zero").optional()),
     })).optional(),
     details: z
         .string({ required_error: "Details are required" })
@@ -70,14 +69,12 @@ function refineItems(data, ctx) {
         if (!data.farm) issue(["farm"], "Farm is required for farm reports");
         if (!data.itemIds?.length) issue(["itemIds"], "Select at least one crop");
         if (new Set(data.itemIds).size !== data.itemIds?.length) issue(["itemIds"], "Duplicate crops are not allowed");
-        if (!["planted", "growing", "withered", "harvested", "damaged", "destroyed"].includes(data.condition)) issue(["condition"], "Select a crop condition");
         if (!z.string().date().safeParse(data.reportedAt).success) issue(["reportedAt"], "Select a report date");
         const entries = data.cropEntries ?? [];
         if (entries.length !== data.itemIds?.length || new Set(entries.map((entry) => entry.crop)).size !== entries.length
             || entries.some((entry) => !data.itemIds?.includes(entry.crop))) issue(["cropEntries"], "Enter measurements for each selected crop");
         entries.forEach((entry, index) => {
-            if (["planted", "destroyed"].includes(data.condition) && entry.quantity === undefined) issue(["cropEntries", index, "quantity"], "Quantity is required");
-            if (data.condition === "harvested" && entry.yieldKg === undefined) issue(["cropEntries", index, "yieldKg"], "Harvested yield (kg) is required");
+            if (entry.quantity === undefined) issue(["cropEntries", index, "quantity"], entry.condition === "harvested" ? "Harvested quantity (kg) is required" : "Quantity is required");
         });
     } else {
         if (!data.items?.length) issue(["items"], "Select at least one item");

@@ -22,7 +22,7 @@ const resolveAssociationId = async (associationId, authenticatedUserId) => {
 };
 
 async function checkPosition(association, position, id) {
-    if (!association || !["president", "vice_president", "secretary", "treasurer", "auditor", "pio", "project_manager"].includes(position)) return;
+    if (!association || !position || position === "member") return;
     const existing = await Farmer.exists({ association, position, deletedAt: null, ...(id ? { _id: { $ne: id } } : {}) });
     if (existing) {
         const error = new Error("This position is already taken in this association");

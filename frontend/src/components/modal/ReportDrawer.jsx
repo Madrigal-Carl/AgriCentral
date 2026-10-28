@@ -90,7 +90,6 @@ export function ReportDrawer({ row, onClose, onApprove, onDeny }) {
                 ],
                 ["Title", row.title],
                 ["Type", typeLabel[row.entityType] ?? row.entityType],
-                ...(row.entityType === "farm" ? [["Condition", row.condition ?? "—"]] : []),
                 ["Severity", sevLabel[severity]],
                 ["Status", statusLabel[reportStatus]],
                 ...(row.entityType === "farm" && row.parent
@@ -116,10 +115,10 @@ export function ReportDrawer({ row, onClose, onApprove, onDeny }) {
                     className="border border-border bg-muted-30 px-3 py-2 text-sm text-foreground"
                   >
                     {row.entityType === "farm" ? itemLabel(row.entityType, item) : reportItemLabel(row.entityType, item)}
-                    {row.entityType !== "farm" && <div className="mt-2 flex flex-wrap gap-2">
-                      <StatusPill tone={(row.entityType === "equipment" ? condTone : healthTone)?.[item.condition] ?? "info"}>{item.condition ?? "—"}</StatusPill>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <StatusPill tone={(row.entityType === "equipment" ? condTone : row.entityType === "livestock" ? healthTone : {})?.[item.condition] ?? "info"}>{row.entityType === "farm" ? "Staged: " : ""}{item.condition ?? "—"}</StatusPill>
                       <StatusPill tone={sevTone[item.severity]}>{sevLabel[item.severity]}</StatusPill>
-                    </div>}
+                    </div>
                   </li>
                 ))}
               </ul>

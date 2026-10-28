@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { REPORT_CONDITIONS } from "../utils/reportItems.js";
+import { getCropReportEntries, highestSeverity, REPORT_CONDITIONS } from "../utils/reportItems.js";
 import { hasFarmReportMeasurements } from "../utils/farmReportTotals.js";
 
 const attachmentSchema = new mongoose.Schema(
@@ -83,7 +83,7 @@ const reportSchema = new mongoose.Schema(
         },
         condition: {
             type: String,
-            required: function () { return this.entityType === "farm"; },
+            // Read-only fallback for reports created before per-crop stages.
             trim: true,
         },
         items: [{
@@ -95,6 +95,8 @@ const reportSchema = new mongoose.Schema(
         cropEntries: [{
             _id: false,
             crop: { type: mongoose.Schema.Types.ObjectId, ref: "Crop", required: true },
+            condition: { type: String, enum: REPORT_CONDITIONS.farm },
+            severity: { type: String, enum: ["low", "medium", "high", "critical"] },
             quantity: { type: Number, min: 0 },
             yieldKg: { type: Number, min: 0 },
         }],
@@ -140,15 +142,19 @@ const reportSchema = new mongoose.Schema(
 reportSchema.pre("validate", function () {
     if (this.entityType !== "farm" && this.items?.length) {
         this.itemIds = this.items.map((entry) => entry.item);
-        const order = ["low", "medium", "high", "critical"];
-        this.severity = order[Math.max(...this.items.map((entry) => order.indexOf(entry.severity)))];
+        this.severity = highestSeverity(this.items);
         this.condition = undefined;
     }
     if (this.entityType === "farm" && !this.parentId) {
         throw new Error("parentId (farm) is required for farm reports");
     }
-    if (this.entityType === "farm" && (!REPORT_CONDITIONS.farm.includes(this.condition) || !hasFarmReportMeasurements(this))) {
-        throw new Error("Crop reports require a report date and per-crop quantities (planted/destroyed) or yield kg (harvested)");
+    if (this.entityType === "farm") {
+        this.cropEntries = getCropReportEntries(this);
+        this.severity = highestSeverity(this.cropEntries);
+        this.condition = undefined;
+        if (!hasFarmReportMeasurements(this)) {
+            throw new Error("Crop reports require a report date, per-crop stages and quantities, or yield kg for harvested crops");
+        }
     }
 });
 

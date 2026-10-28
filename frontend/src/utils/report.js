@@ -42,18 +42,18 @@ export function getReportItems(report) {
         return {
             ...entity,
             itemId: String(entry.itemId ?? entity._id ?? entry.item),
-            condition: entry.condition ?? report.condition,
-            severity: entry.severity ?? report.severity ?? "medium",
-            reportedQuantity: measurement?.quantity,
-            yieldKg: measurement?.yieldKg,
+            condition: measurement?.condition ?? entry.condition ?? report.condition,
+            severity: measurement?.severity ?? entry.severity ?? report.severity ?? "medium",
+            reportedQuantity: measurement?.quantity ?? entry.reportedQuantity,
+            yieldKg: measurement?.yieldKg ?? entry.yieldKg,
         };
     });
 }
 
 export function getReportSeverity(report) {
-    if (report.entityType === "farm") return report.severity;
     const order = ["low", "medium", "high", "critical"];
-    return order[Math.max(0, ...getReportItems(report).map((item) => order.indexOf(item.severity)))];
+    const items = getReportItems(report);
+    return items.length ? order[Math.max(0, ...items.map((item) => order.indexOf(item.severity)))] : report.severity ?? "medium";
 }
 
 export function reportItemLabel(type, item) {

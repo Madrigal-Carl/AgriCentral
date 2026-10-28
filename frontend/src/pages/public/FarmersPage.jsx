@@ -210,7 +210,7 @@ export function FarmersPage() {
               </div>
             ),
           },
-          {
+          ...(role !== "far" ? [{
             key: "association",
             header: "Association",
             cell: (r) => (
@@ -218,7 +218,7 @@ export function FarmersPage() {
                 {r.association?.name || "—"}
               </span>
             ),
-          },
+          }] : []),
           {
             key: "farms",
             header: "Farms",

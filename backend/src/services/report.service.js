@@ -8,7 +8,7 @@ import Association from "../models/association.model.js";
 import { createLog, getLogsForEntities, humanize } from "./log.service.js";
 import emailQueue from "../queues/email.queue.js";
 import { EMAIL_JOBS } from "../queues/email.jobs.js";
-import { getReportItems, highestSeverity, normalizeReportItems } from "../utils/reportItems.js";
+import { getCropReportEntries, getReportItems, highestSeverity, normalizeReportItems } from "../utils/reportItems.js";
 import { createReportSchema } from "../schemas/report.schema.js";
 import { CROP_TYPE_POPULATE, EQUIPMENT_TYPE_POPULATE, ANIMAL_POPULATE } from "../utils/maintenanceLinks.js";
 import { hasFarmReportMeasurements, isFarmReportApproved } from "../utils/farmReportTotals.js";
@@ -109,16 +109,16 @@ async function populateEntities(reports) {
 
     return reports.map((r) => ({
         ...r,
-        items: r.entityType === "farm"
-            ? r.itemIds.map((id) => entityMap.get(String(id))).filter(Boolean)
-            : getReportItems(r).map((entry) => ({
-                ...entityMap.get(String(entry.item)),
-                item: entityMap.get(String(entry.item)) ?? entry.item,
-                itemId: String(entry.item),
-                condition: entry.condition,
-                severity: entry.severity,
-            })),
-        severity: r.entityType === "farm" ? r.severity : highestSeverity(getReportItems(r)),
+        items: getReportItems(r).map((entry) => ({
+            ...entityMap.get(String(entry.item)),
+            item: entityMap.get(String(entry.item)) ?? entry.item,
+            itemId: String(entry.item),
+            condition: entry.condition,
+            severity: entry.severity,
+            reportedQuantity: entry.quantity,
+            yieldKg: entry.yieldKg,
+        })),
+        severity: highestSeverity(getReportItems(r)),
         parent: r.parentId ? farmMap.get(String(r.parentId)) ?? null : null,
     }));
 }
@@ -166,10 +166,15 @@ async function getAssociationRecipient(associationId) {
 
 function mapItemsForEmail(entityType, docs, report) {
     if (entityType === "farm") {
-        return docs.map((doc) => ({
-            label: doc.name,
-            detail: doc.quantity != null ? `Qty: ${doc.quantity}` : "",
-        }));
+        return docs.map((doc) => {
+            const entry = getCropReportEntries(report).find((entry) => String(entry.crop) === String(doc._id));
+            return {
+                label: doc.name,
+                detail: entry?.condition === "harvested" ? `Qty: ${entry.yieldKg} kg` : entry?.quantity != null ? `Qty: ${entry.quantity}` : "",
+                condition: entry?.condition,
+                severity: entry?.severity,
+            };
+        });
     }
     return docs.map((doc) => ({
         label: entityType === "livestock" ? doc.animal : doc.name,
@@ -286,7 +291,7 @@ export const updateReport = async (id, data, actingUser) => withReportLock(id, a
         ...report.toObject(),
         parentId: report.parentId ? String(report.parentId) : undefined,
         itemIds: report.itemIds.map(String),
-        cropEntries: report.cropEntries?.map((entry) => ({ crop: String(entry.crop), quantity: entry.quantity, yieldKg: entry.yieldKg })),
+        cropEntries: getCropReportEntries(report).map((entry) => ({ ...entry, crop: String(entry.crop) })),
         reportedAt: report.reportedAt?.toISOString(),
         items: (data.entityType ?? report.entityType) === "farm" ? undefined : getReportItems(report).map((entry) => ({ itemId: String(entry.item), condition: entry.condition, severity: entry.severity })),
         ...data,

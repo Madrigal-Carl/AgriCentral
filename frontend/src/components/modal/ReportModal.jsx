@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Wrench, Beef } from "lucide-react";
+import { Wrench, Beef, Sprout } from "lucide-react";
 import { getReportItems } from "@/utils/report";
 import { getErrorMessage } from "@/utils/getErrorMessage";
 import { useForm, Controller } from "react-hook-form";
@@ -58,18 +58,20 @@ function toFormShape(report) {
   return {
     id: report._id,
     title: report.title,
-    severity: report.severity,
     entityType: report.entityType,
     farm: report.parentId ?? report.parent?._id ?? "",
     itemIds,
     items: report.entityType === "farm" ? [] : getReportItems(report).map((item) => ({
       itemId: item.itemId, condition: item.condition ?? "", severity: item.severity,
     })),
-    condition: report.condition,
     reportedAt: (report.reportedAt ?? report.createdAt)?.slice(0, 10),
     cropEntries: report.entityType === "farm" ? itemIds.map((crop) => {
       const entry = report.cropEntries?.find((entry) => (entry.crop?._id ?? entry.crop) === crop);
-      return { crop, quantity: entry?.quantity ?? "", yieldKg: entry?.yieldKg ?? "" };
+      const condition = entry?.condition ?? report.condition ?? "";
+      return {
+        crop, condition, severity: entry?.severity ?? report.severity ?? "medium",
+        quantity: (condition === "harvested" ? entry?.yieldKg : entry?.quantity) ?? "",
+      };
     }) : [],
     details: report.details,
     files: report.attachments || [],
@@ -118,7 +120,6 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
     resolver,
     mode: "onChange",
     defaultValues: {
-      severity: "medium",
       entityType: normalizedInitial?.entityType || "farm",
       itemIds: [],
       items: [],
@@ -131,7 +132,6 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
 
   useEffect(() => {
     const nextValues = {
-      severity: "medium",
       entityType: normalizedInitial?.entityType || "farm",
       itemIds: [],
       items: [],
@@ -154,10 +154,9 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
   const selectedItems = watch("items") ?? [];
   const selectedCropIds = watch("itemIds") ?? [];
   const selectedCropEntries = watch("cropEntries") ?? [];
-  const condition = watch("condition");
   const onCropsChange = (ids) => {
     setValue("itemIds", ids, { shouldDirty: true, shouldValidate: true });
-    setValue("cropEntries", ids.map((crop) => selectedCropEntries.find((entry) => entry.crop === crop) ?? { crop, quantity: "", yieldKg: "" }), { shouldDirty: true, shouldValidate: true });
+    setValue("cropEntries", ids.map((crop) => selectedCropEntries.find((entry) => entry.crop === crop) ?? { crop, condition: "planted", severity: "medium", quantity: 1 }), { shouldDirty: true, shouldValidate: true });
   };
   const ItemIcon = entityType === "equipment" ? Wrench : Beef;
   const onItemsChange = (nextIds) => setValue("items", nextIds.map((itemId) =>
@@ -169,12 +168,19 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
     // and validating only a child field can leave those old messages behind.
     void trigger("items");
   };
+  const onCropValueChange = (index, name, value) => {
+    if (name === "condition" && (selectedCropEntries[index]?.condition === "harvested") !== (value === "harvested")) {
+      // Start at the default instead of reusing a count as a weight (or vice versa).
+      setValue(`cropEntries.${index}.quantity`, 1, { shouldDirty: true });
+    }
+    setValue(`cropEntries.${index}.${name}`, value, { shouldDirty: true, shouldTouch: true });
+    void trigger("cropEntries");
+  };
   const onTypeChange = (value) => {
     setValue("entityType", value, { shouldDirty: true });
     setValue("items", []);
     setValue("itemIds", []);
     setValue("cropEntries", []);
-    setValue("condition", "");
     setValue("farm", "");
   };
   const farmValue = watch("farm");
@@ -196,7 +202,6 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
       setValue("itemIds", []);
       setValue("cropEntries", []);
       setValue("items", []);
-      setValue("condition", "");
       if (entityType !== "farm") setValue("farm", "");
     }
   }, [entityType, normalizedInitial]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -217,7 +222,6 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
       setValue("itemIds", []);
       setValue("cropEntries", []);
       setValue("items", []);
-      setValue("condition", "");
       setValue("farm", "");
     }
     associationChangeRef.current = selectedAssociation;
@@ -254,13 +258,13 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
     if (entityType === "livestock") {
       return (livestockData?.livestocks ?? []).map((l) => ({
         value: l._id,
-        label: `${l.animal} (${l.propertyNumber})`,
+        label: `${l.animalType?.name ?? l.animal} (${l.propertyNumber})`,
       }));
     }
     if (entityType === "equipment") {
       return (equipmentData?.equipments ?? []).map((e) => ({
         value: e._id,
-        label: `${e.name} (${e.propertyNumber})`,
+        label: `${e.equipmentType?.name ?? e.name} (${e.propertyNumber})`,
       }));
     }
     if (entityType === "farm" && farmValue) {
@@ -293,12 +297,13 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
         entityType: values.entityType,
         ...(values.entityType === "farm"
           ? {
-              condition: values.condition, severity: values.severity, itemIds: values.itemIds,
+              itemIds: values.itemIds,
               reportedAt: `${values.reportedAt}T00:00:00.000Z`,
               cropEntries: values.cropEntries.map((entry) => ({
                 crop: entry.crop,
-                ...(["planted", "destroyed"].includes(values.condition) ? { quantity: entry.quantity } : {}),
-                ...(values.condition === "harvested" ? { yieldKg: entry.yieldKg } : {}),
+                condition: entry.condition,
+                severity: entry.severity,
+                ...(entry.condition === "harvested" ? { yieldKg: entry.quantity } : { quantity: entry.quantity }),
               })),
             }
           : { items: values.items }),
@@ -464,14 +469,29 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
             </Field>
             <p className="text-xs text-secondary sm:col-span-2">Map values change only after AEW and Coordinator approval. Editing a crop report requires both approvals again.</p>
             {selectedCropIds.map((crop, index) => (
-              <div key={crop} className="sm:col-span-2 border border-border p-3 space-y-2">
-                <div className="text-sm font-medium text-foreground">{itemOptions.find((option) => option.value === crop)?.label ?? crop}</div>
-                {["planted", "destroyed"].includes(condition) && <Field label={condition === "destroyed" ? "Destroyed quantity (crop units)" : "Planted quantity (crop units)"} error={errors.cropEntries?.[index]?.quantity?.message}>
-                  <TextInput type="number" min="0" step="any" {...register(`cropEntries.${index}.quantity`)} />
-                </Field>}
-                {condition === "harvested" && <Field label="Yielded kg" error={errors.cropEntries?.[index]?.yieldKg?.message}>
-                  <TextInput type="number" min="0" step="any" {...register(`cropEntries.${index}.yieldKg`)} />
-                </Field>}
+              <div key={crop} className="sm:col-span-2 flex items-center justify-between gap-3 border border-border bg-surface px-3 py-2">
+                <div className="flex min-w-0 flex-1 items-center gap-2 text-sm font-medium text-foreground">
+                  <Sprout className="h-4 w-4 shrink-0 text-accent" />
+                  <span className="break-words">{itemOptions.find((option) => option.value === crop)?.label ?? crop}</span>
+                </div>
+                <div className="grid w-40 shrink-0 grid-cols-1 gap-3 sm:w-auto sm:grid-cols-[6rem_8rem_7rem]">
+                  <Field label="Quantity" error={errors.cropEntries?.[index]?.quantity?.message}>
+                    <div className="flex items-center gap-1">
+                      <TextInput type="number" min="0" step="any" className="min-w-0" aria-label={`Quantity of ${itemOptions.find((option) => option.value === crop)?.label ?? crop}`} {...register(`cropEntries.${index}.quantity`)} />
+                      {selectedCropEntries[index]?.condition === "harvested" && <span className="text-xs text-secondary">kg</span>}
+                    </div>
+                  </Field>
+                  <Field label="Staged" error={errors.cropEntries?.[index]?.condition?.message}>
+                    <Controller name={`cropEntries.${index}.condition`} control={control} render={({ field }) => (
+                      <FullSelect value={field.value} onChange={(value) => onCropValueChange(index, "condition", value)} options={CROP_CONDITION_OPTIONS} placeholder="Select stage…" />
+                    )} />
+                  </Field>
+                  <Field label="Severity" error={errors.cropEntries?.[index]?.severity?.message}>
+                    <Controller name={`cropEntries.${index}.severity`} control={control} render={({ field }) => (
+                      <FullSelect value={field.value} onChange={(value) => onCropValueChange(index, "severity", value)} options={SEVERITY_OPTIONS} />
+                    )} />
+                  </Field>
+                </div>
               </div>
             ))}
             {(errors.cropEntries?.message || errors.cropEntries?.root?.message) && <p className="text-xs text-red-600 sm:col-span-2">{errors.cropEntries.message ?? errors.cropEntries.root.message}</p>}
@@ -509,36 +529,6 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
               ))}
             </div>
           )}
-
-          {entityType === "farm" && <><Field label="Condition" error={errors.condition?.message}>
-            <Controller
-              name="condition"
-              control={control}
-              render={({ field }) => (
-                <FullSelect
-                  value={field.value}
-                  onChange={field.onChange}
-                  options={conditionOptions}
-                  placeholder="Select condition…"
-                />
-              )}
-            />
-          </Field>
-
-          <Field label="Severity" error={errors.severity?.message}>
-            <Controller
-              name="severity"
-              control={control}
-              render={({ field }) => (
-                <FullSelect
-                  value={field.value}
-                  onChange={field.onChange}
-                  options={SEVERITY_OPTIONS}
-                  defaultValue="medium"
-                />
-              )}
-            />
-          </Field></>}
 
           <Field label="Details" full error={errors.details?.message}>
             <textarea

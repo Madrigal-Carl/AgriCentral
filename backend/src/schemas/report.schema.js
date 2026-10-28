@@ -35,6 +35,8 @@ const baseReportObject = z.object({
     reportedAt: z.string().datetime({ offset: true, message: "Select a valid report date" }).optional(),
     cropEntries: z.array(z.object({
         crop: objectId("Invalid crop id"),
+        condition: z.enum(REPORT_CONDITIONS.farm, { error: "Select a crop stage" }).optional(),
+        severity: z.enum(SEVERITIES).optional(),
         quantity: z.number().finite().positive("Quantity must be greater than zero").optional(),
         yieldKg: z.number().finite().positive("Yield kg must be greater than zero").optional(),
     })).optional(),
@@ -61,7 +63,6 @@ export function refineReportItems(data, ctx, partial = false) {
     if (data.entityType === "farm") {
         if (!partial && !data.parentId) issue(["parentId"], "parentId (farm) is required for farm reports");
         if ((!partial || data.itemIds) && !data.itemIds?.length) issue(["itemIds"], "Select at least one crop");
-        if ((!partial || data.condition !== undefined) && !REPORT_CONDITIONS.farm.includes(data.condition)) issue(["condition"], "Select a crop condition");
         if (data.items?.length) issue(["items"], "Use itemIds for farm reports");
         if (!partial && !data.reportedAt) issue(["reportedAt"], "Report date is required");
         if (!partial || data.cropEntries) {
@@ -71,8 +72,11 @@ export function refineReportItems(data, ctx, partial = false) {
             if (new Set(ids).size !== ids.length) issue(["cropEntries"], "Duplicate crops are not allowed");
             if (!partial && (ids.length !== data.itemIds?.length || ids.some((id) => !data.itemIds?.includes(id)))) issue(["cropEntries"], "Measurements must match the selected crops");
             entries.forEach((entry, index) => {
-                if (["planted", "destroyed"].includes(data.condition) && entry.quantity === undefined) issue(["cropEntries", index, "quantity"], "Quantity is required");
-                if (data.condition === "harvested" && entry.yieldKg === undefined) issue(["cropEntries", index, "yieldKg"], "Harvested yield (kg) is required");
+                const condition = entry.condition ?? data.condition;
+                if (!REPORT_CONDITIONS.farm.includes(condition)) issue(["cropEntries", index, "condition"], "Select a crop stage");
+                // Old reports used one shared stage and did not measure informational events.
+                if (condition !== "harvested" && (entry.condition || ["planted", "destroyed"].includes(condition)) && entry.quantity === undefined) issue(["cropEntries", index, "quantity"], "Quantity is required");
+                if (condition === "harvested" && entry.yieldKg === undefined) issue(["cropEntries", index, "yieldKg"], "Harvested yield (kg) is required");
             });
         }
     } else if (data.entityType || data.items) {
