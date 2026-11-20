@@ -6,6 +6,7 @@ import {
   DataTable,
   RowActions,
   StatusPill,
+  FarmerAvatar,
 } from "@/components/public";
 import {
   FarmerDrawer,
@@ -205,9 +206,7 @@ export function FarmersPage() {
             header: "Name",
             cell: (r) => (
               <div className="flex items-center gap-3">
-                <div className="grid h-9 w-9 shrink-0 place-items-center bg-accent-soft font-display text-xs text-accent rounded-full">
-                  {r.fullName?.[0]}
-                </div>
+                <FarmerAvatar row={r} size="sm" />
                 <div className="font-semibold text-foreground">
                   {r.fullName}
                 </div>

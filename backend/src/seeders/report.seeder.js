@@ -4,6 +4,7 @@ import Livestock from "../models/livestock.model.js";
 import Crop from "../models/crop.model.js";
 import { CROP_TYPE_POPULATE } from "../utils/maintenanceLinks.js";
 import { reproductiveSubStagesFor, toProductionKg } from "../utils/cropStageFields.js";
+import { REPORT_TITLES } from "./title.seeder.js";
 
 // Every report needs at least one image; seeds use a placeholder.
 const PLACEHOLDER_ATTACHMENT = {
@@ -21,7 +22,7 @@ const REPORTS_TO_SEED = [
     // Livestock report kinds: a deceased animal (condition), new offspring
     // and a redispersal. Only the condition report changes the animal.
     {
-        title: "Native pig died of suspected ASF",
+        title: REPORT_TITLES.livestockDeath,
         priority: "critical",
         entityType: "livestock",
         reportKind: "condition",
@@ -35,7 +36,7 @@ const REPORTS_TO_SEED = [
         coordinatorStatus: "approved",
     },
     {
-        title: "Carabao gave birth to a healthy calf",
+        title: REPORT_TITLES.livestockOffspring,
         priority: "medium",
         entityType: "livestock",
         reportKind: "offspring",
@@ -48,7 +49,7 @@ const REPORTS_TO_SEED = [
         coordinatorStatus: "approved",
     },
     {
-        title: "Cattle ready for redispersal",
+        title: REPORT_TITLES.livestockRedispersal,
         priority: "low",
         entityType: "livestock",
         reportKind: "redispersal",
@@ -61,7 +62,7 @@ const REPORTS_TO_SEED = [
         coordinatorStatus: "approved",
     },
     {
-        title: "Rice Thresher malfunctioning",
+        title: REPORT_TITLES.equipmentMalfunction,
         priority: "high",
         entityType: "equipment",
         condition: "damaged",
@@ -75,7 +76,7 @@ const REPORTS_TO_SEED = [
         coordinatorStatus: "approved",
     },
     {
-        title: "Grass Cutter blade damage",
+        title: REPORT_TITLES.equipmentDamage,
         priority: "medium",
         entityType: "equipment",
         condition: "damaged",
@@ -87,7 +88,7 @@ const REPORTS_TO_SEED = [
         coordinatorStatus: "pending",
     },
     {
-        title: "Carabao showing signs of lameness",
+        title: REPORT_TITLES.livestockHealth,
         priority: "high",
         entityType: "livestock",
         condition: "injured",
@@ -99,7 +100,7 @@ const REPORTS_TO_SEED = [
         coordinatorStatus: "approved",
     },
     {
-        title: "Pregnant goat showing signs of illness",
+        title: REPORT_TITLES.livestockHealth,
         priority: "medium",
         entityType: "livestock",
         condition: "sick",
@@ -111,7 +112,7 @@ const REPORTS_TO_SEED = [
         coordinatorStatus: "pending",
     },
     {
-        title: "Cattle with skin lesions",
+        title: REPORT_TITLES.livestockHealth,
         priority: "medium",
         entityType: "livestock",
         condition: "sick",
@@ -123,7 +124,7 @@ const REPORTS_TO_SEED = [
         coordinatorStatus: "denied",
     },
     {
-        title: "Water Pump losing pressure",
+        title: REPORT_TITLES.equipmentMalfunction,
         priority: "low",
         entityType: "equipment",
         condition: "maintenance",
@@ -135,7 +136,7 @@ const REPORTS_TO_SEED = [
         coordinatorStatus: "pending",
     },
     {
-        title: "Coconut Husker overheating",
+        title: REPORT_TITLES.equipmentMalfunction,
         priority: "medium",
         entityType: "equipment",
         condition: "maintenance",
@@ -147,7 +148,7 @@ const REPORTS_TO_SEED = [
         coordinatorStatus: "approved",
     },
     {
-        title: "Damaged rice crop after heavy rains",
+        title: REPORT_TITLES.cropDamage,
         priority: "critical",
         entityType: "farm",
         stage: "damaged",
@@ -160,7 +161,7 @@ const REPORTS_TO_SEED = [
         coordinatorStatus: "approved",
     },
     {
-        title: "Pest infestation on corn plot",
+        title: REPORT_TITLES.pestInfestation,
         priority: "high",
         entityType: "farm",
         stage: "damaged",
@@ -173,7 +174,7 @@ const REPORTS_TO_SEED = [
         coordinatorStatus: "pending",
     },
     {
-        title: "Duck flock showing respiratory symptoms",
+        title: REPORT_TITLES.livestockHealth,
         priority: "medium",
         entityType: "livestock",
         condition: "sick",
@@ -185,7 +186,7 @@ const REPORTS_TO_SEED = [
         coordinatorStatus: "pending",
     },
     {
-        title: "Sprayer nozzle clogging",
+        title: REPORT_TITLES.equipmentMalfunction,
         priority: "low",
         entityType: "equipment",
         condition: "maintenance",
@@ -197,7 +198,7 @@ const REPORTS_TO_SEED = [
         coordinatorStatus: "pending",
     },
     {
-        title: "Erosion along highland farm slope",
+        title: REPORT_TITLES.farmLand,
         priority: "high",
         entityType: "farm",
         stage: "damaged",
@@ -211,7 +212,7 @@ const REPORTS_TO_SEED = [
     },
     // One example of each remaining crop stage.
     {
-        title: "New planting completed on lowland plot",
+        title: REPORT_TITLES.planting,
         priority: "low",
         entityType: "farm",
         stage: "newly_planted",
@@ -223,7 +224,7 @@ const REPORTS_TO_SEED = [
         coordinatorStatus: "approved",
     },
     {
-        title: "Corn seedlings planted after land preparation",
+        title: REPORT_TITLES.planting,
         priority: "low",
         entityType: "farm",
         stage: "newly_planted",
@@ -236,7 +237,7 @@ const REPORTS_TO_SEED = [
         coordinatorStatus: "approved",
     },
     {
-        title: "Replanting on highland plot",
+        title: REPORT_TITLES.planting,
         priority: "medium",
         entityType: "farm",
         stage: "newly_planted",
@@ -249,7 +250,7 @@ const REPORTS_TO_SEED = [
         coordinatorStatus: "approved",
     },
     {
-        title: "Healthy vegetative growth observed",
+        title: REPORT_TITLES.cropGrowth,
         priority: "low",
         entityType: "farm",
         stage: "vegetative",
@@ -261,7 +262,7 @@ const REPORTS_TO_SEED = [
         coordinatorStatus: "pending",
     },
     {
-        title: "Flowering started across the field",
+        title: REPORT_TITLES.cropGrowth,
         priority: "medium",
         entityType: "farm",
         stage: "flowering",
@@ -273,7 +274,7 @@ const REPORTS_TO_SEED = [
         coordinatorStatus: "pending",
     },
     {
-        title: "Reproductive stage progressing on schedule",
+        title: REPORT_TITLES.cropGrowth,
         priority: "medium",
         entityType: "farm",
         stage: "reproductive",
@@ -285,7 +286,7 @@ const REPORTS_TO_SEED = [
         coordinatorStatus: "pending",
     },
     {
-        title: "Harvest completed with good yield",
+        title: REPORT_TITLES.harvest,
         priority: "low",
         entityType: "farm",
         stage: "harvested",

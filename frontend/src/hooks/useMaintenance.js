@@ -20,7 +20,7 @@ export function useMaintenanceMutation(type, options = {}) {
       queryClient.invalidateQueries({ queryKey: maintenanceKeys.all });
       queryClient.invalidateQueries({ queryKey: lookupKeys.all });
       // Names can change on existing inventory and location records, too.
-      for (const key of ["crops", "equipments", "livestocks", "associations", "farmers", "farms", "analytics"]) queryClient.invalidateQueries({ queryKey: [key] });
+      for (const key of ["crops", "equipments", "livestocks", "associations", "farmers", "farms", "analytics", "requests", "reports"]) queryClient.invalidateQueries({ queryKey: [key] });
       options.onSuccess?.(data, variables, context);
     },
     onError: options.onError,

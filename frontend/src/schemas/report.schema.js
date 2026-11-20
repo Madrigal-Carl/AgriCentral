@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { isMeaningfulName, MEANINGFUL_NAME_ERROR } from "@/utils/meaningfulName";
 import {
     CROP_STAGE_OPTIONS,
     DECEASED_CAUSE_OPTIONS,
@@ -139,11 +138,12 @@ const filesSchema = z
     .refine((files) => files.every(isImageFile), "Only image files are allowed");
 
 const baseReportForm = z.object({
+    // Picked from the maintained report titles.
     title: z
-        .string({ required_error: "Title is required" })
+        .string({ required_error: "Select a title" })
         .trim()
-        .max(100, "Title must not exceed 100 characters")
-        .refine(isMeaningfulName, MEANINGFUL_NAME_ERROR),
+        .min(1, "Select a title")
+        .max(100, "Title must not exceed 100 characters"),
     entityType: z.enum(ENTITY_TYPES, { required_error: "Select a type" }),
     // Crop reports: farm -> farmer -> one crop, with its stage, the stage's
     // fields (checked by cropStageEntrySchema) and priority.

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const baseRequestFormSchema = z.object({
-  title: z.string().trim().min(2, "Title must be at least 2 characters").max(100),
+  title: z.string({ required_error: "Select a title" }).trim().min(1, "Select a title").max(100),
   severity: z.enum(["low", "medium", "high", "critical"]).default("medium"),
   entityType: z.enum(["livestock", "equipment"]),
   lines: z.array(z.object({

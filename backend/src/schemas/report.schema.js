@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { isMeaningfulName, MEANINGFUL_NAME_ERROR } from "../utils/meaningfulName.js";
 import {
     DECEASED_CAUSES,
     EQUIPMENT_USAGE_STATUSES,
@@ -122,11 +121,12 @@ export const IMAGE_REQUIRED_MESSAGE = "Add at least one image";
 // authenticated user in report.service.js), aew must send it.
 const baseReportObject = z.object({
     associationId: objectId("Invalid association id").optional(),
+    // Picked from the maintained report titles (checked in report.service.js).
     title: z
         .string({ required_error: "Title is required" })
         .trim()
-        .max(100, "Title must not exceed 100 characters")
-        .refine(isMeaningfulName, MEANINGFUL_NAME_ERROR),
+        .min(1, "Select a title")
+        .max(100, "Title must not exceed 100 characters"),
     priority: z.enum(PRIORITIES).optional().default("medium"),
     entityType: z.enum(ENTITY_TYPES, { required_error: "Entity type is required" }),
     parentId: objectId("Invalid farm id").optional(),

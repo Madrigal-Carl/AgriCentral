@@ -1,4 +1,4 @@
-import { Building2, MapPin, Sprout, Tractor, Beef, GitBranch, Palette } from "lucide-react";
+import { Building2, MapPin, Sprout, Tractor, Beef, GitBranch, Palette, ClipboardList, FileText } from "lucide-react";
 import { maintenanceFormSchema } from "@/schemas/maintenance.schema";
 import { useMaintenance, useMaintenanceMutation } from "@/hooks/useMaintenance";
 
@@ -19,4 +19,6 @@ export const maintenanceConfig = {
   animal: { type: "animals", group: "Livestock", icon: Beef, ...entity("Animal") },
   breed: { type: "breeds", group: "Livestock", icon: GitBranch, ...entity("Breed", "animalType", "animals", "Animal") },
   color: { type: "colors", group: "Livestock", icon: Palette, ...entity("Color") },
+  requestTitle: { type: "requestTitles", group: "Titles", icon: ClipboardList, ...entity("Request Title") },
+  reportTitle: { type: "reportTitles", group: "Titles", icon: FileText, ...entity("Report Title") },
 };

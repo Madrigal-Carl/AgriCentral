@@ -1,6 +1,5 @@
-import { useState } from "react";
 import { DefList, ItemList, Section } from "@/components/drawer";
-import { StatusPill } from "@/components/public";
+import { StatusPill, FarmerAvatar } from "@/components/public";
 import { statusTone, positionLabel } from "@/constants/data";
 import {
   X,
@@ -11,37 +10,6 @@ import {
   Calendar,
 } from "lucide-react";
 import { fmtDate } from "@/utils/format";
-
-function initialsOf(row) {
-  const initials = [row.firstName, row.lastName]
-    .map((part) => part?.trim()?.[0])
-    .filter(Boolean)
-    .join("");
-  return (initials || row.fullName?.trim()?.[0] || "?").toUpperCase();
-}
-
-// Circular avatar: the uploaded profile image, or initials when there is
-// none (or it fails to load, e.g. the asset was removed).
-function FarmerAvatar({ row }) {
-  const url = row.profileImage?.url;
-  const [failedUrl, setFailedUrl] = useState(null);
-  const showImage = Boolean(url) && failedUrl !== url;
-
-  return (
-    <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-full bg-accent-soft font-display text-base text-accent">
-      {showImage ? (
-        <img
-          src={url}
-          alt={row.fullName ? `${row.fullName} profile photo` : "Farmer profile photo"}
-          className="h-full w-full rounded-full object-cover"
-          onError={() => setFailedUrl(url)}
-        />
-      ) : (
-        <span aria-hidden="true">{initialsOf(row)}</span>
-      )}
-    </div>
-  );
-}
 
 export function FarmerDrawer({ row, onClose }) {
   const capitalize = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);

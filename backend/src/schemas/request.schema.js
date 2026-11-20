@@ -14,7 +14,7 @@ export const createRequestSchema = z.object({
     title: z
         .string({ required_error: "Title is required" })
         .trim()
-        .min(2, "Title must be at least 2 characters")
+        .min(1, "Select a title")
         .max(100, "Title must not exceed 100 characters"),
     severity: z.enum(SEVERITIES).optional().default("medium"),
     entityType: z.enum(ENTITY_TYPES, { required_error: "Entity type is required" }),

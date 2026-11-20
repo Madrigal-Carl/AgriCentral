@@ -5,6 +5,7 @@ import Crop from "../models/crop.model.js";
 import Equipment from "../models/equipment.model.js";
 import Livestock from "../models/livestock.model.js";
 import Request from "../models/request.model.js";
+import Report from "../models/report.model.js";
 import { maintenanceModels, validateLink, idOf, referenceError } from "../utils/maintenanceLinks.js";
 import { createLog } from "./log.service.js";
 
@@ -15,10 +16,20 @@ const references = {
     crops: [[Crop, "cropType"]], equipments: [[Equipment, "equipmentType"], [Request, "lines.key"]],
     animals: [[Livestock, "animalType"], [maintenanceModels.breeds, "animalType"], [Request, "lines.key"]],
     breeds: [[Livestock, "breed"]], colors: [[Livestock, "color"]],
+    // Titles are stored by name on the record, not by id.
+    requestTitles: [[Request, "title"]], reportTitles: [[Report, "title"]],
 };
+const titleRecords = { requestTitles: Request, reportTitles: Report };
+const caseInsensitive = { locale: "en", strength: 2 };
 
 export async function getMaintenanceUsage(type, id) {
-    const counts = await Promise.all(references[type].map(async ([Model, field]) => ({ collection: Model.collection.name, count: await Model.countDocuments({ [field]: id }) })));
+    const byName = Object.hasOwn(titleRecords, type);
+    const item = byName ? await maintenanceModels[type].findById(id).select("name").lean() : null;
+    if (byName && !item) throw referenceError("Item not found", 404);
+    const counts = await Promise.all(references[type].map(async ([Model, field]) => ({
+        collection: Model.collection.name,
+        count: byName ? await Model.countDocuments({ [field]: item.name, deletedAt: null }).collation(caseInsensitive) : await Model.countDocuments({ [field]: id }),
+    })));
     return { total: counts.reduce((sum, item) => sum + item.count, 0), collections: counts };
 }
 
@@ -47,7 +58,11 @@ async function checkDuplicate(type, data, id) {
     if (await maintenanceModels[type].exists(filter).collation({ locale: "en", strength: 2 })) throw referenceError("An active item with this name already exists in this group", 409);
 }
 
-async function refreshDisplayNames(type, item) {
+async function refreshDisplayNames(type, item, previousName) {
+    if (titleRecords[type]) {
+        await titleRecords[type].updateMany({ title: previousName, deletedAt: null }, { $set: { title: item.name } }).collation(caseInsensitive);
+        return;
+    }
     // These fields are derived display caches, never accepted as reference input.
     const inventory = type === "crops" ? [Crop, "cropType", "name"] : type === "equipments" ? [Equipment, "equipmentType", "name"] : type === "animals" ? [Livestock, "animalType", "animal"] : null;
     if (inventory) await inventory[0].updateMany({ [inventory[1]]: item._id }, { $set: { [inventory[2]]: item.name } });
@@ -70,7 +85,7 @@ export async function saveMaintenance(type, data, id) {
     await checkDuplicate(type, { ...(previous?.toObject() ?? {}), ...data }, id);
     try {
         const item = id ? await Model.findOneAndUpdate({ _id: id, deletedAt: null }, { $set: data }, { new: true, runValidators: true }) : await Model.create(data);
-        if (previous && item.name !== previous.name) await refreshDisplayNames(type, item);
+        if (previous && item.name !== previous.name) await refreshDisplayNames(type, item, previous.name);
         await createLog({ entityType: "maintenance", entityId: item._id, message: `${type}: ${item.name} ${id ? "updated" : "created"}.` });
         return item;
     } catch (error) {

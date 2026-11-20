@@ -65,7 +65,7 @@ app.use("/api/cron", cronRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/analytics", analyticRoutes);
 app.use("/api/notifications", notificationRoutes);
-for (const type of ["municipalities", "barangays", "crops", "equipments", "animals", "breeds", "colors"]) {
+for (const type of ["municipalities", "barangays", "crops", "equipments", "animals", "breeds", "colors", "requestTitles", "reportTitles"]) {
   app.use(`/api/maintenance/${type}`, maintenanceRoutes(type));
 }
 app.use("/api/lookups", lookupRoutes);

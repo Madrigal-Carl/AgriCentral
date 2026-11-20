@@ -13,7 +13,7 @@ import { cropEntryStage, getCropReportEntries, getReportItems, highestPriority, 
 import { CROP_STAGE_LABELS } from "../utils/cropStages.js";
 import { reproductiveSubStagesFor, validateStageData } from "../utils/cropStageFields.js";
 import { createReportSchema } from "../schemas/report.schema.js";
-import { CROP_TYPE_POPULATE, EQUIPMENT_TYPE_POPULATE, ANIMAL_POPULATE } from "../utils/maintenanceLinks.js";
+import { CROP_TYPE_POPULATE, EQUIPMENT_TYPE_POPULATE, ANIMAL_POPULATE, validateTitle } from "../utils/maintenanceLinks.js";
 import { hasFarmReportMeasurements, isFarmReportApproved } from "../utils/farmReportTotals.js";
 
 const STAGE_ROLES = ["aew", "coordinator"];
@@ -351,6 +351,7 @@ export const createReport = async (data, actingUser) => {
     const { associationId, ...reportData } = normalizeReportItems(data);
     const role = actingUser?.role;
     if (!["far", "aew"].includes(role)) fail("Only FAR or AEW users can submit reports", 403);
+    await validateTitle("reportTitles", reportData);
 
     const resolvedAssociationId =
         role === "far"
@@ -411,6 +412,8 @@ export const updateReport = async (id, data, actingUser) => withReportLock(id, a
         error.statusCode = 409;
         throw error;
     }
+    data = { ...data };
+    await validateTitle("reportTitles", data, report.title);
     const merged = {
         ...report.toObject(),
         parentId: report.parentId ? String(report.parentId) : undefined,

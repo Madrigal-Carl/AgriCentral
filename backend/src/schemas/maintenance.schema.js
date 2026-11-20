@@ -10,6 +10,8 @@ export const maintenanceSchemas = {
     animals: z.object({ name }),
     breeds: z.object({ name, animalType: referenceIdSchema }),
     colors: z.object({ name }),
+    requestTitles: z.object({ name }),
+    reportTitles: z.object({ name }),
 };
 export const maintenanceQuerySchema = z.object({
     // One record by id (opening a notification's record); role scoping still applies.

@@ -1,6 +1,7 @@
 import "./config/env.js";
 import mongoose from "mongoose";
 import { seedMaintenance } from "./seeders/maintenance.seeder.js";
+import { seedTitles } from "./seeders/title.seeder.js";
 
 import { wipeAssociations, seedAssociations } from "./seeders/association.seeder.js";
 import { wipeUsers, seedUsers } from "./seeders/user.seeder.js";
@@ -20,6 +21,7 @@ import { wipeNotifications, seedNotifications } from "./seeders/notification.see
 // exist by the time they're referenced.
 //
 //   Maintenance  -> verified locations and shared inventory reference data
+//   Titles       -> generalized request/report titles (Maintenance lists)
 //   Associations -> needs Maintenance
 //   Users        -> needs Associations (one FAR per association)
 //   Farmers      -> needs Associations
@@ -41,6 +43,7 @@ import { wipeNotifications, seedNotifications } from "./seeders/notification.see
 // the right spot relative to what it depends on.
 const SEEDERS = [
     { name: "Maintenance", wipe: async () => {}, seed: seedMaintenance },
+    { name: "Titles", wipe: async () => {}, seed: seedTitles },
     { name: "Associations", wipe: wipeAssociations, seed: seedAssociations },
     { name: "Users", wipe: wipeUsers, seed: seedUsers },
     { name: "Farmers", wipe: wipeFarmers, seed: seedFarmers },

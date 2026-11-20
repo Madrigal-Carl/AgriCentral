@@ -9,7 +9,7 @@ import emailQueue from "../queues/email.queue.js";
 import { EMAIL_JOBS } from "../queues/email.jobs.js";
 import { assertAssignable, BLOCKED_CONDITIONS } from "../utils/assignment.js";
 import { availabilityFilter, inventoryKey, validateRequestAvailability } from "./availability.service.js";
-import { maintenanceModels, ANIMAL_POPULATE, EQUIPMENT_TYPE_POPULATE } from "../utils/maintenanceLinks.js";
+import { maintenanceModels, validateTitle, ANIMAL_POPULATE, EQUIPMENT_TYPE_POPULATE } from "../utils/maintenanceLinks.js";
 
 const STAGE_ORDER = ["coordinator", "governor", "head"];
 
@@ -271,6 +271,7 @@ async function sendRequestRejectedEmail(request, role, remarks, { autoDenied = f
 
 export const createRequest = async (data, authenticatedUserId) => {
     const resolvedAssociationId = await resolveAssociationId(authenticatedUserId);
+    await validateTitle("requestTitles", data);
     await validateRequestAvailability(data.entityType, data.lines);
 
     const request = await Request.create({
@@ -307,6 +308,7 @@ export const updateRequest = async (id, data, actingUser) => withRequestLock(id,
         fail("A request cannot be edited after any stage has decided");
     }
     if (data.entityType && data.entityType !== request.entityType && !data.lines) fail("Select names/types for the new entity type", 400);
+    await validateTitle("requestTitles", data, request.title);
     if (!data.lines) await ensureRequestLines(request);
     await validateRequestAvailability(data.entityType ?? request.entityType, data.lines ?? request.lines, !data.entityType || data.entityType === request.entityType ? request.lines : []);
     request.set(data);

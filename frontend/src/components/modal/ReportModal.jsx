@@ -12,6 +12,7 @@ import {
   MultiSelect,
   TextInput,
   FullSelect,
+  TitleSelect,
 } from "@/components/ui";
 import { FileUploader } from "@/components/public";
 import { ModalShell } from "./ModalShell";
@@ -1001,9 +1002,7 @@ export function ReportModal({ mode, initial, onClose, onSave }) {
             </>
           )}
 
-          <Field label="Title" full error={errors.title?.message}>
-            <TextInput {...register("title")} placeholder="Short summary" />
-          </Field>
+          <TitleSelect control={control} type="reportTitles" saved={mode === "edit" ? initial?.title : undefined} error={errors.title?.message} />
 
           <Field label="Details" full error={errors.details?.message}>
             <textarea

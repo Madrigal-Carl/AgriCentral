@@ -1,5 +1,6 @@
 import Request from "../models/request.model.js";
 import { inventoryModels, inventoryKey, availabilityFilter } from "../services/availability.service.js";
+import { REQUEST_TITLES } from "./title.seeder.js";
 
 // Each entry sources its item(s) from the pool of *unassigned* livestock
 // or equipment (see the UNASSIGNED_* arrays in livestock.seeder.js /
@@ -7,7 +8,7 @@ import { inventoryModels, inventoryKey, availabilityFilter } from "../services/a
 // unclaimed entities rather than ones already given to a farmer.
 const REQUESTS_TO_SEED = [
     {
-        title: "Request for a corn sheller unit",
+        title: REQUEST_TITLES.equipment,
         severity: "medium",
         entityType: "equipment",
         details:
@@ -20,7 +21,7 @@ const REQUESTS_TO_SEED = [
         releaseStatus: "pending",
     },
     {
-        title: "Request for a weeding machine",
+        title: REQUEST_TITLES.equipment,
         severity: "low",
         entityType: "equipment",
         details:
@@ -33,7 +34,7 @@ const REQUESTS_TO_SEED = [
         releaseStatus: "pending",
     },
     {
-        title: "Request for a sickle bar mower",
+        title: REQUEST_TITLES.equipment,
         severity: "medium",
         entityType: "equipment",
         details:
@@ -46,7 +47,7 @@ const REQUESTS_TO_SEED = [
         releaseStatus: "released",
     },
     {
-        title: "Request for a replacement multi-purpose dryer",
+        title: REQUEST_TITLES.equipmentReplacement,
         severity: "high",
         entityType: "equipment",
         details:
@@ -59,7 +60,7 @@ const REQUESTS_TO_SEED = [
         releaseStatus: "pending",
     },
     {
-        title: "Request for broiler chicken stock",
+        title: REQUEST_TITLES.livestock,
         severity: "low",
         entityType: "livestock",
         details:
@@ -72,7 +73,7 @@ const REQUESTS_TO_SEED = [
         releaseStatus: "pending",
     },
     {
-        title: "Request for a native piglet",
+        title: REQUEST_TITLES.livestock,
         releasedDaysAgo: 45,
         severity: "medium",
         entityType: "livestock",
@@ -86,7 +87,7 @@ const REQUESTS_TO_SEED = [
         releaseStatus: "released",
     },
     {
-        title: "Request for mallard duck stock",
+        title: REQUEST_TITLES.livestock,
         severity: "low",
         entityType: "livestock",
         details:
@@ -99,7 +100,7 @@ const REQUESTS_TO_SEED = [
         releaseStatus: "pending",
     },
     {
-        title: "Request for a native goat",
+        title: REQUEST_TITLES.livestock,
         severity: "medium",
         entityType: "livestock",
         details:
@@ -112,7 +113,7 @@ const REQUESTS_TO_SEED = [
         releaseStatus: "pending",
     },
     {
-        title: "Combined request for corn sheller and weeding machine",
+        title: REQUEST_TITLES.equipment,
         releasedDaysAgo: 12,
         severity: "medium",
         entityType: "equipment",
@@ -126,7 +127,7 @@ const REQUESTS_TO_SEED = [
         releaseStatus: "partial",
     },
     {
-        title: "Combined poultry restocking request",
+        title: REQUEST_TITLES.livestockRestocking,
         severity: "low",
         entityType: "livestock",
         details:
@@ -139,7 +140,7 @@ const REQUESTS_TO_SEED = [
         releaseStatus: "pending",
     },
     {
-        title: "Urgent request for dryer after storm damage",
+        title: REQUEST_TITLES.emergency,
         severity: "critical",
         entityType: "equipment",
         details:
@@ -152,7 +153,7 @@ const REQUESTS_TO_SEED = [
         releaseStatus: "pending",
     },
     {
-        title: "Request for goat and duck for livelihood diversification",
+        title: REQUEST_TITLES.livelihood,
         releasedDaysAgo: 30,
         severity: "medium",
         entityType: "livestock",

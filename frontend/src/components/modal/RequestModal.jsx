@@ -8,6 +8,7 @@ import {
   FullSelect,
   MultiSelect,
   TextInput,
+  TitleSelect,
 } from "@/components/ui";
 import { ModalShell } from "./ModalShell";
 import { TYPE_OPTIONS, SEVERITY_OPTIONS } from "@/constants/data";
@@ -178,9 +179,7 @@ export function RequestModal({ mode, initial, onClose, onSave }) {
         )}
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Title" full error={errors.title?.message}>
-            <TextInput {...register("title")} placeholder="Short summary" />
-          </Field>
+          <TitleSelect control={control} type="requestTitles" saved={isEdit ? initial?.title : undefined} error={errors.title?.message} />
 
           <Field label="Type" error={errors.entityType?.message}>
             <Controller

@@ -5,8 +5,10 @@ import EquipmentType from "../models/equipmentType.model.js";
 import AnimalType from "../models/animalType.model.js";
 import Breed from "../models/breed.model.js";
 import Color from "../models/color.model.js";
+import RequestTitle from "../models/requestTitle.model.js";
+import ReportTitle from "../models/reportTitle.model.js";
 
-export const maintenanceModels = { municipalities: Municipality, barangays: Barangay, crops: CropType, equipments: EquipmentType, animals: AnimalType, breeds: Breed, colors: Color };
+export const maintenanceModels = { municipalities: Municipality, barangays: Barangay, crops: CropType, equipments: EquipmentType, animals: AnimalType, breeds: Breed, colors: Color, requestTitles: RequestTitle, reportTitles: ReportTitle };
 export const idOf = (value) => String(value?._id ?? value ?? "");
 export const referenceError = (message, statusCode = 400) => Object.assign(new Error(message), { statusCode });
 
@@ -15,6 +17,16 @@ export async function validateLink(Model, value, previous, label) {
     if (!value || !await Model.exists({ _id: value, deletedAt: null })) {
         throw referenceError(`Select an active ${label}`);
     }
+}
+
+// Request/report titles are stored as plain strings but must be picked from the
+// active maintenance list. An unchanged saved title (possibly archived since)
+// stays valid on edit. The stored value is normalized to the list's spelling.
+export async function validateTitle(type, data, previous) {
+    if (data.title === undefined || (previous !== undefined && data.title === previous)) return;
+    const item = await maintenanceModels[type].findOne({ name: data.title.trim(), deletedAt: null }).collation({ locale: "en", strength: 2 }).select("name").lean();
+    if (!item) throw referenceError("Select a title from the list");
+    data.title = item.name;
 }
 
 export async function validateLocation(data, previous = {}) {
