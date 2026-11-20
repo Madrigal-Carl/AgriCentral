@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
     getCrops,
     createCrop,
+    createFarmerOwnedCrop,
     updateCrop,
     deleteCrop,
     distributeCrop,
@@ -82,6 +83,15 @@ export function useDistributeCrop(options = {}) {
             });
             options.onSuccess?.(data, variables, context);
         },
+        onError: options.onError,
+    });
+}
+// Farmer-owned crops never appear in the crop inventory lists, so there is
+// nothing to invalidate here; the farm modal adds the result to its form.
+export function useCreateFarmerOwnedCrop(options = {}) {
+    return useMutation({
+        mutationFn: (data) => createFarmerOwnedCrop(data),
+        onSuccess: options.onSuccess,
         onError: options.onError,
     });
 }

@@ -37,7 +37,7 @@ export const updateRequestApprovalHandler = asyncHandler(async (req, res) => {
 });
 
 export const releaseRequestHandler = asyncHandler(async (req, res) => {
-    const request = await releaseRequest(req.params.id);
+    const request = await releaseRequest(req.params.id, req.body, req.user);
 
     return res.status(200).json({
         message: `Request release status: ${request.releaseStatus}`,

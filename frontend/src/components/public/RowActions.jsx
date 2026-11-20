@@ -1,13 +1,7 @@
-import { IconButton } from "@/components/ui";
-import {
-  Eye,
-  Pencil,
-  Archive,
-  Check,
-  X as XIcon,
-  PackageCheck,
-  Undo2,
-} from "lucide-react";
+import { TextButton } from "@/components/ui";
+
+// Right-aligned container that wraps the buttons on narrow screens.
+const ROW_ACTIONS_CLASS = "flex flex-wrap items-center justify-end gap-1";
 
 export function RowActions({
   onView,
@@ -23,57 +17,32 @@ export function RowActions({
 
   if (isReview) {
     return (
-      <div className="flex items-center justify-end gap-1">
-        {onView && <IconButton icon={Eye} label="View" onClick={onView} />}
+      <div className={ROW_ACTIONS_CLASS}>
+        {onView && <TextButton label="View" onClick={onView} />}
         {onApprove && (
-          <IconButton
-            icon={Check}
-            label="Approve"
-            tone="success"
-            onClick={onApprove}
-          />
+          <TextButton label="Approve" tone="success" onClick={onApprove} />
         )}
-        {onDeny && (
-          <IconButton
-            icon={XIcon}
-            label="Deny"
-            tone="danger"
-            onClick={onDeny}
-          />
-        )}
+        {onDeny && <TextButton label="Deny" tone="danger" onClick={onDeny} />}
         {onRelease && (
-          <IconButton
-            icon={PackageCheck}
-            label="Release"
-            tone="success"
-            onClick={onRelease}
-          />
+          <TextButton label="Release" tone="success" onClick={onRelease} />
         )}
       </div>
     );
   }
 
   return (
-    <div className="flex items-center justify-end gap-1">
-      {onView && <IconButton icon={Eye} label="View" onClick={onView} />}
-      {onEdit && <IconButton icon={Pencil} label="Edit" onClick={onEdit} />}
-      {onChangeDecision && <IconButton icon={Undo2} label="Change decision" onClick={onChangeDecision} />}
-      {onRestore && <IconButton icon={Undo2} label="Restore" onClick={onRestore} />}
+    <div className={ROW_ACTIONS_CLASS}>
+      {onView && <TextButton label="View" onClick={onView} />}
+      {onEdit && <TextButton label="Edit" onClick={onEdit} />}
+      {onChangeDecision && (
+        <TextButton label="Change decision" onClick={onChangeDecision} />
+      )}
+      {onRestore && <TextButton label="Restore" onClick={onRestore} />}
       {onRelease && (
-        <IconButton
-          icon={PackageCheck}
-          label="Release"
-          tone="success"
-          onClick={onRelease}
-        />
+        <TextButton label="Release" tone="success" onClick={onRelease} />
       )}
       {onDelete && (
-        <IconButton
-          icon={Archive}
-          label="Archive"
-          tone="danger"
-          onClick={onDelete}
-        />
+        <TextButton label="Archive" tone="danger" onClick={onDelete} />
       )}
     </div>
   );

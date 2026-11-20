@@ -23,10 +23,6 @@ export const createLivestockSchema = z
         gender: z.enum(GENDERS, { required_error: "Gender is required" }),
         birthDate: z.coerce.date({ error: "Invalid release date" }),
         color: referenceIdSchema,
-        weight: z.coerce
-            .number({ required_error: "Weight is required" })
-            .min(0, "Weight must not be negative")
-            .default(0),
         condition: z.enum(CONDITIONS).optional().default("healthy"),
         status: z.enum(STATUSES).optional().default("available"),
         assignedFarmer: objectId("Invalid farmer id").optional(),
@@ -52,7 +48,6 @@ export const updateLivestockSchema = z
         gender: z.enum(GENDERS).optional(),
         birthDate: z.coerce.date({ error: "Invalid release date" }).optional(),
         color: referenceIdSchema.optional(),
-        weight: z.coerce.number().min(0, "Weight must not be negative").optional(),
         condition: z.enum(CONDITIONS).optional(),
         status: z.enum(STATUSES).optional(),
         // null clears the assignment (return to available); a string
@@ -69,6 +64,8 @@ export const livestockIdParamSchema = z.object({
 });
 
 export const getLivestocksQuerySchema = z.object({
+    // One record by id (opening a notification's record); role scoping still applies.
+    id: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid record id").optional(),
     condition: z.enum(CONDITIONS).optional(),
     status: z.enum(STATUSES).optional(),
     search: z.string().trim().min(1).max(100).optional(),

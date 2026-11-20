@@ -1,13 +1,12 @@
-import mongoose from "mongoose";
 import ExcelJS from "exceljs";
-import { getDateRange } from "../utils/dateRange.util.js";
 import {
-    PERIOD_LABEL,
     capitalize,
     formatDate,
     getEquipmentRows,
     getLivestockRows,
     getFarmRows,
+    resolveAnalyticsScope,
+    exportHeaderLines,
 } from "./analyticsReportData.service.js";
 
 const BORDER_STYLE = {
@@ -46,8 +45,8 @@ function autoFitColumns(worksheet) {
     worksheet.columns.forEach((column) => {
         let maxLen = 12;
         column.eachCell({ includeEmpty: false }, (cell, rowNumber) => {
-            // Ignore main title and subtitle rows when calculating column width
-            if (rowNumber <= 3) return;
+            // Ignore the title, the two subtitle rows and the spacer
+            if (rowNumber <= 4) return;
             const cellValue = cell.value ? String(cell.value) : "";
             if (cellValue.length > maxLen) {
                 maxLen = cellValue.length;
@@ -104,9 +103,10 @@ function renderTableToWorksheet(worksheet, headers, rows) {
     worksheet.addRow([]); // Blank spacing row
 }
 
-export const generateAnalyticsExcel = async ({ section = "all", association, period = "month" }) => {
-    const associationId = association ? new mongoose.Types.ObjectId(association) : null;
-    const { start, end } = getDateRange(period);
+// The association, farmer and year filters apply to every section.
+export const generateAnalyticsExcel = async ({ section = "all", association, farmer, period = "month", year }) => {
+    const scope = await resolveAnalyticsScope({ association, farmer, period, year });
+    const { scopeLine, periodLine } = await exportHeaderLines(scope);
 
     const sectionsToInclude = section === "all" ? ["equipment", "livestock", "farm"] : [section];
 
@@ -125,19 +125,20 @@ export const generateAnalyticsExcel = async ({ section = "all", association, per
     titleCell.font = { name: "Arial", size: 16, bold: true, color: { argb: "FF0F172A" } };
     titleCell.alignment = { vertical: "middle", horizontal: "left" };
 
-    // Subtitle
-    const subtitleText = `${PERIOD_LABEL[period] || "Period"} • ${formatDate(start)} – ${formatDate(end)}`;
-    const subtitleRow = worksheet.addRow([subtitleText]);
-    subtitleRow.height = 18;
-    const subtitleCell = subtitleRow.getCell(1);
-    subtitleCell.font = { name: "Arial", size: 10, italic: true, color: { argb: "FF64748B" } };
-    subtitleCell.alignment = { vertical: "middle", horizontal: "left" };
+    // Subtitle: association, farmer and year, then the period
+    for (const text of [scopeLine, periodLine]) {
+        const subtitleRow = worksheet.addRow([text]);
+        subtitleRow.height = 18;
+        const subtitleCell = subtitleRow.getCell(1);
+        subtitleCell.font = { name: "Arial", size: 10, italic: true, color: { argb: "FF64748B" } };
+        subtitleCell.alignment = { vertical: "middle", horizontal: "left" };
+    }
 
     worksheet.addRow([]); // Spacer
 
     // Equipment Section
     if (sectionsToInclude.includes("equipment")) {
-        const rows = await getEquipmentRows({ associationId, start, end });
+        const rows = await getEquipmentRows(scope);
         addSectionHeader(worksheet, "Equipment");
         const headers = [
             "Property #",
@@ -146,6 +147,7 @@ export const generateAnalyticsExcel = async ({ section = "all", association, per
             "Status",
             "Association",
             "Assigned Farmer",
+            "Dispersal Date",
             "Date Added",
         ];
         const body = rows.map((e) => [
@@ -155,6 +157,7 @@ export const generateAnalyticsExcel = async ({ section = "all", association, per
             capitalize(e.status),
             e.association,
             e.assignedFarmer,
+            formatDate(e.dispersalDate),
             formatDate(e.dateAdded),
         ]);
         renderTableToWorksheet(worksheet, headers, body);
@@ -162,7 +165,7 @@ export const generateAnalyticsExcel = async ({ section = "all", association, per
 
     // Livestock Section
     if (sectionsToInclude.includes("livestock")) {
-        const rows = await getLivestockRows({ associationId, start, end });
+        const rows = await getLivestockRows(scope);
         addSectionHeader(worksheet, "Livestock");
         const headers = [
             "Property #",
@@ -171,11 +174,12 @@ export const generateAnalyticsExcel = async ({ section = "all", association, per
             "Gender",
             "Birth Date",
             "Color",
-            "Weight",
             "Condition",
             "Status",
             "Association",
             "Assigned Farmer",
+            "Dispersal Date",
+            "Dispersal Age",
             "Date Added",
         ];
         const body = rows.map((l) => [
@@ -185,11 +189,12 @@ export const generateAnalyticsExcel = async ({ section = "all", association, per
             capitalize(l.gender),
             formatDate(l.birthDate),
             l.color,
-            l.weight,
             capitalize(l.condition),
             capitalize(l.status),
             l.association,
             l.assignedFarmer,
+            formatDate(l.dispersalDate),
+            l.dispersalAge,
             formatDate(l.dateAdded),
         ]);
         renderTableToWorksheet(worksheet, headers, body);
@@ -197,14 +202,16 @@ export const generateAnalyticsExcel = async ({ section = "all", association, per
 
     // Farm Section
     if (sectionsToInclude.includes("farm")) {
-        const rows = await getFarmRows({ associationId, start, end });
+        const rows = await getFarmRows(scope);
         addSectionHeader(worksheet, "Farm");
         const headers = [
             "Farm",
             "Crop",
             "Planted",
-            "Growing",
-            "Withered",
+            "Newly Planted",
+            "Flowering",
+            "Reproductive",
+            "Vegetative",
             "Damaged",
             "Harvested",
             "Planted Date",
@@ -214,8 +221,10 @@ export const generateAnalyticsExcel = async ({ section = "all", association, per
             r.farm,
             r.crop,
             r.planted,
-            r.growing,
-            r.withered,
+            r.newlyPlanted,
+            r.flowering,
+            r.reproductive,
+            r.vegetative,
             r.damaged,
             r.harvested,
             formatDate(r.plantedDate),

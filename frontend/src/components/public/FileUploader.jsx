@@ -80,8 +80,10 @@ function UploadingRow({ name, size, progress, onRemove }) {
   );
 }
 
-export function FileUploader({ value = [], onChange, accept, multiple = true }) {
+export function FileUploader({ value = [], onChange, accept, multiple = true, invalid = false }) {
   const files = Array.isArray(value) ? value : [];
+  const imagesOnly = accept?.startsWith("image/");
+  const noun = imagesOnly ? "images" : "files";
   const filesRef = useRef(files);
 
   useEffect(() => {
@@ -148,13 +150,13 @@ export function FileUploader({ value = [], onChange, accept, multiple = true }) 
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
-        className="flex w-full flex-col items-center justify-center gap-1.5 border border-dashed border-border bg-surface px-4 py-6 text-center text-sm text-secondary hover:border-foreground-40 hover:bg-muted-40"
+        className={`flex w-full flex-col items-center justify-center gap-1.5 border border-dashed bg-surface px-4 py-6 text-center text-sm text-secondary hover:border-foreground-40 hover:bg-muted-40 ${invalid ? "border-red-400" : "border-border"}`}
       >
         <Upload className="h-5 w-5" />
         <span className="font-medium text-foreground">
-          {multiple ? "Click to upload files" : "Click to upload image"}
+          {multiple ? `Click to upload ${noun}` : "Click to upload image"}
         </span>
-        <span className="text-xs">{multiple ? "You can select multiple files" : "You can select one image"}</span>
+        <span className="text-xs">{multiple ? `You can select multiple ${noun}` : "You can select one image"}</span>
       </button>
       <input
         ref={inputRef}

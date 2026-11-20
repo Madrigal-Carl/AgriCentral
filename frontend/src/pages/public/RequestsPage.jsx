@@ -14,6 +14,7 @@ import {
   DeleteConfirmModal,
   RequestDrawer,
   RequestModal,
+  ReleaseModal,
   ReviewConfirmModal,
 } from "@/components/modal";
 import {
@@ -30,11 +31,12 @@ import {
 } from "@/utils/request";
 import {
   useUpdateRequestApproval,
-  useReleaseRequest,
   useDeleteRequest,
   useRequests,
 } from "@/hooks/useRequests";
 import useAuth from "@/hooks/useAuth";
+import { useViewRecord, firstListRow } from "@/hooks/useViewRecord";
+import { getRequests } from "@/services/request.service";
 import { fmtRequestedAt } from "@/utils/format";
 
 export function RequestsPage() {
@@ -51,7 +53,8 @@ export function RequestsPage() {
   const [drawer, setDrawer] = useState(null);
   const [decisionRow, setDecisionRow] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
-  const [reviewRow, setReviewRow] = useState(null); // { row, action: "approve" | "deny" | "release" }
+  const [reviewRow, setReviewRow] = useState(null); // { row, action: "approve" | "deny" }
+  const [releaseRow, setReleaseRow] = useState(null);
 
   // Debounce search input -> search query param
   useEffect(() => {
@@ -77,9 +80,6 @@ export function RequestsPage() {
   const { mutate: submitApproval, isPending: isReviewing, error: reviewError, reset: resetReview } = useUpdateRequestApproval({
     onSuccess: () => { setReviewRow(null); setDrawer(null); },
   });
-  const { mutate: submitRelease, isPending: isReleasing, error: releaseError, reset: resetRelease } = useReleaseRequest({
-    onSuccess: () => { setReviewRow(null); setDrawer(null); },
-  });
   const { mutate: removeRequest } = useDeleteRequest({
     onSuccess: () => setConfirmDelete(null),
   });
@@ -93,6 +93,8 @@ export function RequestsPage() {
     setModal({ mode: "edit", data: row });
   };
   const openView = (row) => setDrawer(row);
+  // Opens the drawer for ?view=<id> (notification links).
+  useViewRecord({ fetchRecord: firstListRow(getRequests, "requests"), onOpen: openView });
   const askDelete = (row) => {
     if (!can.delete) return;
     setConfirmDelete(row);
@@ -104,15 +106,11 @@ export function RequestsPage() {
 
   const askApprove = (row) => { resetReview(); setReviewRow({ row, action: "approve" }); };
   const askDeny = (row) => { resetReview(); setReviewRow({ row, action: "deny" }); };
-  const askRelease = (row) => { resetRelease(); setReviewRow({ row, action: "release" }); };
+  // Releasing opens the release modal, which requires images.
+  const askRelease = (row) => setReleaseRow(row);
 
   const confirmReview = (remarks) => {
     if (!reviewRow) return;
-
-    if (reviewRow.action === "release") {
-      submitRelease(reviewRow.row._id);
-      return;
-    }
 
     submitApproval({
       id: reviewRow.row._id,
@@ -245,11 +243,7 @@ export function RequestsPage() {
                   onDelete={canDeleteThis ? () => askDelete(r) : undefined}
                   onApprove={canReviewThis ? () => askApprove(r) : undefined}
                   onDeny={canReviewThis ? () => askDeny(r) : undefined}
-                  onRelease={
-                    canReleaseThis && !isReleasing
-                      ? () => askRelease(r)
-                      : undefined
-                  }
+                  onRelease={canReleaseThis ? () => askRelease(r) : undefined}
                 />
               );
             },
@@ -283,19 +277,23 @@ export function RequestsPage() {
           onConfirm={confirmRemove}
         />
       )}
-      {reviewRow &&
-        (reviewRow.action === "release"
-          ? role === "coordinator"
-          : can.review) && (
+      {reviewRow && can.review && (
           <ReviewConfirmModal
             row={reviewRow.row}
             action={reviewRow.action}
             onCancel={() => setReviewRow(null)}
             onConfirm={confirmReview}
-            busy={isReviewing || isReleasing}
-            submitError={(reviewRow.action === "release" ? releaseError : reviewError)?.response?.data?.message}
+            busy={isReviewing}
+            submitError={reviewError?.response?.data?.message}
           />
         )}
+      {releaseRow && role === "coordinator" && (
+        <ReleaseModal
+          row={releaseRow}
+          onClose={() => setReleaseRow(null)}
+          onSave={() => { setReleaseRow(null); setDrawer(null); }}
+        />
+      )}
     </div>
   );
 }

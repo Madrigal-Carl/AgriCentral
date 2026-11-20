@@ -2,6 +2,9 @@ import {
   registerUser,
   loginUser,
   logoutUser,
+  requestPasswordReset,
+  verifyPasswordResetOtp,
+  resetPasswordWithToken,
 } from "../services/auth.service.js";
 import { sendTokenCookies } from "../utils/sendTokenCookies.js";
 import { clearTokenCookies } from "../utils/clearTokenCookies.js";
@@ -16,12 +19,13 @@ export const register = asyncHandler(async (req, res) => {
 });
 
 export const login = asyncHandler(async (req, res) => {
-  const { accessToken, refreshToken, user } = await loginUser(req.body);
+  const { accessToken, refreshToken, rememberMe, user } = await loginUser(req.body);
 
   sendTokenCookies({
     res,
     accessToken,
     refreshToken,
+    rememberMe,
   });
 
   return res.json({
@@ -48,4 +52,26 @@ export const getMe = asyncHandler(async (req, res) => {
   return res.json({
     user: req.user || null,
   });
+});
+
+export const forgotPassword = asyncHandler(async (req, res) => {
+  const { message } = await requestPasswordReset(req.body);
+
+  return res.status(200).json({ message });
+});
+
+export const verifyOtp = asyncHandler(async (req, res) => {
+  const { resetToken, expiresInSeconds } = await verifyPasswordResetOtp(req.body);
+
+  return res.json({
+    message: "Code verified",
+    resetToken,
+    expiresInSeconds,
+  });
+});
+
+export const resetPassword = asyncHandler(async (req, res) => {
+  const { message } = await resetPasswordWithToken(req.body);
+
+  return res.json({ message });
 });

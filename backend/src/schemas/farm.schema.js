@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { referenceIdSchema } from "./maintenance.schema.js";
+import { stageQuantityTotal } from "../utils/cropStages.js";
 
 const FARMER_CLASSIFICATIONS = [
     "owner",
@@ -24,12 +25,23 @@ const cropQuantityField = z.preprocess(
     z.union([z.null(), z.coerce.number().min(0)])
 ).optional().default(null);
 
+// Newly planted is derived (planted minus the five stages) and never sent.
 const cropQuantitiesSchema = z.object({
     planted: cropQuantityField,
-    growing: cropQuantityField,
-    withered: cropQuantityField,
+    flowering: cropQuantityField,
+    reproductive: cropQuantityField,
+    vegetative: cropQuantityField,
     harvested: cropQuantityField,
     damaged: cropQuantityField,
+}).superRefine((quantities, ctx) => {
+    const staged = stageQuantityTotal(quantities);
+    if (staged > (quantities.planted ?? 0)) {
+        ctx.addIssue({
+            code: "custom",
+            path: ["planted"],
+            message: `Stage quantities (${staged}) cannot exceed the planted quantity (${quantities.planted ?? 0})`,
+        });
+    }
 });
 
 const farmCropSchema = z.object({
@@ -90,6 +102,8 @@ export const farmIdParamSchema = z.object({
 });
 
 export const getFarmsQuerySchema = z.object({
+    // One record by id (opening a notification's record); role scoping still applies.
+    id: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid record id").optional(),
     search: z.string().trim().min(1).max(100).optional(),
     crop: referenceIdSchema.optional(),
     associationId: objectId("association id").optional(),

@@ -1,3 +1,5 @@
+import { toCropStage } from "@/constants/data";
+
 // Crop reports require AEW followed by Coordinator; other types stay single-stage.
 export function getReviewerRole(report) {
     if (report?.entityType === "farm") {
@@ -18,6 +20,17 @@ export function getReportStatus(report) {
     const stage = getReviewerRole(report);
     if (!stage) return "pending";
     return report.approvalStatus[stage]?.status ?? "pending";
+}
+
+// Crop reports are one crop per report with a farmer and a stage with its
+// fields. Older crop reports (no farmer, several crops, or an entry without
+// a stage) are legacy: viewable and reviewable, never edited. The backend
+// sends `isLegacy`; the fallback mirrors its rule.
+export function isLegacyCropReport(report) {
+    if (report?.entityType !== "farm") return false;
+    if (typeof report.isLegacy === "boolean") return report.isLegacy;
+    const entries = Math.max(report.cropEntries?.length ?? 0, report.itemIds?.length ?? 0);
+    return !report.farmer || entries > 1 || !report.cropEntries?.every((entry) => entry.stage);
 }
 
 export function getSubmittedByRole(report) {
@@ -42,18 +55,37 @@ export function getReportItems(report) {
         return {
             ...entity,
             itemId: String(entry.itemId ?? entity._id ?? entry.item),
-            condition: measurement?.condition ?? entry.condition ?? report.condition,
-            severity: measurement?.severity ?? entry.severity ?? report.severity ?? "medium",
+            // Crop entries carry a stage; legacy ones hold old condition names,
+            // read through the mapper.
+            condition: report.entityType === "farm"
+                ? measurement?.stage ?? toCropStage(measurement?.condition ?? entry.condition ?? report.condition)
+                : measurement?.condition ?? entry.condition ?? report.condition,
+            priority: measurement?.priority ?? entry.priority ?? report.priority ?? "medium",
             reportedQuantity: measurement?.quantity ?? entry.reportedQuantity,
             yieldKg: measurement?.yieldKg ?? entry.yieldKg,
+            // Livestock condition reports: { cause, dateOfDeath } for deceased items.
+            deceased: entry.deceased,
+            // Equipment: reported usage, and the farmer using it (populated
+            // as usedBy in listings, a plain id right after a save).
+            usageStatus: entry.usageStatus,
+            usedBy: entry.usedBy,
+            farmer: entry.usedBy?._id ?? entry.farmer,
+            // Livestock redispersal: { _id, fullName } in listings, a plain
+            // id right after a save.
+            fromFarmer: entry.fromFarmer,
+            toFarmer: entry.toFarmer,
         };
     });
 }
 
-export function getReportSeverity(report) {
+// Livestock reports default to the condition kind (older reports have none).
+export const getReportKind = (report) =>
+    report?.entityType === "livestock" ? report.reportKind ?? "condition" : undefined;
+
+export function getReportPriority(report) {
     const order = ["low", "medium", "high", "critical"];
     const items = getReportItems(report);
-    return items.length ? order[Math.max(0, ...items.map((item) => order.indexOf(item.severity)))] : report.severity ?? "medium";
+    return items.length ? order[Math.max(0, ...items.map((item) => order.indexOf(item.priority)))] : report.priority ?? "medium";
 }
 
 export function reportItemLabel(type, item) {

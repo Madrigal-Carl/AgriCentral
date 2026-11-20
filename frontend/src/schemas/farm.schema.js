@@ -1,13 +1,6 @@
 import { z } from "zod";
 import { referenceIdSchema } from "./maintenance.schema.js";
-
-export const CROP_STATUSES = [
-    "planted",
-    "growing",
-    "withered",
-    "harvested",
-    "damaged",
-];
+import { stageQuantityTotal } from "@/constants/data";
 
 export const FARMER_CLASSIFICATIONS = [
     "owner",
@@ -34,21 +27,29 @@ const cropQuantityFieldSchema = z
     .optional()
     .default(null);
 
-// No `status` key here. The form still carries a local `status` value per
-// crop row (purely to drive which quantity input is shown/editable), but
-// since it's not declared in this schema, zod's default "strip" behavior
-// removes it from the parsed values react-hook-form hands to onSubmit —
-// it never reaches the API payload.
+// Newly planted is derived (planted minus the five stages) and never sent.
+// Anything else the form carries per crop row (ownership for the badge) is
+// not declared here, so zod's default "strip" keeps it out of the payload.
 const farmCropSchema = z.object({
     _id: z.string().optional(),
     crop: z.string().min(1, "Invalid crop"),
     quantities: z
         .object({
             planted: cropQuantityFieldSchema,
-            growing: cropQuantityFieldSchema,
-            withered: cropQuantityFieldSchema,
+            flowering: cropQuantityFieldSchema,
+            reproductive: cropQuantityFieldSchema,
+            vegetative: cropQuantityFieldSchema,
             harvested: cropQuantityFieldSchema,
             damaged: cropQuantityFieldSchema,
+        })
+        .superRefine((quantities, ctx) => {
+            if (stageQuantityTotal(quantities) > (quantities.planted ?? 0)) {
+                ctx.addIssue({
+                    code: "custom",
+                    path: ["planted"],
+                    message: "Stage quantities cannot exceed the planted quantity",
+                });
+            }
         })
         .optional()
         .default({}),

@@ -4,9 +4,14 @@ import Farmer from "../models/farmer.model.js";
 import Association from "../models/association.model.js";
 import { validateInventoryLinks, CROP_TYPE_POPULATE } from "../utils/maintenanceLinks.js";
 import { createLog, getLogsForEntities } from "./log.service.js";
+import { plantedTotals } from "../utils/cropStock.js";
 
 const ASSOCIATION_POPULATE = { path: "association", select: "name" };
 const FARMER_POPULATE = { path: "assignedFarmer", select: "firstName lastName" };
+
+// Inventory endpoints (list, edit, archive, distribute) only ever touch
+// government stock; farmer-owned crops are managed from the farm instead.
+const GOVERNMENT_CROPS = { ownership: { $ne: "farmer" } };
 
 const resolveAssociationId = async (associationId, authenticatedUserId) => {
     if (associationId) return associationId;
@@ -67,9 +72,56 @@ export const createCrop = async (data, authenticatedUserId) => {
     return crop;
 };
 
+// FAR only: registers a crop the farmer owns (no stock, no association).
+// The farm modal then attaches it to the farm being edited.
+export const createFarmerOwnedCrop = async (data, authenticatedUserId) => {
+    const associationId = await resolveAssociationId(undefined, authenticatedUserId);
+    if (!associationId) {
+        const forbiddenError = new Error("Your account is not linked to an association");
+        forbiddenError.statusCode = 403;
+        throw forbiddenError;
+    }
+
+    const farmer = await Farmer.findOne({ _id: data.assignedFarmer, deletedAt: null }).select("firstName lastName association");
+    if (!farmer || String(farmer.association) !== String(associationId)) {
+        const notFoundError = new Error("Farmer not found in your association");
+        notFoundError.statusCode = 404;
+        throw notFoundError;
+    }
+
+    const cropData = { cropType: data.cropType };
+    await validateInventoryLinks("crop", cropData);
+
+    const crop = await Crop.create({
+        ...cropData,
+        ownership: "farmer",
+        // The optional name overrides the crop type's name set above.
+        name: data.name || cropData.name,
+        assignedFarmer: farmer._id,
+        quantity: 0,
+        unplanted: 0,
+    });
+
+    await createLog({
+        entityType: "crop",
+        entityId: crop._id,
+        association: associationId,
+        message: `${crop.name} was registered as a farmer-owned crop of ${farmer.getFullName()}.`,
+    });
+    await createLog({
+        entityType: "farmer",
+        entityId: farmer._id,
+        association: associationId,
+        message: `${farmer.getFullName()} registered their own crop: ${crop.name}.`,
+    });
+
+    await crop.populate([FARMER_POPULATE, CROP_TYPE_POPULATE]);
+    return crop;
+};
+
 export const updateCrop = async (id, data) => {
     const { associationId, ...cropData } = data;
-    if (cropData.cropType !== undefined) await validateInventoryLinks("crop", cropData, await Crop.findById(id) ?? {});
+    if (cropData.cropType !== undefined) await validateInventoryLinks("crop", cropData, await Crop.findOne({ _id: id, ...GOVERNMENT_CROPS }) ?? {});
     if (associationId !== undefined) {
         cropData.association = associationId;
     }
@@ -79,7 +131,7 @@ export const updateCrop = async (id, data) => {
         cropData.association !== undefined ||
         cropData.quantity !== undefined;
     const previousCrop = needsPrevious
-        ? await Crop.findOne({ _id: id, deletedAt: null }).select(
+        ? await Crop.findOne({ _id: id, deletedAt: null, ...GOVERNMENT_CROPS }).select(
             "assignedFarmer association name quantity unplanted"
         )
         : null;
@@ -91,7 +143,8 @@ export const updateCrop = async (id, data) => {
     }
 
     if (cropData.quantity !== undefined) {
-        const plantedSoFar = previousCrop.quantity - previousCrop.unplanted;
+        // Planted so far comes from the farm records, not the stored copy.
+        const plantedSoFar = (await plantedTotals([previousCrop._id])).get(String(previousCrop._id)) ?? 0;
         const newUnplanted = cropData.quantity - plantedSoFar;
 
         if (newUnplanted < 0) {
@@ -106,7 +159,7 @@ export const updateCrop = async (id, data) => {
     }
 
     const crop = await Crop.findOneAndUpdate(
-        { _id: id, deletedAt: null },
+        { _id: id, deletedAt: null, ...GOVERNMENT_CROPS },
         { $set: cropData },
         { new: true, runValidators: true }
     ).populate([FARMER_POPULATE, ASSOCIATION_POPULATE, CROP_TYPE_POPULATE]);
@@ -162,7 +215,7 @@ export const updateCrop = async (id, data) => {
 
 export const deleteCrop = async (id) => {
     const crop = await Crop.findOneAndUpdate(
-        { _id: id, deletedAt: null },
+        { _id: id, deletedAt: null, ...GOVERNMENT_CROPS },
         { $set: { deletedAt: new Date() } },
         { new: true }
     );
@@ -178,7 +231,7 @@ export const deleteCrop = async (id) => {
 
 export const restoreCrop = async (id) => {
     const crop = await Crop.findOneAndUpdate(
-        { _id: id, deletedAt: { $ne: null } },
+        { _id: id, deletedAt: { $ne: null }, ...GOVERNMENT_CROPS },
         { $set: { deletedAt: null } },
         { new: true }
     );
@@ -194,7 +247,7 @@ export const restoreCrop = async (id) => {
 
 export const distributeCrop = async (id) => {
     const crop = await Crop.findOneAndUpdate(
-        { _id: id, deletedAt: null },
+        { _id: id, deletedAt: null, ...GOVERNMENT_CROPS },
         { $set: { isDistributed: true } },
         { new: true, runValidators: true }
     ).populate([FARMER_POPULATE, ASSOCIATION_POPULATE, CROP_TYPE_POPULATE]);
@@ -244,8 +297,9 @@ const attachHistory = async (crops, associationId) => {
     });
 };
 
-export const getCrops = async ({ search, associationId, all, page, limit, includeDeleted = false }) => {
-    const filter = includeDeleted ? {} : { deletedAt: null };
+export const getCrops = async ({ id, search, associationId, all, page, limit, includeDeleted = false }) => {
+    const filter = includeDeleted ? { ...GOVERNMENT_CROPS } : { deletedAt: null, ...GOVERNMENT_CROPS };
+    if (id) filter._id = id;
     if (associationId) {
         filter.association = associationId;
         filter.isDistributed = true;

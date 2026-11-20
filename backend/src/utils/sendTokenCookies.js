@@ -1,4 +1,6 @@
-export const sendTokenCookies = ({ res, accessToken, refreshToken }) => {
+import { REFRESH_TOKEN_TTL } from "./generateToken.js";
+
+export const sendTokenCookies = ({ res, accessToken, refreshToken, rememberMe = false }) => {
   const isProduction = process.env.NODE_ENV === "production";
 
   res.cookie("accessToken", accessToken, {
@@ -12,6 +14,7 @@ export const sendTokenCookies = ({ res, accessToken, refreshToken }) => {
     httpOnly: true,
     secure: isProduction,
     sameSite: isProduction ? "none" : "lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    // No maxAge -> session cookie that the browser drops when it closes.
+    ...(rememberMe ? { maxAge: REFRESH_TOKEN_TTL.remember.ms } : {}),
   });
 };

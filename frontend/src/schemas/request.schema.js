@@ -30,6 +30,22 @@ export const createRequestUpdateSchema = createRequestFormSchema;
 export const requestFormSchema = createRequestFormSchema();
 export const requestUpdateSchema = createRequestUpdateSchema();
 
+// Release proof: at least one image (several allowed), images only. Accepts
+// files picked in FileUploader that resolveAttachments uploads on submit.
+const releaseFileSchema = z.union([
+  z.object({ url: z.string().url(), publicId: z.string().min(1), resourceType: z.string().optional() }),
+  z.object({ file: z.instanceof(File) }).passthrough(),
+]);
+const isImageFile = (f) => f?.file instanceof File
+  ? f.file.type.startsWith("image/")
+  : (f?.resourceType ?? "image") === "image";
+export const releaseFormSchema = z.object({
+  files: z.array(releaseFileSchema)
+    .min(1, "Add at least one image of the released items")
+    .max(20, "Attach at most 20 images")
+    .refine((files) => files.every(isImageFile), "Only image files are allowed"),
+});
+
 export const denyRemarksSchema = z.object({
   remarks: z.string().trim().min(5, "Remarks must be at least 5 characters").max(500, "Remarks must not exceed 500 characters"),
 });

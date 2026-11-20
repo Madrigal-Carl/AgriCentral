@@ -19,6 +19,8 @@ import { usePermissions } from "@/constants/permissions";
 import { useFarmers, useDeleteFarmer } from "@/hooks/useFarmers";
 import { useAssociations } from "@/hooks/useAssociations";
 import useAuth from "@/hooks/useAuth";
+import { useViewRecord, firstListRow } from "@/hooks/useViewRecord";
+import { getFarmers } from "@/services/farmer.service";
 
 const STATUS_OPTIONS = [
   { value: "active", label: "Active" },
@@ -125,6 +127,8 @@ export function FarmersPage() {
     });
   };
   const openView = (row) => setDrawer(row);
+  // Opens the drawer for ?view=<id> (notification links).
+  useViewRecord({ fetchRecord: firstListRow(getFarmers, "farmers"), onOpen: openView });
   const askDelete = (row) => {
     if (!can.delete) return;
     setDeleteError(null);

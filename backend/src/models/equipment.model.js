@@ -40,6 +40,8 @@ const equipmentSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "Farmer",
         },
+        // Set when a request release assigns the item to an association.
+        dispersedAt: { type: Date, default: null },
         deletedAt: {
             type: Date,
             default: null,
@@ -57,6 +59,8 @@ const equipmentSchema = new mongoose.Schema(
 
 equipmentSchema.pre("validate", function () {
     this.status = this.association ? "assigned" : "available";
+    // Items outside an association have no dispersal date.
+    if (!this.association) this.dispersedAt = null;
 });
 
 equipmentSchema.index(

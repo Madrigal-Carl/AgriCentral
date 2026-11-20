@@ -1,13 +1,12 @@
-import mongoose from "mongoose";
 import puppeteer from "puppeteer";
-import { getDateRange } from "../utils/dateRange.util.js";
 import {
-    PERIOD_LABEL,
     capitalize,
     formatDate,
     getEquipmentRows,
     getLivestockRows,
     getFarmRows,
+    resolveAnalyticsScope,
+    exportHeaderLines,
 } from "./analyticsReportData.service.js";
 
 /* ---------------- Helpers ---------------- */
@@ -53,7 +52,7 @@ function renderTable(headers, rows) {
 }
 
 function renderEquipmentSection(rows) {
-    const headers = ["Property #", "Name", "Condition", "Status", "Association", "Assigned Farmer", "Date Added"];
+    const headers = ["Property #", "Name", "Condition", "Status", "Association", "Assigned Farmer", "Dispersal Date", "Date Added"];
     const body = rows.map((e) => [
         e.propertyNumber,
         e.name,
@@ -61,6 +60,7 @@ function renderEquipmentSection(rows) {
         capitalize(e.status),
         e.association,
         e.assignedFarmer,
+        formatDate(e.dispersalDate),
         formatDate(e.dateAdded),
     ]);
     return `<h2>Equipment</h2>${renderTable(headers, body)}`;
@@ -69,7 +69,8 @@ function renderEquipmentSection(rows) {
 function renderLivestockSection(rows) {
     const headers = [
         "Property #", "Animal", "Breed", "Gender", "Birth Date",
-        "Color", "Weight", "Condition", "Status", "Association", "Assigned Farmer", "Date Added",
+        "Color", "Condition", "Status", "Association", "Assigned Farmer",
+        "Dispersal Date", "Dispersal Age", "Date Added",
     ];
     const body = rows.map((l) => [
         l.propertyNumber,
@@ -78,24 +79,27 @@ function renderLivestockSection(rows) {
         capitalize(l.gender),
         formatDate(l.birthDate),
         l.color,
-        l.weight,
         capitalize(l.condition),
         capitalize(l.status),
         l.association,
         l.assignedFarmer,
+        formatDate(l.dispersalDate),
+        l.dispersalAge,
         formatDate(l.dateAdded),
     ]);
     return `<h2>Livestock</h2>${renderTable(headers, body)}`;
 }
 
 function renderFarmSection(rows) {
-    const headers = ["Farm", "Crop", "Planted", "Growing", "Withered", "Damaged", "Harvested", "Planted Date", "Harvested Date"];
+    const headers = ["Farm", "Crop", "Planted", "Newly Planted", "Flowering", "Reproductive", "Vegetative", "Damaged", "Harvested", "Planted Date", "Harvested Date"];
     const body = rows.map((r) => [
         r.farm,
         r.crop,
         r.planted,
-        r.growing,
-        r.withered,
+        r.newlyPlanted,
+        r.flowering,
+        r.reproductive,
+        r.vegetative,
         r.damaged,
         r.harvested,
         formatDate(r.plantedDate),
@@ -106,24 +110,25 @@ function renderFarmSection(rows) {
 
 /* ---------------- Main entry point ---------------- */
 
-export const generateAnalyticsPdf = async ({ section = "all", association, period = "month" }) => {
-    const associationId = association ? new mongoose.Types.ObjectId(association) : null;
-    const { start, end } = getDateRange(period);
+// The association, farmer and year filters apply to every section.
+export const generateAnalyticsPdf = async ({ section = "all", association, farmer, period = "month", year }) => {
+    const scope = await resolveAnalyticsScope({ association, farmer, period, year });
+    const { scopeLine, periodLine } = await exportHeaderLines(scope);
 
     const sectionsToInclude = section === "all" ? ["equipment", "livestock", "farm"] : [section];
 
     const htmlParts = [];
 
     if (sectionsToInclude.includes("equipment")) {
-        const rows = await getEquipmentRows({ associationId, start, end });
+        const rows = await getEquipmentRows(scope);
         htmlParts.push(renderEquipmentSection(rows));
     }
     if (sectionsToInclude.includes("livestock")) {
-        const rows = await getLivestockRows({ associationId, start, end });
+        const rows = await getLivestockRows(scope);
         htmlParts.push(renderLivestockSection(rows));
     }
     if (sectionsToInclude.includes("farm")) {
-        const rows = await getFarmRows({ associationId, start, end });
+        const rows = await getFarmRows(scope);
         htmlParts.push(renderFarmSection(rows));
     }
 
@@ -136,7 +141,7 @@ export const generateAnalyticsPdf = async ({ section = "all", association, perio
         </head>
         <body>
           <h1>AgriCentral Analytics Report</h1>
-          <p class="subtitle">${PERIOD_LABEL[period]} &bull; ${formatDate(start)} &ndash; ${formatDate(end)}</p>
+          <p class="subtitle">${escapeHtml(scopeLine)}<br />${escapeHtml(periodLine)}</p>
           ${htmlParts.join("")}
         </body>
       </html>

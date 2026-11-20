@@ -20,8 +20,9 @@ export async function updateRequestApproval(id, data) {
     return response.data;
 }
 
-export async function releaseRequest(id) {
-    const response = await api.patch(`/requests/${id}/release`);
+// data: { attachments: [{ url, publicId, resourceType }] } (at least one image).
+export async function releaseRequest(id, data) {
+    const response = await api.patch(`/requests/${id}/release`, data);
     return response.data;
 }
 

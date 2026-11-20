@@ -5,4 +5,5 @@ export const EMAIL_JOBS = {
   REQUEST_REJECTED: "email:request-rejected",
   REPORT_APPROVED: "email:report-approved",
   REPORT_REJECTED: "email:report-rejected",
+  PASSWORD_RESET_OTP: "email:password-reset-otp",
 };

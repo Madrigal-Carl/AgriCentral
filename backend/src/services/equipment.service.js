@@ -307,6 +307,7 @@ export const getAvailableEquipments = async () => {
 };
 
 export const getEquipments = async ({
+    id,
     condition,
     status,
     search,
@@ -317,6 +318,7 @@ export const getEquipments = async ({
     includeDeleted = false,
 }) => {
     const filter = includeDeleted ? {} : { deletedAt: null };
+    if (id) filter._id = id;
     if (condition) filter.condition = condition;
     if (status) filter.$and = [{ association: status === "assigned" ? { $ne: null } : null }];
     if (associationId) filter.association = associationId;

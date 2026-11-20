@@ -8,6 +8,7 @@ import {
     releaseRequest,
     deleteRequest,
 } from "@/services/request.service";
+import { uploadToCloudinary } from "@/services/upload.service";
 import { equipmentKeys } from "@/hooks/useEquipments";
 import { livestockKeys } from "@/hooks/useLivestocks";
 
@@ -19,6 +20,30 @@ export const requestKeys = {
     details: () => [...requestKeys.all, "detail"],
     detail: (id) => [...requestKeys.details(), id],
 };
+
+/* ---------------- Shared: files -> attachments ---------------- */
+// Same pattern as useReports: keep already-uploaded files, upload new ones.
+async function resolveAttachments(files = []) {
+    const existingAttachments = files.filter(
+        (f) => f && typeof f === "object" && !(f?.file instanceof File),
+    );
+    const newFiles = files.filter((f) => f?.file instanceof File);
+
+    if (!newFiles.length) return existingAttachments;
+
+    const uploads = await Promise.all(
+        newFiles.map((f) => uploadToCloudinary(f.file, "request"))
+    );
+
+    return [
+        ...existingAttachments,
+        ...uploads.map((u) => ({
+            url: u.secure_url,
+            publicId: u.public_id,
+            resourceType: u.resource_type,
+        })),
+    ];
+}
 
 /* ---------------- Queries ---------------- */
 export function useRequests(filters = {}, options = {}) {
@@ -86,13 +111,17 @@ export function useReleaseRequest(options = {}) {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (id) => releaseRequest(id),
+        // Release images are uploaded first, then sent as attachments.
+        mutationFn: async ({ id, files }) => {
+            const attachments = await resolveAttachments(files);
+            return releaseRequest(id, { attachments });
+        },
         onSuccess: (data, variables, context) => {
             queryClient.invalidateQueries({ queryKey: equipmentKeys.all });
             queryClient.invalidateQueries({ queryKey: livestockKeys.all });
             queryClient.invalidateQueries({ queryKey: requestKeys.lists() });
             queryClient.invalidateQueries({
-                queryKey: requestKeys.detail(variables),
+                queryKey: requestKeys.detail(variables.id),
             });
             options.onSuccess?.(data, variables, context);
         },

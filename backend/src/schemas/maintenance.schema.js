@@ -12,6 +12,8 @@ export const maintenanceSchemas = {
     colors: z.object({ name }),
 };
 export const maintenanceQuerySchema = z.object({
+    // One record by id (opening a notification's record); role scoping still applies.
+    id: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid record id").optional(),
     search: z.string().trim().max(100).optional(),
     municipality: referenceIdSchema.optional(),
     animalType: referenceIdSchema.optional(),

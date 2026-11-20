@@ -7,6 +7,8 @@ import { DeleteConfirmModal } from "@/components/modal/DeleteConfirmModal";
 import { useMaintenanceUsage } from "@/hooks/useMaintenance";
 import { useLookups, lookupOptions } from "@/hooks/useLookups";
 import { getErrorMessage } from "@/utils/getErrorMessage";
+import { useViewRecord, firstListRow } from "@/hooks/useViewRecord";
+import { getMaintenance } from "@/services/maintenance.service";
 
 export function MaintenancePanel({ config, aside }) {
   const [search, setSearch] = useState("");
@@ -17,6 +19,17 @@ export function MaintenancePanel({ config, aside }) {
   const [archive, setArchive] = useState(null);
   const [feedback, setFeedback] = useState(null);
   const [actionError, setActionError] = useState(null);
+  // ?view=<id> (notification links): there is no drawer, so the table is
+  // narrowed to that item (archived ones included).
+  useViewRecord({
+    fetchRecord: firstListRow((params) => getMaintenance(config.type, params), "items", { includeArchived: true }),
+    onOpen: (item) => {
+      setSearch(item.name);
+      setParent("");
+      setIncludeArchived(!!item.deletedAt);
+      setPage(1);
+    },
+  });
   const { data, isLoading, isError, error } = config.useList(config.type, { page, limit: 10, search, includeArchived, ...(parent ? { [config.parent]: parent } : {}) });
   const lookups = useLookups();
   const usage = useMaintenanceUsage(config.type, archive?._id);

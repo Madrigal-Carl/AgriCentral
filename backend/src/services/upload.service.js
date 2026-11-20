@@ -3,6 +3,15 @@ import cloudinary from "../config/cloudinary.js";
 const SUBFOLDER_MAP = {
     farmer: "farmers",
     report: "reports",
+    request: "requests",
+};
+
+// Report attachments are images only; Cloudinary rejects other formats when
+// this is part of the signed request.
+const ALLOWED_FORMATS = {
+    report: "jpg,jpeg,png,webp,gif,heic,heif,avif",
+    // Release proof images for requests.
+    request: "jpg,jpeg,png,webp,gif,heic,heif,avif",
 };
 
 export const createUploadSignature = ({ type }) => {
@@ -21,11 +30,13 @@ export const createUploadSignature = ({ type }) => {
     const folder = `${rootFolder}/${subfolder}`;
     const timestamp = Math.round(Date.now() / 1000);
 
+    const allowedFormats = ALLOWED_FORMATS[type];
     const paramsToSign = {
         timestamp,
         folder,
         use_filename: true,
         unique_filename: true,
+        ...(allowedFormats ? { allowed_formats: allowedFormats } : {}),
     };
 
     const signature = cloudinary.utils.api_sign_request(
@@ -41,5 +52,6 @@ export const createUploadSignature = ({ type }) => {
         folder,
         useFilename: true,
         uniqueFilename: true,
+        ...(allowedFormats ? { allowedFormats } : {}),
     };
 };

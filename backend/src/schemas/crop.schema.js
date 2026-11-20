@@ -24,6 +24,17 @@ export const createCropSchema = z.object({
     assignedFarmer: requiredObjectId("Invalid farmer id", "Assigned farmer is required"),
 });
 
+// Created by a FAR user from the farm modal; association comes from the
+// authenticated FAR account's farmer, never from the body.
+export const createFarmerOwnedCropSchema = z.object({
+    cropType: referenceIdSchema,
+    assignedFarmer: requiredObjectId("Invalid farmer id", "Farmer is required"),
+    name: z.preprocess(
+        (val) => (typeof val === "string" && val.trim() === "" ? undefined : val),
+        z.string().trim().max(100, "Name must not exceed 100 characters").optional(),
+    ),
+});
+
 export const updateCropSchema = z.object({
     associationId: requiredObjectId("Invalid association id", "Association is required").optional(),
     cropType: referenceIdSchema.optional(),
@@ -41,6 +52,8 @@ export const cropIdParamSchema = z.object({
 });
 
 export const getCropsQuerySchema = z.object({
+    // One record by id (opening a notification's record); role scoping still applies.
+    id: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid record id").optional(),
     search: z.string().trim().min(1).max(100).optional(),
     associationId: z
         .string()

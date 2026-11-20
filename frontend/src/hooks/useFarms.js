@@ -33,6 +33,8 @@ export function useCreateFarm(options = {}) {
         mutationFn: (data) => createFarm(data),
         onSuccess: (data, variables, context) => {
             queryClient.invalidateQueries({ queryKey: farmKeys.lists() });
+            // Planting moves the crops' unplanted stock.
+            queryClient.invalidateQueries({ queryKey: ["crops"] });
             (variables.assignedFarmers ?? []).forEach((a) => {
                 queryClient.invalidateQueries({ queryKey: farmerKeys.crops(a.farmer) });
             });
@@ -49,6 +51,8 @@ export function useUpdateFarm(options = {}) {
         mutationFn: ({ id, ...data }) => updateFarm(id, data),
         onSuccess: (data, variables, context) => {
             queryClient.invalidateQueries({ queryKey: farmKeys.lists() });
+            // Planting moves the crops' unplanted stock.
+            queryClient.invalidateQueries({ queryKey: ["crops"] });
             (variables.assignedFarmers ?? []).forEach((a) => {
                 queryClient.invalidateQueries({ queryKey: farmerKeys.crops(a.farmer) });
             });

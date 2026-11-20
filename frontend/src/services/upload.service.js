@@ -6,7 +6,7 @@ export async function getUploadSignature({ type }) {
 }
 
 export async function uploadToCloudinary(file, type) {
-    const { url, apiKey, timestamp, signature, folder, useFilename, uniqueFilename } =
+    const { url, apiKey, timestamp, signature, folder, useFilename, uniqueFilename, allowedFormats } =
         await getUploadSignature({ type });
 
     const formData = new FormData();
@@ -17,6 +17,8 @@ export async function uploadToCloudinary(file, type) {
     formData.append("folder", folder);
     formData.append("use_filename", useFilename);
     formData.append("unique_filename", uniqueFilename);
+    // Signed by the backend (report uploads are images only); must match.
+    if (allowedFormats) formData.append("allowed_formats", allowedFormats);
 
     const response = await fetch(url, {
         method: "POST",

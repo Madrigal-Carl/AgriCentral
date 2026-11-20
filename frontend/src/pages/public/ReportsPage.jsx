@@ -7,7 +7,7 @@ import {
   StatusPill,
 } from "@/components/public";
 import { Button, TextInput } from "@/components/ui";
-import { typeLabel, typeTone, sevTone, sevLabel, SEVERITY_OPTIONS } from "@/constants/data";
+import { typeLabel, typeTone, priorityTone, priorityLabel, PRIORITY_OPTIONS } from "@/constants/data";
 import { usePermissions } from "@/constants/permissions";
 import {
   DeleteConfirmModal,
@@ -19,8 +19,9 @@ import {
   getReviewerRole,
   getReportStatus,
   getReportItems,
-  getReportSeverity,
-  reportItemLabel,
+  getReportPriority,
+  getReportKind,
+  isLegacyCropReport,
   statusTone,
   statusLabel,
   REPORT_STATUS_OPTIONS,
@@ -31,6 +32,8 @@ import {
   useDeleteReport,
 } from "@/hooks/useReports";
 import useAuth from "@/hooks/useAuth";
+import { useViewRecord, firstListRow } from "@/hooks/useViewRecord";
+import { getReports } from "@/services/report.service";
 import { fmtRequestedAt } from "@/utils/format";
 
 const REPORT_TYPE_OPTIONS = [
@@ -48,7 +51,7 @@ export function ReportsPage() {
   const [status, setStatus] = useState("");
   const [entityType, setEntityType] = useState("");
   const [date, setDate] = useState("");
-  const [severity, setSeverity] = useState("");
+  const [priority, setPriority] = useState("");
   const [page, setPage] = useState(1);
   const limit = 10;
 
@@ -66,7 +69,7 @@ export function ReportsPage() {
   // Reset to page 1 whenever filters change
   useEffect(() => {
     setPage(1);
-  }, [search, status, entityType, date, severity]);
+  }, [search, status, entityType, date, priority]);
 
   const { data, isLoading } = useReports({
     page,
@@ -76,7 +79,7 @@ export function ReportsPage() {
     entityType: entityType || undefined,
     date: date || undefined,
     timezoneOffset: date ? new Date(`${date}T00:00:00`).getTimezoneOffset() : undefined,
-    severity: severity || undefined,
+    priority: priority || undefined,
   });
 
   const rows = data?.reports ?? [];
@@ -98,6 +101,8 @@ export function ReportsPage() {
     setModal({ mode: "edit", data: row });
   };
   const openView = (row) => setDrawer(row);
+  // Opens the drawer for ?view=<id> (notification links).
+  useViewRecord({ fetchRecord: firstListRow(getReports, "reports"), onOpen: openView });
   const askDelete = (row) => {
     if (!can.delete) return;
     setConfirmDelete(row);
@@ -159,7 +164,7 @@ export function ReportsPage() {
             onChange: setStatus,
           },
           { key: "entityType", label: "Type", allLabel: "All type", options: REPORT_TYPE_OPTIONS, value: entityType, onChange: setEntityType },
-          { key: "severity", label: "Severity", options: SEVERITY_OPTIONS, value: severity, onChange: setSeverity },
+          { key: "priority", label: "Priority", options: PRIORITY_OPTIONS, value: priority, onChange: setPriority },
         ]}
         pagination={
           pagination
@@ -194,23 +199,14 @@ export function ReportsPage() {
             cell: (r) => getReportItems(r).length,
           },
           {
-            key: "condition",
-            header: entityType === "farm" ? "Staged" : entityType ? "Condition" : "Staged / Condition",
-            cell: (r) => (
-              <ul className="space-y-1">{getReportItems(r).map((item) => <li key={item.itemId} className="flex flex-wrap items-center gap-2 text-xs">
-                <span>{reportItemLabel(r.entityType, item)}</span>
-                <StatusPill tone="info">{item.condition ?? "—"}</StatusPill>
-                <StatusPill tone={sevTone[item.severity]}>{sevLabel[item.severity]}</StatusPill>
-                {r.entityType === "farm" && (item.yieldKg != null || item.reportedQuantity != null) && <span>Quantity: {item.condition === "harvested" ? `${item.yieldKg} kg` : item.reportedQuantity}</span>}
-              </li>)}</ul>
-            ),
-          },
-          {
-            key: "severity",
-            header: "Severity",
-            cell: (r) => (
-              <StatusPill tone={sevTone[getReportSeverity(r)]}>
-                {sevLabel[getReportSeverity(r)]}
+            key: "priority",
+            header: "Priority",
+            // Offspring reports keep the default priority, which is not shown.
+            cell: (r) => getReportKind(r) === "offspring" ? (
+              <span className="text-secondary">—</span>
+            ) : (
+              <StatusPill tone={priorityTone[getReportPriority(r)]}>
+                {priorityLabel[getReportPriority(r)]}
               </StatusPill>
             ),
           },
@@ -245,7 +241,9 @@ export function ReportsPage() {
                 role === reviewerRole &&
                 reportStatus === "pending";
 
-              const canEditThis = can.edit && (r.entityType === "farm" || reportStatus === "pending");
+              // Legacy crop reports (no farmer, or several crops) stay
+              // viewable and reviewable but are never edited.
+              const canEditThis = can.edit && !isLegacyCropReport(r) && (r.entityType === "farm" || reportStatus === "pending");
               const canDeleteThis = can.delete && (r.entityType === "farm" || reportStatus === "pending");
 
               return (

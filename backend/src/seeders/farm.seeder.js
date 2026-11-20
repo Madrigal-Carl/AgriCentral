@@ -1,10 +1,11 @@
 import Farm from "../models/farm.model.js";
 import Crop from "../models/crop.model.js";
+import { stageQuantityTotal } from "../utils/cropStages.js";
 
 // Each farm now also lists who works it (`farmerAssignments`, indices into
-// the seeded `farmers` array) and what's growing on it
+// the seeded `farmers` array) and what's planted on it
 // (`cropAssignments`, indices into the seeded `crops` array + a per-farm
-// quantity breakdown). Barangays are matched to the same farmers/
+// stage breakdown; newly planted = planted minus the five stages). Barangays are matched to the same farmers/
 // associations used in farmer.seeder.js so a farm's assigned farmers
 // actually live nearby.
 const FARMS_TO_SEED = [
@@ -18,7 +19,7 @@ const FARMS_TO_SEED = [
             {
                 // Rice
                 cropIndex: 0,
-                quantities: { planted: 1000, growing: 100, harvested: 850, withered: 30, damaged: 20 },
+                quantities: { planted: 1000, flowering: 30, reproductive: 20, vegetative: 50, harvested: 850, damaged: 20 },
             },
         ],
     },
@@ -32,7 +33,7 @@ const FARMS_TO_SEED = [
             {
                 // Coconut
                 cropIndex: 1,
-                quantities: { planted: 1500, growing: 300, harvested: 1100, withered: 50, damaged: 50 },
+                quantities: { planted: 1500, flowering: 90, reproductive: 60, vegetative: 150, harvested: 1100, damaged: 50 },
             },
         ],
     },
@@ -49,7 +50,7 @@ const FARMS_TO_SEED = [
             {
                 // Banana (Saba)
                 cropIndex: 2,
-                quantities: { planted: 700, growing: 150, harvested: 500, withered: 30, damaged: 20 },
+                quantities: { planted: 700, flowering: 45, reproductive: 30, vegetative: 75, harvested: 500, damaged: 20 },
             },
         ],
     },
@@ -66,7 +67,7 @@ const FARMS_TO_SEED = [
             {
                 // Cassava
                 cropIndex: 3,
-                quantities: { planted: 550, growing: 80, harvested: 420, withered: 30, damaged: 20 },
+                quantities: { planted: 550, flowering: 24, reproductive: 16, vegetative: 40, harvested: 420, damaged: 20 },
             },
         ],
     },
@@ -80,7 +81,7 @@ const FARMS_TO_SEED = [
             {
                 // Sweet Potato (Kamote)
                 cropIndex: 4,
-                quantities: { planted: 480, growing: 60, harvested: 380, withered: 25, damaged: 15 },
+                quantities: { planted: 480, flowering: 18, reproductive: 12, vegetative: 30, harvested: 380, damaged: 15 },
             },
         ],
     },
@@ -94,7 +95,7 @@ const FARMS_TO_SEED = [
             {
                 // Corn
                 cropIndex: 5,
-                quantities: { planted: 650, growing: 100, harvested: 500, withered: 30, damaged: 20 },
+                quantities: { planted: 650, flowering: 30, reproductive: 20, vegetative: 50, harvested: 500, damaged: 20 },
             },
         ],
     },
@@ -108,7 +109,7 @@ const FARMS_TO_SEED = [
             {
                 // Calamansi
                 cropIndex: 6,
-                quantities: { planted: 320, growing: 60, harvested: 240, withered: 12, damaged: 8 },
+                quantities: { planted: 320, flowering: 18, reproductive: 12, vegetative: 30, harvested: 240, damaged: 8 },
             },
         ],
     },
@@ -122,7 +123,7 @@ const FARMS_TO_SEED = [
             {
                 // Gabi (Taro)
                 cropIndex: 7,
-                quantities: { planted: 280, growing: 50, harvested: 210, withered: 12, damaged: 8 },
+                quantities: { planted: 280, flowering: 15, reproductive: 10, vegetative: 25, harvested: 210, damaged: 8 },
             },
         ],
     },
@@ -136,7 +137,7 @@ const FARMS_TO_SEED = [
             {
                 // Mango
                 cropIndex: 8,
-                quantities: { planted: 240, growing: 40, harvested: 180, withered: 12, damaged: 8 },
+                quantities: { planted: 240, flowering: 12, reproductive: 8, vegetative: 20, harvested: 180, damaged: 8 },
             },
         ],
     },
@@ -150,7 +151,7 @@ const FARMS_TO_SEED = [
             {
                 // Peanut
                 cropIndex: 9,
-                quantities: { planted: 200, growing: 30, harvested: 150, withered: 12, damaged: 8 },
+                quantities: { planted: 200, flowering: 9, reproductive: 6, vegetative: 15, harvested: 150, damaged: 8 },
             },
         ],
     },
@@ -164,7 +165,7 @@ const FARMS_TO_SEED = [
             {
                 // Squash (Kalabasa)
                 cropIndex: 10,
-                quantities: { planted: 400, growing: 50, harvested: 320, withered: 20, damaged: 10 },
+                quantities: { planted: 400, flowering: 15, reproductive: 10, vegetative: 25, harvested: 320, damaged: 10 },
             },
         ],
     },
@@ -178,7 +179,7 @@ const FARMS_TO_SEED = [
             {
                 // Eggplant (Talong)
                 cropIndex: 11,
-                quantities: { planted: 350, growing: 60, harvested: 260, withered: 20, damaged: 10 },
+                quantities: { planted: 350, flowering: 18, reproductive: 12, vegetative: 30, harvested: 260, damaged: 10 },
             },
         ],
     },
@@ -228,6 +229,7 @@ export const seedFarms = async ({ associations, farmers, crops, maintenance } = 
                 throw new Error(`seedFarms: crop ${cropIndex} must belong to an assigned farmer in ${association.name}`);
             }
             if (quantities.planted > crop.unplanted) throw new Error(`seedFarms: insufficient unplanted stock for ${crop.name}`);
+            if (stageQuantityTotal(quantities) > quantities.planted) throw new Error(`seedFarms: stage quantities for ${crop.name} exceed planted`);
             return { crop: crop._id, quantities };
         });
 

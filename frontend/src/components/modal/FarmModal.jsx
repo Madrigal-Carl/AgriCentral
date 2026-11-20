@@ -1,5 +1,5 @@
-import { Wheat, Users } from "lucide-react";
-import { useEffect, useMemo, useRef } from "react";
+import { Wheat, Users, Plus, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueries } from "@tanstack/react-query";
@@ -8,48 +8,128 @@ import {
   TextInput,
   FullSelect,
   MultiSelect,
+  Select,
+  SingleSelect,
   Button,
 } from "@/components/ui";
-import { CROP_STATUS_OPTIONS } from "@/constants/data";
-import { LocationPicker } from "@/components/public";
+import {
+  CROP_STAGE_LABEL,
+  STORED_CROP_STAGES,
+  newlyPlantedQuantity,
+  stageQuantityTotal,
+} from "@/constants/data";
+import { LocationPicker, FarmerOwnedBadge } from "@/components/public";
 import { ModalShell } from "./ModalShell";
 import { LocationFields } from "./LocationFields";
-import { referenceId } from "@/hooks/useLookups";
+import { referenceId, useLookups, lookupOptions } from "@/hooks/useLookups";
 import { useFarmers, farmerKeys } from "@/hooks/useFarmers";
+import { useCreateFarmerOwnedCrop } from "@/hooks/useCrops";
 import { getCropsByFarmerId } from "@/services/farmer.service";
 import { useAssociations } from "@/hooks/useAssociations";
 import useAuth from "@/hooks/useAuth";
+import { getErrorMessage } from "@/utils/getErrorMessage";
 import {
   farmFormSchema,
   farmUpdateSchema,
   FARMER_CLASSIFICATION_OPTIONS,
 } from "@/schemas/farm.schema";
 
-const inferCropStage = (quantities) => {
-  const q = quantities ?? {};
-  return q.growing != null ? "growing" : "planted";
-};
-
-const TERMINAL_STATUSES = ["withered", "harvested", "damaged"];
-
-const getAvailableQuantity = (quantities, status, plantableCeiling) => {
-  const q = quantities ?? {};
-  if (status === "planted") return plantableCeiling ?? null;
-
-  const planted = q.planted ?? 0;
-  const claimedByTerminals = TERMINAL_STATUSES.filter(
-    (s) => s !== status,
-  ).reduce((sum, s) => sum + (q[s] ?? 0), 0);
-
-  return Math.max(planted - claimedByTerminals, 0);
-};
-
-const getRemainingQuantity = (quantities) => {
+// An entry is finished once everything planted has been harvested or
+// damaged. Entries with nothing planted yet stay editable.
+const isFinishedEntry = (quantities) => {
   const q = quantities ?? {};
   const planted = q.planted ?? 0;
-  const claimed = (q.withered ?? 0) + (q.harvested ?? 0) + (q.damaged ?? 0);
-  return Math.max(planted - claimed, 0);
+  return planted > 0 && planted - (q.harvested ?? 0) - (q.damaged ?? 0) <= 0;
 };
+
+// Highest value a stage input accepts: whatever the planted count leaves
+// after the other stages. Stages are recorded only against a planted
+// quantity that is already saved, so the cap is the lower of the saved and
+// the current planted value. Planted itself is a free value for every crop;
+// the farm record never moves crop stock.
+const getQuantityMax = (key, quantities, savedPlanted) => {
+  const q = quantities ?? {};
+  if (key === "planted") return undefined;
+  const others = stageQuantityTotal(q) - (Number(q[key]) || 0);
+  const planted = Math.min(Number(q.planted) || 0, savedPlanted);
+  return Math.max(planted - others, 0);
+};
+
+// Inline form for a crop the farmer owns: crop type, one of the farm's
+// assigned farmers, and an optional name. Lives inside the farm <form>, so
+// every button is type="button" and Enter never submits the farm.
+function FarmerCropForm({ farmerOptions, onCancel, onCreated }) {
+  const { data: lookups, isPending: lookupsLoading } = useLookups();
+  const [cropType, setCropType] = useState("");
+  const [farmer, setFarmer] = useState(
+    farmerOptions.length === 1 ? farmerOptions[0].value : "",
+  );
+  const [name, setName] = useState("");
+  const [error, setError] = useState(null);
+  const { mutate, isPending } = useCreateFarmerOwnedCrop({
+    onSuccess: (data) => onCreated(data.crop),
+    onError: (err) => setError(getErrorMessage(err, "Could not add the crop")),
+  });
+
+  const submit = () => {
+    if (!cropType) return setError("Select a crop type");
+    if (!farmerOptions.some((o) => o.value === farmer)) {
+      return setError("Select one of the farm's farmers");
+    }
+    setError(null);
+    mutate({ cropType, assignedFarmer: farmer, name: name.trim() || undefined });
+  };
+
+  return (
+    <div className="sm:col-span-2 space-y-3 border border-dashed border-border bg-muted-30 p-3">
+      <div className="text-sm font-semibold text-foreground">Add farmer's crop</div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Field label="Crop type">
+          <SingleSelect
+            value={cropType}
+            onChange={setCropType}
+            options={lookupOptions(lookups?.crops)}
+            disabled={lookupsLoading}
+            placeholder={lookupsLoading ? "Loading…" : "Select crop type…"}
+            searchPlaceholder="Search…"
+          />
+        </Field>
+        <Field label="Farmer">
+          <SingleSelect
+            value={farmer}
+            onChange={setFarmer}
+            options={farmerOptions}
+            placeholder="Select farmer…"
+            searchPlaceholder="Search farmer…"
+          />
+        </Field>
+        <Field label="Name (optional)">
+          <TextInput
+            value={name}
+            maxLength={100}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                submit();
+              }
+            }}
+            placeholder="e.g. Backyard rice"
+          />
+        </Field>
+      </div>
+      {error && <p className="text-xs text-red-600">{error}</p>}
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" type="button" onClick={onCancel} disabled={isPending}>
+          Cancel
+        </Button>
+        <Button variant="accent" type="button" onClick={submit} disabled={isPending}>
+          {isPending ? "Adding…" : "Add crop"}
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 const blankForm = {
   id: "",
@@ -73,6 +153,9 @@ export function FarmModal({
   const isEdit = mode === "edit";
   const { role } = useAuth();
   const isFar = role === "far";
+  const [farmerCropOpen, setFarmerCropOpen] = useState(false);
+  // Farmer-owned crops created in this modal session (not yet on the farm).
+  const [createdCrops, setCreatedCrops] = useState([]);
 
   // FAR users pick individual farmers to assign; everyone else assigns the
   // farm to an association instead. Only fetch whichever list is relevant.
@@ -93,17 +176,12 @@ export function FarmModal({
     (a) => ({ value: a._id, label: a.name }),
   );
 
-  // A crop entry stays editable here as long as it still has unclaimed
-  // planted/growing stock (see getRemainingQuantity). Only once
-  // withered+harvested+damaged have fully consumed the planted pool does
-  // it drop out ("frozen"), since at that point there's nothing left to
-  // manage on that specific entry — a fresh selection of the same crop
-  // should start a brand-new entry, not resume this one.
+  // A crop entry stays editable here until everything planted on it has
+  // been harvested or damaged (see isFinishedEntry). Finished entries drop
+  // out ("frozen"), since there's nothing left to manage on them — a fresh
+  // selection of the same crop starts a brand-new entry instead.
   const editableInitialCrops = useMemo(
-    () =>
-      (initial?.crops ?? []).filter(
-        (c) => getRemainingQuantity(c.quantities) > 0,
-      ),
+    () => (initial?.crops ?? []).filter((c) => !isFinishedEntry(c.quantities)),
     [initial],
   );
 
@@ -112,8 +190,7 @@ export function FarmModal({
   // components work with plain id strings. Normalize before handing to
   // useForm so all downstream comparisons (.includes(id), Map lookups,
   // etc.) work. assignedFarmers keeps its {farmer, classification} shape —
-  // just unwraps the farmer object down to its id. `status` per crop is
-  // freshly inferred here since the backend no longer sends one. `_id`
+  // just unwraps the farmer object down to its id. `_id`
   // (the crop-entry id, distinct from the crop id) is carried through so
   // the backend can tell "this is the same entry, edited" apart from "this
   // is a new entry" when the crops array is submitted.
@@ -132,7 +209,6 @@ export function FarmModal({
         _id: c._id,
         crop: typeof c.crop === "string" ? c.crop : c.crop._id,
         quantities: c.quantities ?? {},
-        status: inferCropStage(c.quantities),
       })),
       association:
         initial.association == null
@@ -145,8 +221,8 @@ export function FarmModal({
 
   // crop._id -> { _id, quantities }, sourced ONLY from editableInitialCrops
   // (open entries), not all of the farm's crops. This is deliberate: if a
-  // crop's only existing entry is already finished (fully withered/
-  // harvested/damaged), it has no entry here, so re-selecting that crop in
+  // crop's only existing entry is already finished (fully harvested/
+  // damaged), it has no entry here, so re-selecting that crop in
   // the MultiSelect below starts a genuinely new, blank entry — a fresh
   // planting cycle — instead of resuming the finished one's cumulative
   // numbers. A crop that still has an open entry, on the other hand, keeps
@@ -159,6 +235,14 @@ export function FarmModal({
     });
     return map;
   }, [editableInitialCrops]);
+
+  // Planted quantity already saved on this form row's entry; 0 for a new
+  // entry. Planting comes first: stages unlock only once this is above 0.
+  const getSavedPlanted = (row) => {
+    if (!row._id) return 0;
+    const entry = initialEntryByCropId.get(row.crop);
+    return entry && entry._id === row._id ? Number(entry.quantities?.planted) || 0 : 0;
+  };
 
   // crop._id -> crop name, sourced ONLY from editableInitialCrops (open
   // entries). Kept separate from quantity now — the quantity part of the
@@ -175,12 +259,27 @@ export function FarmModal({
     return map;
   }, [editableInitialCrops]);
 
+  // Farmer-owned crops known to this modal (already on the farm, or created
+  // in this session): crop._id -> crop doc. They have no stock, so they
+  // never come back from the farmer "available crops" query below.
+  const farmerOwnedCropById = useMemo(() => {
+    const map = new Map();
+    (initial?.crops ?? []).forEach((c) => {
+      if (c.crop && typeof c.crop !== "string" && c.crop.ownership === "farmer") {
+        map.set(c.crop._id, c.crop);
+      }
+    });
+    createdCrops.forEach((c) => map.set(c._id, c));
+    return map;
+  }, [initial, createdCrops]);
+
   const {
     register,
     handleSubmit,
     control,
     watch,
     setValue,
+    getValues,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(isEdit ? farmUpdateSchema : farmFormSchema),
@@ -229,26 +328,34 @@ export function FarmModal({
   // crop and strip crops when that farmer is unassigned.
   const cropOwnerMap = useMemo(() => {
     const map = new Map();
-    allCrops.forEach((c) => {
+    [...allCrops, ...farmerOwnedCropById.values()].forEach((c) => {
       map.set(c._id, c.assignedFarmer?._id ?? c.assignedFarmer);
     });
     return map;
-  }, [allCrops]);
+  }, [allCrops, farmerOwnedCropById]);
 
-  // crop._id -> live unplanted stock. Sourced from two places: the
-  // farmer-scoped "available crops" query (allCrops) for crops still
-  // selectable there, and the farm's own populated crop docs (initial.crops)
-  // for crops that have already been fully used up and dropped out of that
-  // query. This alone is the "already subtracted" number — combined with
-  // an entry's own committed `planted` via getDisplayUnplanted below, it
-  // becomes the "not yet subtracted" ceiling for an in-progress entry.
-  // Moved above cropOptions/getDisplayUnplanted since both depend on it.
+  // crop._id -> live unplanted stock (informational only: the farm record
+  // never moves stock). Sourced from the farmer-scoped "available crops"
+  // query (allCrops), falling back to the farm's own populated crop docs
+  // (initial.crops) for crops that dropped out of that query.
   const cropUnplantedById = useMemo(() => {
     const map = new Map();
     allCrops.forEach((c) => map.set(c._id, c.unplanted));
     (initial?.crops ?? []).forEach((c) => {
       if (typeof c.crop === "string" || !c.crop) return;
+      if (c.crop.ownership === "farmer") return; // no stock to cap planted
       if (!map.has(c.crop._id)) map.set(c.crop._id, c.crop.unplanted);
+    });
+    return map;
+  }, [allCrops, initial]);
+
+  // crop._id -> quantity given to the farmer (government crops only).
+  const cropQuantityById = useMemo(() => {
+    const map = new Map();
+    allCrops.forEach((c) => map.set(c._id, c.quantity));
+    (initial?.crops ?? []).forEach((c) => {
+      if (typeof c.crop === "string" || !c.crop || c.crop.ownership === "farmer") return;
+      if (!map.has(c.crop._id)) map.set(c.crop._id, c.crop.quantity);
     });
     return map;
   }, [allCrops, initial]);
@@ -262,44 +369,40 @@ export function FarmModal({
     initialCropNameById.forEach((name, id) => {
       if (!map.has(id)) map.set(id, name);
     });
+    farmerOwnedCropById.forEach((c, id) => {
+      if (!map.has(id)) map.set(id, c.name ?? c.cropType?.name);
+    });
     return map;
-  }, [allCrops, initialCropNameById]);
+  }, [allCrops, initialCropNameById, farmerOwnedCropById]);
 
-  // Returns the quantity to DISPLAY for a crop, given how much a specific
-  // entry has already committed to `planted`. For an entry that's still
-  // in progress on this farm (committedPlanted > 0, carried over from its
-  // existing quantities), this adds that commitment back on top of the
-  // live unplanted count — so the number reads as the full pool this
-  // entry could still be edited up to, not net of its own subtraction.
-  // For a brand-new pick (committedPlanted defaults to 0 — nothing of
-  // this entry has been planted yet, whether it's a fresh replant on this
-  // farm or a pick destined for a different farm), this collapses to the
-  // live, already-subtracted number with no special-casing needed.
-  const getDisplayUnplanted = (cropId, committedPlanted = 0) => {
-    const live = cropUnplantedById.get(cropId);
-    return live != null ? live + committedPlanted : null;
-  };
+  // A government crop's live unplanted stock, or null when unknown.
+  const getDisplayUnplanted = (cropId) => cropUnplantedById.get(cropId) ?? null;
 
   // allCrops is the union of the currently assigned farmers' *available*
-  // crops (each per-farmer query is scoped server-side, already net of
-  // every commitment). That excludes any crop that's fully tied up on
-  // this farm, so we backfill those from cropNameById/getDisplayUnplanted
-  // — labeled with the "not yet subtracted" ceiling, since they're already
-  // committed to an open entry on this farm and could still be adjusted.
+  // crops. Crops already on this farm that dropped out of that query are
+  // backfilled from cropNameById/getDisplayUnplanted.
   const cropOptions = useMemo(() => {
     const fromQuery = allCrops.map((c) => ({
       value: c._id,
       label: `${c.unplanted} ${c.name}`,
     }));
 
+    // Farmer-owned crops whose farmer is still assigned stay selectable.
+    const farmerOwned = [...farmerOwnedCropById.values()]
+      .filter((c) =>
+        assignedFarmerIds.includes(c.assignedFarmer?._id ?? c.assignedFarmer),
+      )
+      .map((c) => ({
+        value: c._id,
+        label: `${c.name ?? c.cropType?.name} · Farmer-owned`,
+      }));
+
     const selectedIds = new Set(crops.map((c) => c.crop));
-    const known = new Set(fromQuery.map((o) => o.value));
+    const known = new Set([...fromQuery, ...farmerOwned].map((o) => o.value));
     const missing = [...selectedIds]
       .filter((id) => !known.has(id) && cropNameById.has(id))
       .map((id) => {
-        const committedPlanted =
-          crops.find((c) => c.crop === id)?.quantities?.planted ?? 0;
-        const displayQty = getDisplayUnplanted(id, committedPlanted);
+        const displayQty = getDisplayUnplanted(id);
         const name = cropNameById.get(id);
         return {
           value: id,
@@ -307,9 +410,9 @@ export function FarmModal({
         };
       });
 
-    return [...fromQuery, ...missing];
+    return [...fromQuery, ...farmerOwned, ...missing];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allCrops, crops, cropNameById, cropUnplantedById]);
+  }, [allCrops, crops, cropNameById, cropUnplantedById, farmerOwnedCropById, assignedFarmerIds]);
 
   // Keep track of the previous assignedFarmer ids so we only react to
   // actual removals (avoids stripping crops on unrelated re-renders).
@@ -364,31 +467,58 @@ export function FarmModal({
     );
   };
 
-  // Purely local — moves the quantity selector to a different slot; never
-  // persisted, so this doesn't touch `quantities` at all.
-  const setCropStatus = (cropId, status) => {
-    setValue(
-      "crops",
-      crops.map((c) => (c.crop === cropId ? { ...c, status } : c)),
-      { shouldValidate: true },
-    );
-  };
-
-  // Only the field for the currently-selected slot is editable at a time —
-  // this always writes into quantities[status], never a different slot, so
-  // a crop's history in the other slots is left untouched.
-  const setCropQuantity = (cropId, status, rawValue) => {
+  // Writes one stored quantity (planted or a stage). Newly planted is
+  // derived from these on render and never written.
+  const setCropQuantity = (cropId, key, rawValue) => {
     const value = rawValue === "" ? null : Number(rawValue);
     setValue(
       "crops",
       crops.map((c) =>
         c.crop === cropId
-          ? { ...c, quantities: { ...c.quantities, [status]: value } }
+          ? { ...c, quantities: { ...c.quantities, [key]: value } }
           : c,
       ),
       { shouldValidate: true },
     );
   };
+
+  // crop._id -> stage keys picked from "Add stage…" this session. A stage
+  // that already holds a count is shown regardless.
+  const [shownStages, setShownStages] = useState({});
+  // Focuses the input of the stage just picked.
+  const addedStageRef = useRef(null);
+
+  const addStage = (cropId, key) => {
+    addedStageRef.current = `${cropId}:${key}`;
+    setShownStages((prev) => ({
+      ...prev,
+      [cropId]: [...(prev[cropId] ?? []), key],
+    }));
+  };
+
+  const removeStage = (cropId, key) => {
+    addedStageRef.current = null;
+    setShownStages((prev) => ({
+      ...prev,
+      [cropId]: (prev[cropId] ?? []).filter((k) => k !== key),
+    }));
+    setCropQuantity(cropId, key, "");
+  };
+
+  // A newly created farmer-owned crop joins the farm's crop list right away.
+  const onFarmerCropCreated = (crop) => {
+    setCreatedCrops((prev) => [...prev, crop]);
+    setValue(
+      "crops",
+      [...(getValues("crops") || []), { crop: crop._id, quantities: {} }],
+      { shouldValidate: true },
+    );
+    setFarmerCropOpen(false);
+  };
+
+  const assignedFarmerOptions = farmerOptions.filter((o) =>
+    assignedFarmerIds.includes(o.value),
+  );
 
   // LocationPicker/LeafletMap work with a single {lat,lng} object, but the
   // form stores separate latitude/longitude fields — bridge the two here.
@@ -410,14 +540,14 @@ export function FarmModal({
   // from the form, but they still need to ride along in the submitted
   // payload unchanged. Farm.crops is replaced wholesale on update, so any
   // crop entry missing from the payload reads to the backend as "this
-  // entry was removed" and gets its planted stock refunded to `unplanted`
-  // — which is wrong for an entry that's simply fully harvested/withered/
-  // damaged, not actually deleted. Each one keeps its `_id` so the backend
-  // matches it back to the same entry rather than treating it as new.
+  // entry was removed" — which is wrong for an entry that's simply fully
+  // harvested/damaged, not actually deleted. Each one keeps its `_id` so
+  // the backend matches it back to the same entry rather than treating it
+  // as new.
   const frozenCrops = useMemo(
     () =>
       (initial?.crops ?? [])
-        .filter((c) => getRemainingQuantity(c.quantities) === 0)
+        .filter((c) => isFinishedEntry(c.quantities))
         .map((c) => ({
           _id: c._id,
           crop: typeof c.crop === "string" ? c.crop : c.crop._id,
@@ -542,12 +672,12 @@ export function FarmModal({
                     control={control}
                     render={({ field }) => {
                       const cropIds = field.value.map((c) => c.crop);
-                      const onCropsChange = (nextIds) => {
+                      const onCropsChange = (requestedIds) => {
                         const existing = new Map(
                           field.value.map((c) => [c.crop, c]),
                         );
                         field.onChange(
-                          nextIds.map((id) => {
+                          requestedIds.map((id) => {
                             const prior = existing.get(id);
                             // Already present in the form (open entry being
                             // edited this session, or a re-selection within
@@ -565,12 +695,10 @@ export function FarmModal({
                             // is exactly what we want for "replant after
                             // harvest".
                             const openEntry = initialEntryByCropId.get(id);
-                            const quantities = openEntry?.quantities ?? {};
                             return {
                               _id: openEntry?._id,
                               crop: id,
-                              status: inferCropStage(quantities),
-                              quantities,
+                              quantities: openEntry?.quantities ?? {},
                             };
                           }),
                         );
@@ -594,69 +722,175 @@ export function FarmModal({
                   />
                 </Field>
 
+                <div className="sm:col-span-2 -mt-2 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setFarmerCropOpen(true)}
+                    disabled={assignedFarmerIds.length === 0 || farmerCropOpen}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline disabled:cursor-not-allowed disabled:opacity-50 disabled:no-underline"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Add farmer's crop
+                  </button>
+                </div>
+
+                {farmerCropOpen && (
+                  <FarmerCropForm
+                    farmerOptions={assignedFarmerOptions}
+                    onCancel={() => setFarmerCropOpen(false)}
+                    onCreated={onFarmerCropCreated}
+                  />
+                )}
+
                 {crops.length > 0 && (
                   <div className="sm:col-span-2 space-y-2">
-                    {crops.map((c) => {
-                      const committedPlanted = c.quantities?.planted ?? 0;
-                      // "Not yet subtracted" for an in-progress entry (has
-                      // its own commitment already), naturally becomes the
-                      // live subtracted number for a fresh pick (commitment
-                      // is 0) — see getDisplayUnplanted above.
-                      const displayQty = getDisplayUnplanted(
-                        c.crop,
-                        committedPlanted,
-                      );
+                    {crops.map((c, index) => {
+                      const farmerOwned = farmerOwnedCropById.has(c.crop);
+                      const q = c.quantities ?? {};
+                      // Government crops show their remaining stock for
+                      // reference; farmer-owned crops have none.
+                      const displayQty = farmerOwned
+                        ? null
+                        : getDisplayUnplanted(c.crop);
                       const cropName = cropNameById.get(c.crop);
                       const label = cropName
-                        ? displayQty != null
-                          ? `${displayQty} ${cropName}`
-                          : cropName
-                        : (cropOptions.find((o) => o.value === c.crop)?.label ??
-                          c.crop);
-                      const statusLabel =
-                        CROP_STATUS_OPTIONS.find((o) => o.value === c.status)
-                          ?.label ?? c.status;
-                      const available = getAvailableQuantity(
-                        c.quantities,
-                        c.status,
-                        displayQty,
+                        ?? cropOptions.find((o) => o.value === c.crop)?.label
+                        ?? c.crop;
+                      const staged = stageQuantityTotal(q);
+                      const savedPlanted = getSavedPlanted(c);
+                      const stagesLocked = savedPlanted <= 0;
+                      // A stage input shows once it holds a count or the
+                      // user picked it; the picker offers the rest.
+                      const picked = shownStages[c.crop] ?? [];
+                      const visibleStages = STORED_CROP_STAGES.filter(
+                        (key) => (Number(q[key]) || 0) > 0 || picked.includes(key),
                       );
-                      const currentQuantity = c.quantities?.[c.status] ?? "";
+                      const stageOptions = STORED_CROP_STAGES
+                        .filter((key) => !visibleStages.includes(key))
+                        .map((key) => ({ value: key, label: CROP_STAGE_LABEL[key] }));
+                      // A government crop can be planted only up to what was
+                      // given to the farmer: what this entry already planted
+                      // plus the batch's unplanted stock, and never more
+                      // than the quantity given (the server checks the
+                      // planted total across every farm).
+                      const givenQty = farmerOwned ? null : cropQuantityById.get(c.crop) ?? null;
+                      const maxPlanted =
+                        farmerOwned || displayQty == null
+                          ? undefined
+                          : Math.min(savedPlanted + displayQty, givenQty ?? Infinity);
+                      const rowError =
+                        errors.crops?.[index]?.quantities?.planted?.message ??
+                        (maxPlanted != null && (Number(q.planted) || 0) > maxPlanted
+                          ? `Only ${givenQty ?? maxPlanted} ${label} ${givenQty === 1 ? "was" : "were"} given to the farmer, so this farm can plant at most ${maxPlanted.toLocaleString()}`
+                          : null) ??
+                        (staged > (q.planted ?? 0)
+                          ? `Stage quantities (${staged}) exceed planted (${q.planted ?? 0})`
+                          : staged > savedPlanted
+                            ? `Stage quantities (${staged}) exceed the saved planted quantity (${savedPlanted})`
+                            : null);
 
                       return (
                         <div
                           key={c.crop}
-                          className="flex items-center gap-3 w-full bg-surface border border-border px-3 py-2"
+                          className="w-full space-y-2 border border-border bg-surface px-3 py-2"
                         >
-                          <div className="flex items-center gap-2 text-sm font-medium text-foreground flex-1 min-w-0">
-                            <Wheat className="h-4 w-4 shrink-0 text-accent" />
-                            <span className="truncate">{label}</span>
+                          {/* Crop name on the left, planted quantity on the right. */}
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex min-w-0 items-center gap-2 text-sm font-medium text-foreground">
+                              <Wheat className="h-4 w-4 shrink-0 text-accent" />
+                              <span className="truncate">{label}</span>
+                              {farmerOwned && <FarmerOwnedBadge />}
+                            </div>
+                            <label className="flex items-center gap-2">
+                              <span className="text-[11px] font-medium text-secondary">
+                                Planted
+                              </span>
+                              <TextInput
+                                type="number"
+                                min={0}
+                                step={1}
+                                max={maxPlanted}
+                                value={q.planted ?? ""}
+                                onChange={(e) => setCropQuantity(c.crop, "planted", e.target.value)}
+                                placeholder={maxPlanted != null ? `Max ${maxPlanted}` : "0"}
+                                className="w-28 px-2 py-1.5"
+                              />
+                            </label>
                           </div>
-                          <FullSelect
-                            value={c.status}
-                            onChange={(v) => setCropStatus(c.crop, v)}
-                            options={CROP_STATUS_OPTIONS}
-                          />
-                          <div className="w-28 shrink-0">
-                            <TextInput
-                              type="number"
-                              min={0}
-                              max={available ?? undefined}
-                              value={currentQuantity}
-                              onChange={(e) =>
-                                setCropQuantity(
-                                  c.crop,
-                                  c.status,
-                                  e.target.value,
-                                )
-                              }
-                              placeholder={
-                                available != null
-                                  ? `Max ${available}`
-                                  : "Quantity"
-                              }
-                            />
-                          </div>
+
+                          {stagesLocked ? (
+                            <p className="text-[11px] text-secondary">
+                              Save the farm with the planted quantity first. You can then record its stages when you edit it.
+                              {maxPlanted != null && ` Given to the farmer and still unplanted: ${maxPlanted.toLocaleString()}.`}
+                            </p>
+                          ) : (
+                            <>
+                              <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-secondary">
+                                <span>
+                                  {CROP_STAGE_LABEL.newly_planted}:{" "}
+                                  <span className="font-semibold text-foreground">
+                                    {newlyPlantedQuantity({ ...q, planted: Math.min(Number(q.planted) || 0, savedPlanted) }).toLocaleString()}
+                                  </span>
+                                  {" · "}Stages total {staged.toLocaleString()} of{" "}
+                                  {Math.min(Number(q.planted) || 0, savedPlanted).toLocaleString()} planted
+                                </span>
+                                {!farmerOwned && displayQty != null && (
+                                  <span>Unplanted stock: {displayQty.toLocaleString()}</span>
+                                )}
+                              </div>
+
+                              {visibleStages.length > 0 && (
+                                <div className="space-y-1.5">
+                                  {visibleStages.map((key) => {
+                                    const max = getQuantityMax(key, q, savedPlanted);
+                                    return (
+                                      <div key={key} className="flex items-center justify-between gap-2">
+                                        <span className="text-xs font-medium text-foreground">
+                                          {CROP_STAGE_LABEL[key]}
+                                        </span>
+                                        <div className="flex items-center gap-1">
+                                          <TextInput
+                                            type="number"
+                                            min={0}
+                                            step={1}
+                                            max={max}
+                                            value={q[key] ?? ""}
+                                            onChange={(e) => setCropQuantity(c.crop, key, e.target.value)}
+                                            placeholder={`Max ${max}`}
+                                            className="w-28 px-2 py-1.5"
+                                            autoFocus={addedStageRef.current === `${c.crop}:${key}`}
+                                          />
+                                          <button
+                                            type="button"
+                                            onClick={() => removeStage(c.crop, key)}
+                                            className="p-1 text-secondary hover:text-red-600"
+                                            aria-label={`Remove ${CROP_STAGE_LABEL[key]}`}
+                                            title={`Remove ${CROP_STAGE_LABEL[key]}`}
+                                          >
+                                            <X className="h-4 w-4" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+
+                              {stageOptions.length > 0 && (
+                                <div className="flex justify-end">
+                                  <Select
+                                    value=""
+                                    onChange={(key) => addStage(c.crop, key)}
+                                    options={stageOptions}
+                                    placeholder="Add stage…"
+                                  />
+                                </div>
+                              )}
+                            </>
+                          )}
+                          {rowError && (
+                            <p className="text-xs text-red-600">{rowError}</p>
+                          )}
                         </div>
                       );
                     })}

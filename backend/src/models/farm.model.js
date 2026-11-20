@@ -2,9 +2,12 @@ import mongoose from "mongoose";
 
 const cropQuantitiesSchema = new mongoose.Schema(
     {
+        // Newly planted is derived (planted minus the five stages below) and
+        // never stored. See utils/cropStages.js.
         planted: { type: Number, min: 0, default: null },
-        growing: { type: Number, min: 0, default: null },
-        withered: { type: Number, min: 0, default: null },
+        flowering: { type: Number, min: 0, default: null },
+        reproductive: { type: Number, min: 0, default: null },
+        vegetative: { type: Number, min: 0, default: null },
         harvested: { type: Number, min: 0, default: null },
         damaged: { type: Number, min: 0, default: null },
     },

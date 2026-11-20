@@ -73,6 +73,7 @@ const REQUESTS_TO_SEED = [
     },
     {
         title: "Request for a native piglet",
+        releasedDaysAgo: 45,
         severity: "medium",
         entityType: "livestock",
         details:
@@ -112,6 +113,7 @@ const REQUESTS_TO_SEED = [
     },
     {
         title: "Combined request for corn sheller and weeding machine",
+        releasedDaysAgo: 12,
         severity: "medium",
         entityType: "equipment",
         details:
@@ -151,6 +153,7 @@ const REQUESTS_TO_SEED = [
     },
     {
         title: "Request for goat and duck for livelihood diversification",
+        releasedDaysAgo: 30,
         severity: "medium",
         entityType: "livestock",
         details:
@@ -164,6 +167,17 @@ const REQUESTS_TO_SEED = [
     },
 ];
 
+// Release proof image (placeholder) for seeded releases.
+const RELEASE_ATTACHMENT = {
+    url: "https://placehold.co/800x600.png?text=AgriCentral+release",
+    publicId: "seed/request-release-placeholder",
+    resourceType: "image",
+};
+const DAY_MS = 24 * 60 * 60 * 1000;
+// Released requests: released this many days ago, approved a few days
+// before that, and submitted before the approvals.
+const DEFAULT_RELEASED_DAYS_AGO = 21;
+
 const APPROVAL_REMARKS = {
     approved: "Reviewed and confirmed as a valid need.",
     denied: "Insufficient inventory to accommodate this request at this time.",
@@ -172,7 +186,7 @@ const APPROVAL_REMARKS = {
 // Builds one leg of `approvalStatus` (coordinator, governor, or head).
 // Pending legs stay untouched by an approver so they read as still
 // awaiting action.
-const buildApproval = (status, approver) => {
+const buildApproval = (status, approver, approvedAt = new Date()) => {
     if (status === "pending" || !approver) {
         return { status: "pending" };
     }
@@ -180,7 +194,7 @@ const buildApproval = (status, approver) => {
     return {
         status,
         approvedBy: approver._id,
-        approvedAt: new Date(),
+        approvedAt,
         remarks: APPROVAL_REMARKS[status] ?? "",
     };
 };
@@ -233,13 +247,18 @@ export const seedRequests = async ({ livestocks, equipments, associations, users
             const key = String(item[inventoryKey(data.entityType)]);
             grouped.set(key, (grouped.get(key) ?? 0) + 1);
         }
-        const approvalStatus = { coordinator: buildApproval(data.coordinatorStatus, coordinatorUser) };
+        // Released requests happen in the past: submitted, approved, then
+        // released; others keep today's dates.
+        const isReleased = ["released", "partial"].includes(data.releaseStatus);
+        const releasedAt = isReleased ? new Date(Date.now() - (data.releasedDaysAgo ?? DEFAULT_RELEASED_DAYS_AGO) * DAY_MS) : null;
+        const stepAt = (daysBeforeRelease) => releasedAt ? new Date(releasedAt.getTime() - daysBeforeRelease * DAY_MS) : new Date();
+        const approvalStatus = { coordinator: buildApproval(data.coordinatorStatus, coordinatorUser, stepAt(4)) };
         if (data.coordinatorStatus === "approved") {
             if (data.entityType === "equipment") {
-                approvalStatus.governor = buildApproval(data.governorStatus, governorUser);
-                if (data.governorStatus === "approved") approvalStatus.head = buildApproval(data.headStatus, headUser);
+                approvalStatus.governor = buildApproval(data.governorStatus, governorUser, stepAt(3));
+                if (data.governorStatus === "approved") approvalStatus.head = buildApproval(data.headStatus, headUser, stepAt(2));
             } else {
-                approvalStatus.head = buildApproval(data.headStatus, headUser);
+                approvalStatus.head = buildApproval(data.headStatus, headUser, stepAt(2));
             }
         }
         const request = await Request.create({
@@ -252,6 +271,7 @@ export const seedRequests = async ({ livestocks, equipments, associations, users
             details: data.details,
             approvalStatus,
             releaseStatus: "pending",
+            ...(releasedAt ? { createdAt: stepAt(6) } : {}),
         });
 
         if (request.approvalStatus.head?.status === "approved") {
@@ -270,9 +290,16 @@ export const seedRequests = async ({ livestocks, equipments, associations, users
                 if (["released", "partial"].includes(data.releaseStatus)) {
                     const released = data.releaseStatus === "released" ? selected : selected.slice(0, Math.max(1, Math.floor(quantity / 2)));
                     await Model.updateMany({ _id: { $in: released }, reservedBy: request._id }, {
-                        $set: { association: request.association, status: "assigned" }, $unset: { reservedBy: "" },
+                        $set: { association: request.association, status: "assigned", dispersedAt: request.association ? releasedAt : null },
+                        $unset: { reservedBy: "" },
                     });
                     request.releasedIds = released;
+                    request.releases = [{
+                        releasedAt,
+                        releasedBy: coordinatorUser._id,
+                        itemIds: released,
+                        attachments: [RELEASE_ATTACHMENT],
+                    }];
                     request.releaseStatus = released.length === quantity ? "released" : "partial";
                 }
                 const released = new Set(request.releasedIds.map(String));
@@ -282,6 +309,7 @@ export const seedRequests = async ({ livestocks, equipments, associations, users
                     if (released.has(String(item._id))) {
                         item.association = request.association;
                         item.status = "assigned";
+                        item.dispersedAt = request.association ? releasedAt : null;
                     }
                 }
             } else {

@@ -59,11 +59,29 @@ export const updateRequestApprovalSchema = z
         },
     );
 
+// Releasing needs at least one image uploaded by the coordinator.
+const releaseAttachmentSchema = z.object({
+    url: z.string().trim().url("Invalid attachment URL"),
+    publicId: z.string().trim().min(1, "Missing attachment public id"),
+    resourceType: z.literal("image", { error: "Only image attachments are allowed" }).optional().default("image"),
+});
+
+export const RELEASE_IMAGE_REQUIRED_MESSAGE = "Add at least one image of the released items";
+
+export const releaseRequestSchema = z.object({
+    attachments: z
+        .array(releaseAttachmentSchema, { error: RELEASE_IMAGE_REQUIRED_MESSAGE })
+        .min(1, RELEASE_IMAGE_REQUIRED_MESSAGE)
+        .max(20, "Attach at most 20 images"),
+});
+
 export const requestIdParamSchema = z.object({
     id: objectId("Invalid request id"),
 });
 
 export const getRequestsQuerySchema = z.object({
+    // One record by id (opening a notification's record); role scoping still applies.
+    id: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid record id").optional(),
     status: z.enum(OVERALL_STATUSES).optional(),
     severity: z.enum(SEVERITIES).optional(),
     search: z.string().trim().min(1).max(100).optional(),

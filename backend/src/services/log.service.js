@@ -1,13 +1,25 @@
 import Log from "../models/log.model.js";
+import { createNotificationsForLog } from "./notification.service.js";
 
 // Logging should never break the operation it's describing — if a log
 // write fails, swallow it (and report to stderr) rather than throwing
 // out of a create/update flow that already succeeded.
-export const createLog = async ({ entityType, entityId, association, message }) => {
+// Each log also notifies its recipients in-app; notify: false skips that
+// for per-item logs whose action already has a parent-level log.
+export const createLog = async ({ entityType, entityId, association, message, notify = true }) => {
     try {
         await Log.create({ entityType, entityId, association, message });
     } catch (err) {
         console.error("Failed to write log:", err);
+        return;
+    }
+
+    if (!notify) return;
+
+    try {
+        await createNotificationsForLog({ entityType, entityId, association, message });
+    } catch (err) {
+        console.error("Failed to create notifications:", err);
     }
 };
 

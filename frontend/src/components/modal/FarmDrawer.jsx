@@ -1,43 +1,56 @@
 import { Activity, Info, MapPin, Scale, Users, Wheat, X } from "lucide-react";
 import {
-  CROP_STATUS_LABEL,
-  CROP_STATUS_TONE,
+  CROP_STAGE_LABEL,
+  CROP_STAGE_OPTIONS,
+  CROP_STAGE_TONE,
   FARMER_CLASSIFICATION_LABEL,
+  newlyPlantedQuantity,
 } from "@/constants/data";
 import { fmtDate } from "@/utils/format";
 import { LocationMap } from "@/components/ui";
-import { StatusPill } from "@/components/public";
+import { StatusPill, FarmerOwnedBadge } from "@/components/public";
 import { DefList, Section } from "@/components/drawer";
 
-const inferCropStage = (quantities) => {
+// Count per stage, newly planted derived from planted minus the rest.
+const stageCounts = (quantities) => {
   const q = quantities ?? {};
-  if (q.growing != null) return "growing";
-  const terminal = ["withered", "harvested", "damaged"].find(
-    (s) => q[s] != null,
+  return Object.fromEntries(
+    CROP_STAGE_OPTIONS.map(({ value }) => [
+      value,
+      value === "newly_planted" ? newlyPlantedQuantity(q) : (q[value] ?? 0),
+    ]),
   );
-  if (terminal) return terminal;
-  return "planted";
 };
 
-const cropStage = (c) => inferCropStage(c.quantities);
-const cropQuantity = (c) => c.quantities?.[cropStage(c)] ?? 0;
+// The stage holding the most plants; newly planted when nothing is counted.
+const cropStage = (c) => {
+  const counts = stageCounts(c.quantities);
+  return CROP_STAGE_OPTIONS.reduce(
+    (best, { value }) => (counts[value] > counts[best] ? value : best),
+    "newly_planted",
+  );
+};
 
-const getRemainingQuantity = (quantities) => {
+// In progress until everything planted is harvested or damaged (entries
+// with nothing planted yet, e.g. a new farmer-owned crop, still count).
+const isCropInProgress = (quantities) => {
   const q = quantities ?? {};
   const planted = q.planted ?? 0;
-  const claimed = (q.withered ?? 0) + (q.harvested ?? 0) + (q.damaged ?? 0);
-  return Math.max(planted - claimed, 0);
+  return planted === 0 || planted - (q.harvested ?? 0) - (q.damaged ?? 0) > 0;
 };
 
 export function FarmDrawer({ row, onClose }) {
   const crops = row.crops || [];
   const farmers = row.assignedFarmers || [];
   const inProgressCrops = crops.filter(
-    (c) => getRemainingQuantity(c.quantities) > 0,
+    (c) => isCropInProgress(c.quantities),
   );
 
   const cropLabel = (c) =>
     typeof c.crop === "string" ? c.crop : (c.crop?.name ?? "Unknown crop");
+  const cropIdOf = (c) => (typeof c.crop === "string" ? c.crop : c.crop?._id);
+  // Latest fully approved report's area for the crop (from the farm list).
+  const latestAreaHa = (c) => row.cropReportTotals?.[cropIdOf(c)]?.latestAreaHa;
 
   const farmerLabel = (f) => {
     if (typeof f === "string") return f;
@@ -154,22 +167,47 @@ export function FarmDrawer({ row, onClose }) {
               <ul className="space-y-2">
                 {inProgressCrops.map((c, i) => {
                   const stage = cropStage(c);
+                  const counts = stageCounts(c.quantities);
+                  const area = latestAreaHa(c);
                   return (
                     <li
-                      key={c.crop?._id || c.crop || i}
-                      className="flex items-center justify-between border border-border bg-muted-30 px-3 py-2 text-sm"
+                      key={c._id || c.crop?._id || c.crop || i}
+                      className="space-y-2 border border-border bg-muted-30 px-3 py-2 text-sm"
                     >
-                      <span className="font-medium text-foreground">
-                        {cropLabel(c)}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-secondary">
-                          {cropQuantity(c).toLocaleString()} qty
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="flex min-w-0 items-center gap-2 font-medium text-foreground">
+                          <span className="truncate">{cropLabel(c)}</span>
+                          {c.crop?.ownership === "farmer" && <FarmerOwnedBadge />}
                         </span>
-                        <StatusPill tone={CROP_STATUS_TONE[stage]}>
-                          {CROP_STATUS_LABEL[stage]}
+                        <StatusPill tone={CROP_STAGE_TONE[stage]}>
+                          {CROP_STAGE_LABEL[stage]}
                         </StatusPill>
                       </div>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-secondary">
+                        <span>
+                          Planted:{" "}
+                          <span className="font-semibold text-foreground">
+                            {(c.quantities?.planted ?? 0).toLocaleString()}
+                          </span>
+                        </span>
+                        <span title="From the latest fully approved crop report">
+                          Latest approved area:{" "}
+                          <span className="font-semibold text-foreground">
+                            {area > 0 ? `${area.toLocaleString()} ha` : "—"}
+                          </span>
+                        </span>
+                      </div>
+                      {/* Every stage, newly planted derived from planted minus the rest. */}
+                      <dl className="grid grid-cols-3 gap-x-3 gap-y-1 sm:grid-cols-6">
+                        {CROP_STAGE_OPTIONS.map(({ value, label }) => (
+                          <div key={value} className="flex min-w-0 flex-col">
+                            <dt className="truncate text-[11px] text-secondary">{label}</dt>
+                            <dd className="font-semibold text-foreground">
+                              {counts[value].toLocaleString()}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
                     </li>
                   );
                 })}

@@ -8,6 +8,7 @@ import Association from "../models/association.model.js";
 import { validateLocation, LOCATION_POPULATE, ANIMAL_POPULATE, CROP_TYPE_POPULATE, EQUIPMENT_TYPE_POPULATE } from "../utils/maintenanceLinks.js";
 import cloudinary from "../config/cloudinary.js";
 import { createLog, getLogsForEntities, humanize } from "./log.service.js";
+import { syncCropUnplanted } from "../utils/cropStock.js";
 
 const resolveAssociationId = async (associationId, authenticatedUserId) => {
     if (associationId) return associationId;
@@ -320,9 +321,15 @@ export const getCropsByFarmerId = async (farmerId) => {
         throw notFoundError;
     }
 
+    // Unplanted is re-derived from the farm records first, so the farm form
+    // never offers more than what was given to the farmer.
+    const given = await Crop.find({ assignedFarmer: farmerId, deletedAt: null, ownership: { $ne: "farmer" } }).select("_id").lean();
+    await syncCropUnplanted(given.map((c) => c._id));
+
     const crops = await Crop.find({
         assignedFarmer: farmerId,
         deletedAt: null,
+        ownership: { $ne: "farmer" }, // farmer-owned crops have no stock to plant
         isDistributed: true,
         unplanted: { $gt: 0 },
     })
@@ -332,8 +339,9 @@ export const getCropsByFarmerId = async (farmerId) => {
     return crops;
 };
 
-export const getFarmers = async ({ status, search, associationId, all, page, limit, includeDeleted = false }) => {
+export const getFarmers = async ({ id, status, search, associationId, all, page, limit, includeDeleted = false }) => {
     const filter = includeDeleted ? {} : { deletedAt: null };
+    if (id) filter._id = id;
     if (status) filter.status = status;
     if (associationId) filter.association = associationId;
 

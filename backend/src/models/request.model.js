@@ -28,6 +28,34 @@ const approvalSchema = new mongoose.Schema(
     }
 );
 
+// Release proof uploaded by the coordinator (images only).
+const releaseAttachmentSchema = new mongoose.Schema(
+    {
+        url: { type: String, required: true, trim: true },
+        publicId: { type: String, required: true, trim: true },
+        resourceType: { type: String, enum: ["image"], default: "image" },
+    },
+    { _id: false }
+);
+
+// One entry per release action (partial releases included), each with its
+// own images.
+const releaseSchema = new mongoose.Schema(
+    {
+        releasedAt: { type: Date, required: true },
+        releasedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+        itemIds: { type: [mongoose.Schema.Types.ObjectId], default: [] },
+        attachments: {
+            type: [releaseAttachmentSchema],
+            validate: {
+                validator: (files) => files.length > 0,
+                message: "A release needs at least one image",
+            },
+        },
+    },
+    { _id: true }
+);
+
 const requestSchema = new mongoose.Schema(
     {
         association: {
@@ -60,6 +88,7 @@ const requestSchema = new mongoose.Schema(
         // Bound by the system at head approval, never supplied by the client.
         entityIds: { type: [mongoose.Schema.Types.ObjectId], default: [] },
         releasedIds: { type: [mongoose.Schema.Types.ObjectId], default: [] },
+        releases: { type: [releaseSchema], default: [] },
         legacyMaintenance: { type: mongoose.Schema.Types.Mixed, select: false },
         // Serializes review/revert/release/edit on the same request.
         operationLock: { type: String, select: false },

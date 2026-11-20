@@ -13,6 +13,7 @@ import { wipeEquipments, seedEquipments } from "./seeders/equipment.seeder.js";
 import { wipeReports, seedReports } from "./seeders/report.seeder.js";
 import { wipeLogs, seedLogs } from "./seeders/log.seeder.js";
 import { wipeRequests, seedRequests } from "./seeders/request.seeder.js";
+import { wipeNotifications, seedNotifications } from "./seeders/notification.seeder.js";
 
 // Order matters: each entry is listed after every seeder whose output it
 // depends on, so foreign keys always point at documents that already
@@ -33,6 +34,7 @@ import { wipeRequests, seedRequests } from "./seeders/request.seeder.js";
 //   Requests     -> needs Livestock, Equipment (unassigned items only),
 //                   Associations, and Users (coordinator/governor/head approvers)
 //   Logs         -> needs all entities, Reports, Requests, and final assignments
+//   Notifications -> needs Logs (the newest are copied to their recipients) and Users
 //
 // To add a new model seeder later: create seeders/xxx.seeder.js exporting
 // wipeXxx()/seedXxx(context), import it above, and add one entry below in
@@ -50,6 +52,7 @@ const SEEDERS = [
     { name: "Reports", wipe: wipeReports, seed: seedReports },
     { name: "Requests", wipe: wipeRequests, seed: seedRequests },
     { name: "Logs", wipe: wipeLogs, seed: seedLogs },
+    { name: "Notifications", wipe: wipeNotifications, seed: seedNotifications },
 ];
 
 async function runSeeders() {

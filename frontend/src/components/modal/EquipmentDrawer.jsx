@@ -49,6 +49,8 @@ export function EquipmentDrawer({ row, onClose }) {
                 ["Name", row.name],
                 ["Condition", condLabel[row.condition]],
                 ["Status", row.status],
+                // Set when a request release dispersed it to the association.
+                ["Dispersal Date", row.dispersedAt ? fmtDate(row.dispersedAt) : ""],
               ]}
             />
           </Section>

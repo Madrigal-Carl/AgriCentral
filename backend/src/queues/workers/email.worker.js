@@ -8,6 +8,8 @@ import { requestReleasedTemplate } from "../../templates/email/request-released.
 import { requestRejectedTemplate } from "../../templates/email/request-rejected.template.js";
 import { reportApprovedTemplate } from "../../templates/email/report-approved.template.js";
 import { reportRejectedTemplate } from "../../templates/email/report-rejected.template.js";
+import { passwordResetOtpTemplate } from "../../templates/email/password-reset-otp.template.js";
+import { openOtp } from "../../utils/passwordReset.js";
 
 const emailWorker = new Worker(
   "emailQueue",
@@ -96,6 +98,28 @@ const emailWorker = new Worker(
             items: data.items,
           }),
         });
+      },
+
+      // The OTP arrives encrypted and is only decrypted here. Provider errors
+      // are reduced to a status so the code can never reach the logs.
+      [EMAIL_JOBS.PASSWORD_RESET_OTP]: async () => {
+        const otp = openOtp(data.sealedOtp);
+        try {
+          return await sendEmail({
+            to: data.to,
+            subject: "Your AgriCentral password reset code",
+            html: passwordResetOtpTemplate({
+              name: data.name,
+              otp,
+              expiresInMinutes: data.expiresInMinutes,
+            }),
+            text: `Your AgriCentral password reset code is ${otp}. It expires in ${data.expiresInMinutes} minutes. If you did not request this, you can ignore this email.`,
+          });
+        } catch (err) {
+          throw new Error(
+            `Password reset email failed (status ${err?.statusCode ?? err?.status ?? "unknown"})`,
+          );
+        }
       },
     };
 

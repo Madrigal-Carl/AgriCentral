@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { Plus, Eye, UserPlus, HeartPulse } from "lucide-react";
+import { Plus } from "lucide-react";
 import {
   PageHeader,
   DataTable,
   RowActions,
   StatusPill,
 } from "@/components/public";
-import { Button, IconButton } from "@/components/ui";
+import { Button, TextButton } from "@/components/ui";
 
 import {
   healthTone,
@@ -31,13 +31,15 @@ import {
 import { useFarmersByAssociationId } from "@/hooks/useFarmers";
 import { fmtDate } from "@/utils/format";
 import { useSearchParams } from "react-router-dom";
+import { useViewRecord, firstListRow, VIEW_PARAM } from "@/hooks/useViewRecord";
+import { getLivestocks } from "@/services/livestock.service";
 
 export function LivestocksPage() {
   const can = usePermissions("livestocks");
   const { role } = useAuth();
 
   // Coordinators/admins are the "managers": they add, edit (tag/animal/
-  // breed/gender/dob/color/weight), and delete livestock via
+  // breed/gender/dob/color), and delete livestock via
   // LivestockModal + plain View/Edit/Delete actions.
   // FAR can only assign livestock to a farmer and update its health —
   // no add, no delete/return.
@@ -51,6 +53,12 @@ export function LivestocksPage() {
   const drawerId = searchParams.get("livestock");
   const openView = (row) => setSearchParams((params) => { const next = new URLSearchParams(params); next.set("livestock", row._id); return next; });
   const closeView = () => setSearchParams((params) => { const next = new URLSearchParams(params); next.delete("livestock"); return next; });
+  // ?view=<id> (notification links) becomes ?livestock=<id> in one update.
+  useViewRecord({
+    fetchRecord: firstListRow(getLivestocks, "livestocks"),
+    onOpen: (row) => setSearchParams((params) => { const next = new URLSearchParams(params); next.delete(VIEW_PARAM); next.set("livestock", row._id); return next; }, { replace: true }),
+    clearParam: false,
+  });
 
   const [search, setSearch] = useState("");
   const [health, setHealth] = useState("");
@@ -109,7 +117,6 @@ export function LivestocksPage() {
         health: "healthy",
         dob: "",
         color: "",
-        weight: "",
         farmer: "",
         associationId: "",
       },
@@ -131,7 +138,6 @@ export function LivestocksPage() {
         health: row.condition,
         dob: row.birthDate,
         color: row.color,
-        weight: row.weight,
         farmer: row.assignedFarmer?._id,
         associationId: row.association?._id ?? row.association,
         reservedBy: row.reservedBy || null,
@@ -261,6 +267,16 @@ export function LivestocksPage() {
               </div>
             ),
           },
+          ...(role !== "far"
+            ? [
+                {
+                  key: "association",
+                  header: "Association",
+                  accessor: (r) => r.association?.name || "",
+                  cell: (r) => r.association?.name || "—",
+                },
+              ]
+            : []),
           {
             key: "farmer",
             header: "Assigned Farmer",
@@ -300,22 +316,13 @@ export function LivestocksPage() {
                   onDelete={can.delete ? () => openDelete(r) : undefined}
                 />
               ) : (
-                <div className="flex items-center justify-end gap-1">
-                  <IconButton
-                    icon={Eye}
-                    label="View"
-                    onClick={() => openView(r)}
-                  />
+                <div className="flex flex-wrap items-center justify-end gap-1">
+                  <TextButton label="View" onClick={() => openView(r)} />
                   {can.edit && (
-                    <IconButton
-                      icon={UserPlus}
-                      label="Assign"
-                      onClick={() => openAssign(r)}
-                    />
+                    <TextButton label="Assign" onClick={() => openAssign(r)} />
                   )}
                   {can.edit && (
-                    <IconButton
-                      icon={HeartPulse}
+                    <TextButton
                       label="Update Health"
                       onClick={() => openStatus(r)}
                     />

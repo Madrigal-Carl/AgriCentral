@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { DefList, ItemList, Section } from "@/components/drawer";
 import { StatusPill } from "@/components/public";
 import { statusTone, positionLabel } from "@/constants/data";
@@ -8,24 +9,41 @@ import {
   Beef,
   Tractor,
   Calendar,
-  FileText,
 } from "lucide-react";
 import { fmtDate } from "@/utils/format";
 
-// Attachments are { url, publicId, resourceType } objects — derive a
-// readable name from the url for display.
-function fileNameFromUrl(url) {
-  try {
-    const clean = url.split("?")[0];
-    return decodeURIComponent(clean.split("/").pop() || url);
-  } catch {
-    return url;
-  }
+function initialsOf(row) {
+  const initials = [row.firstName, row.lastName]
+    .map((part) => part?.trim()?.[0])
+    .filter(Boolean)
+    .join("");
+  return (initials || row.fullName?.trim()?.[0] || "?").toUpperCase();
+}
+
+// Circular avatar: the uploaded profile image, or initials when there is
+// none (or it fails to load, e.g. the asset was removed).
+function FarmerAvatar({ row }) {
+  const url = row.profileImage?.url;
+  const [failedUrl, setFailedUrl] = useState(null);
+  const showImage = Boolean(url) && failedUrl !== url;
+
+  return (
+    <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-full bg-accent-soft font-display text-base text-accent">
+      {showImage ? (
+        <img
+          src={url}
+          alt={row.fullName ? `${row.fullName} profile photo` : "Farmer profile photo"}
+          className="h-full w-full rounded-full object-cover"
+          onError={() => setFailedUrl(url)}
+        />
+      ) : (
+        <span aria-hidden="true">{initialsOf(row)}</span>
+      )}
+    </div>
+  );
 }
 
 export function FarmerDrawer({ row, onClose }) {
-  const attachments = row.attachments || [];
-
   const capitalize = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 
   const farmItems = (row.farms || []).map((f) => `${f.tag} · ${f.address}`);
@@ -47,11 +65,7 @@ export function FarmerDrawer({ row, onClose }) {
         <div className="border-b border-border px-6 py-5">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex items-start gap-3">
-              <div className="grid h-12 w-12 shrink-0 place-items-center bg-accent-soft rounded-full font-display text-base text-accent">
-                {row.profileImage?.url ? (
-                  <img src={row.profileImage.url} alt={row.fullName} className="h-12 w-12 rounded-full" />
-                ) : row.fullName?.[0]}
-              </div>
+              <FarmerAvatar row={row} />
               <div className="min-w-0">
                 <div className="label-eyebrow mb-1">Farmer</div>
                 <h2 className="font-display text-xl tracking-tight text-foreground truncate">
@@ -122,44 +136,6 @@ export function FarmerDrawer({ row, onClose }) {
               </ol>
             ) : (
               <div className="text-sm text-secondary">No activity yet.</div>
-            )}
-          </Section>
-
-          <Section icon={FileText} title="Uploaded Files">
-            {attachments.length > 0 ? (
-              <ul className="space-y-2">
-                {attachments.map((a) => (
-                  <li
-                    key={a.publicId}
-                    className="flex items-center gap-3 border border-border bg-muted-30 px-3 py-2"
-                  >
-                    <div className="grid h-9 w-9 shrink-0 place-items-center bg-surface text-secondary">
-                      <FileText className="h-4 w-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <a
-                        href={a.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="block truncate text-sm font-medium text-foreground hover:underline"
-                      >
-                        {fileNameFromUrl(a.url)}
-                      </a>
-                    </div>
-
-                    <a
-                      href={a.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="shrink-0 border border-border bg-surface px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-muted"
-                    >
-                      View
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="text-sm text-secondary">No files uploaded.</div>
             )}
           </Section>
         </div>

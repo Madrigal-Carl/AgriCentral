@@ -1,5 +1,6 @@
 export { Button } from "./Button"
 export { IconButton } from "./IconButton"
+export { TextButton } from "./TextButton"
 export { Select } from "./Select"
 export { SingleSelect } from "./SingleSelect"
 export { Field } from "./Field"

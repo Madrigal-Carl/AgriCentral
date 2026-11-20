@@ -53,11 +53,13 @@ export function Select({
             <li key={String(o.value)}>
               <button
                 type="button"
+                disabled={o.disabled}
                 onClick={() => {
+                  if (o.disabled) return;
                   onChange(o.value);
                   setOpen(false);
                 }}
-                className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted ${o.value === value ? "bg-accent-soft font-semibold text-foreground" : "text-foreground"}`}
+                className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm ${o.disabled ? "cursor-not-allowed text-secondary opacity-60" : "hover:bg-muted"} ${o.value === value ? "bg-accent-soft font-semibold text-foreground" : o.disabled ? "" : "text-foreground"}`}
               >
                 {o.label}
                 {o.value === value && (

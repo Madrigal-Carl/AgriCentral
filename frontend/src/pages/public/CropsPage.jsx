@@ -16,6 +16,8 @@ import {
 import { Button } from "@/components/ui";
 
 import { useCrops, useDeleteCrop, useDistributeCrop } from "@/hooks/useCrops";
+import { useViewRecord, firstListRow } from "@/hooks/useViewRecord";
+import { getCrops } from "@/services/crop.service";
 import { usePermissions } from "@/constants/permissions";
 
 const blankForm = {
@@ -91,6 +93,8 @@ export function CropsPage() {
       },
     });
   const openView = (row) => setViewRow(row);
+  // Opens the drawer for ?view=<id> (notification links).
+  useViewRecord({ fetchRecord: firstListRow(getCrops, "crops"), onOpen: openView });
   const askDelete = (row) => {
     setDeleteError(null);
     setConfirmDelete(row);

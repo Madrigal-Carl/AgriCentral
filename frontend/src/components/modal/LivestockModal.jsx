@@ -43,7 +43,6 @@ export function LivestockModal({ mode, initial, onClose, onSave }) {
       health: initial.health,
       dob: initial.dob?.slice(0, 10),
       color: referenceId(initial.color),
-      weight: initial.weight,
       associationId: initial.associationId || "",
       isOffspring: !!initial.mother,
       mother: initial.mother?._id ?? initial.mother ?? "",
@@ -109,7 +108,6 @@ export function LivestockModal({ mode, initial, onClose, onSave }) {
       condition: values.health,
       birthDate: values.dob,
       color: values.color,
-      weight: values.weight,
       status: derivedStatus,
       mother: values.isOffspring ? values.mother : null,
       ...(isEdit
@@ -232,17 +230,8 @@ export function LivestockModal({ mode, initial, onClose, onSave }) {
             )}
           />
         </Field>
-        <Field label="Release Date" error={errors.dob?.message}>
+        <Field label="Release Date" error={errors.dob?.message} full>
           <TextInput type="date" {...register("dob")} />
-        </Field>
-        <Field label="Weight (kg)" error={errors.weight?.message}>
-          <TextInput
-            type="number"
-            min="0"
-            step="0.1"
-            {...register("weight")}
-            placeholder="0.0"
-          />
         </Field>
         {!initial.reservedBy && (
           <Field label="Association" error={errors.associationId?.message} full>

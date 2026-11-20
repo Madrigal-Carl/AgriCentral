@@ -32,6 +32,7 @@ import { PageHeader, StatCard, ExportDropdown } from "@/components/public";
 import { Button, Select } from "@/components/ui";
 import {
   useAnalytics,
+  useAnalyticsFarmers,
   downloadAnalyticsPdf,
   downloadAnalyticsExcel,
 } from "@/hooks/useAnalytics";
@@ -39,10 +40,17 @@ import { useAssociations } from "@/hooks/useAssociations";
 import { ModalShell } from "@/components/modal/ModalShell";
 import {
   ANALYTICS_CHART_COLORS,
+  CROP_STAGE_HEX,
+  CROP_STAGE_LABEL,
   ANALYTICS_PERIOD_OPTIONS,
   ANALYTICS_MONTH_LABELS,
   ALL_ASSOCIATIONS_OPTION,
+  ALL_FARMERS_OPTION,
+  analyticsYearOptions,
 } from "@/constants/data";
+
+const CURRENT_YEAR = new Date().getFullYear();
+const YEAR_OPTIONS = analyticsYearOptions(CURRENT_YEAR);
 
 const EXPORT_SECTIONS = [
   { value: "all", label: "All", icon: LayoutGrid },
@@ -98,9 +106,10 @@ function ChartCard({ title, subtitle, children, height = 280 }) {
   );
 }
 
-// value/options now work off association id (null = "All Associations")
+// value/options work off ids (null = "All Associations" / "All Farmers")
 // instead of raw display strings, since the backend needs a real ObjectId.
-function AssociationFilter({ value, onChange, options }) {
+// Shared by the association and farmer filters.
+function SearchableFilter({ value, onChange, options, searchPlaceholder = "Search association…" }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const rootRef = useRef(null);
@@ -153,7 +162,7 @@ function AssociationFilter({ value, onChange, options }) {
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search association…"
+              placeholder={searchPlaceholder}
               className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-secondary"
             />
           </div>
@@ -189,25 +198,44 @@ function AssociationFilter({ value, onChange, options }) {
 }
 
 function FilterBar({
+  year,
+  onYearChange,
   period,
   onPeriodChange,
   association,
   onAssociationChange,
   associationOptions,
+  farmer,
+  onFarmerChange,
+  farmerOptions,
 }) {
+  // A past year only supports the whole-year period.
+  const periodOptions = ANALYTICS_PERIOD_OPTIONS.map((option) => ({
+    ...option,
+    disabled: year !== CURRENT_YEAR && option.value !== "year",
+  }));
   return (
     <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+      <div className="w-full sm:w-32">
+        <Select value={year} onChange={onYearChange} options={YEAR_OPTIONS} />
+      </div>
       <div className="w-full sm:w-48">
         <Select
           value={period}
           onChange={onPeriodChange}
-          options={ANALYTICS_PERIOD_OPTIONS}
+          options={periodOptions}
         />
       </div>
-      <AssociationFilter
+      <SearchableFilter
         value={association}
         onChange={onAssociationChange}
         options={associationOptions}
+      />
+      <SearchableFilter
+        value={farmer}
+        onChange={onFarmerChange}
+        options={farmerOptions}
+        searchPlaceholder="Search farmer…"
       />
     </div>
   );
@@ -269,8 +297,10 @@ function DualSectionHeader({ left, right }) {
 
 /* ---------------- Page ---------------- */
 export function AnalyticsPage() {
+  const [year, setYear] = useState(CURRENT_YEAR);
   const [period, setPeriod] = useState("month");
   const [associationId, setAssociationId] = useState(null); // null = All Associations
+  const [farmerId, setFarmerId] = useState(null); // null = All Farmers
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [exportSection, setExportSection] = useState(null);
   const [exportError, setExportError] = useState(null);
@@ -289,12 +319,49 @@ export function AnalyticsPage() {
     ];
   }, [associationsRes]);
 
+  // The association's farmers when one is selected, all farmers otherwise.
+  const { data: farmersRes } = useAnalyticsFarmers(associationId);
+  const farmerOptions = useMemo(() => {
+    const list = farmersRes?.farmers ?? [];
+    return [
+      ALL_FARMERS_OPTION,
+      ...list.map((f) => ({ id: f._id, name: f.fullName, association: f.association })),
+    ];
+  }, [farmersRes]);
+  const selectedFarmerAssociation = useRef(null);
+
+  const onYearChange = (value) => {
+    setYear(value);
+    // Week and month only exist for the current year.
+    if (value !== CURRENT_YEAR) setPeriod("year");
+  };
+  const onPeriodChange = (value) => {
+    if (year !== CURRENT_YEAR && value !== "year") return;
+    setPeriod(value);
+  };
+  const onFarmerChange = (id) => {
+    setFarmerId(id);
+    selectedFarmerAssociation.current = id
+      ? farmerOptions.find((o) => o.id === id)?.association ?? null
+      : null;
+  };
+  // A selected farmer outside the newly chosen association is cleared.
+  const onAssociationChange = (id) => {
+    setAssociationId(id);
+    if (farmerId && id && String(selectedFarmerAssociation.current) !== String(id)) {
+      setFarmerId(null);
+      selectedFarmerAssociation.current = null;
+    }
+  };
+
   const filters = useMemo(
     () => ({
-      period,
+      year,
+      period: year === CURRENT_YEAR ? period : "year",
       ...(associationId && { association: associationId }),
+      ...(farmerId && { farmer: farmerId }),
     }),
-    [period, associationId],
+    [year, period, associationId, farmerId],
   );
 
   const { data: analyticsRes, isLoading, isError } = useAnalytics(filters);
@@ -320,9 +387,11 @@ export function AnalyticsPage() {
 
   const cropStatus = useMemo(
     () =>
+      // The backend sends each stage's key and label (newly planted is derived).
       (analytics?.farm?.cropStatus ?? []).map((s) => ({
-        name: capitalize(s.name),
+        name: CROP_STAGE_LABEL[s.key] ?? capitalize(s.name),
         value: s.value,
+        hex: CROP_STAGE_HEX[s.key],
       })),
     [analytics],
   );
@@ -404,11 +473,16 @@ export function AnalyticsPage() {
       />
 
       <FilterBar
-        period={period}
-        onPeriodChange={setPeriod}
+        year={year}
+        onYearChange={onYearChange}
+        period={filters.period}
+        onPeriodChange={onPeriodChange}
         association={associationId}
-        onAssociationChange={setAssociationId}
+        onAssociationChange={onAssociationChange}
         associationOptions={associationOptions}
+        farmer={farmerId}
+        onFarmerChange={onFarmerChange}
+        farmerOptions={farmerOptions}
       />
 
       {isLoading ? (
@@ -572,10 +646,11 @@ export function AnalyticsPage() {
                   outerRadius={95}
                   label
                 >
-                  {cropStatus.map((_, i) => (
+                  {cropStatus.map((s, i) => (
                     <Cell
                       key={i}
                       fill={
+                        s.hex ??
                         ANALYTICS_CHART_COLORS[
                           i % ANALYTICS_CHART_COLORS.length
                         ]
@@ -591,7 +666,7 @@ export function AnalyticsPage() {
           <div className="mt-4">
             <ChartCard
               title="Monthly Yield Trend"
-              subtitle="Quantity harvested per month, by farm (full current year)."
+              subtitle={`Quantity harvested per month, by farm (full year ${year}).`}
               height={320}
             >
               <LineChart data={monthlyFarmYield}>

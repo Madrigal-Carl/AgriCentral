@@ -1,4 +1,14 @@
 import { Users, Wheat, Tractor, Beef, Building2 } from "lucide-react";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Cell,
+} from "recharts";
 import { PageHeader, StatCard } from "@/components/public";
 import { useOverview } from "@/hooks/useAnalytics";
 import {
@@ -184,14 +194,26 @@ export function OverviewPage() {
             </div>
 
             <div className="bg-surface border border-border p-6 rounded-lg">
-              <div className="mb-6">
-                <div className="label-eyebrow">Livestock</div>
-                <h3 className="font-display mt-1 text-xl text-foreground">
-                  Health status
-                </h3>
+              <div className="mb-6 flex items-start justify-between gap-4">
+                <div>
+                  <div className="label-eyebrow">Livestock</div>
+                  <h3 className="font-display mt-1 text-xl text-foreground">
+                    Health status
+                  </h3>
+                </div>
+                <div className="text-right">
+                  <div className="label-eyebrow !text-[10px]">Total</div>
+                  <div className="font-display mt-1 text-xl text-foreground">
+                    {isLoading ? "—" : totalLivestock.toLocaleString()}
+                  </div>
+                </div>
               </div>
               <div className="flex flex-col items-center">
-                <Donut data={LIVESTOCK_STATUS} total={totalLivestock} />
+                <ConditionBarChart
+                  data={LIVESTOCK_STATUS}
+                  total={totalLivestock}
+                  emptyLabel={isLoading ? "Loading…" : "No livestock recorded."}
+                />
                 <ul className="mt-6 w-full space-y-2">
                   {LIVESTOCK_STATUS.map((s) => (
                     <li
@@ -212,14 +234,26 @@ export function OverviewPage() {
             </div>
 
             <div className="bg-surface border border-border p-6 rounded-lg">
-              <div className="mb-6">
-                <div className="label-eyebrow">Equipment</div>
-                <h3 className="font-display mt-1 text-xl text-foreground">
-                  Condition overview
-                </h3>
+              <div className="mb-6 flex items-start justify-between gap-4">
+                <div>
+                  <div className="label-eyebrow">Equipment</div>
+                  <h3 className="font-display mt-1 text-xl text-foreground">
+                    Condition overview
+                  </h3>
+                </div>
+                <div className="text-right">
+                  <div className="label-eyebrow !text-[10px]">Total</div>
+                  <div className="font-display mt-1 text-xl text-foreground">
+                    {isLoading ? "—" : totalEquipment.toLocaleString()}
+                  </div>
+                </div>
               </div>
               <div className="flex flex-col items-center">
-                <Donut data={EQUIPMENT_CONDITION} total={totalEquipment} />
+                <ConditionBarChart
+                  data={EQUIPMENT_CONDITION}
+                  total={totalEquipment}
+                  emptyLabel={isLoading ? "Loading…" : "No equipment recorded."}
+                />
                 <ul className="mt-6 w-full space-y-2">
                   {EQUIPMENT_CONDITION.map((s) => (
                     <li
@@ -279,37 +313,32 @@ export function OverviewPage() {
   );
 }
 
-function Donut({ data, total }) {
+function ConditionBarChart({ data, total, emptyLabel }) {
   if (!total) {
     return (
-      <div className="relative h-44 w-44 bg-muted">
-        <div className="absolute inset-6 grid place-items-center bg-surface">
-          <div className="text-center">
-            <div className="label-eyebrow !text-[10px]">Total</div>
-            <div className="font-display text-2xl text-foreground">0</div>
-          </div>
-        </div>
+      <div className="grid h-44 w-full place-items-center bg-muted text-sm text-secondary">
+        {emptyLabel}
       </div>
     );
   }
-  let acc = 0;
-  const stops = data.map((d) => {
-    const start = (acc / total) * 360;
-    acc += d.value;
-    const end = (acc / total) * 360;
-    return `${d.hex} ${start}deg ${end}deg`;
-  });
   return (
-    <div
-      className="relative h-44 w-44"
-      style={{ background: `conic-gradient(${stops.join(",")})` }}
-    >
-      <div className="absolute inset-6 grid place-items-center bg-surface">
-        <div className="text-center">
-          <div className="label-eyebrow !text-[10px]">Total</div>
-          <div className="font-display text-2xl text-foreground">{total}</div>
-        </div>
-      </div>
+    <div className="h-44 w-full">
+      <ResponsiveContainer>
+        <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+          <XAxis dataKey="label" interval={0} tick={{ fontSize: 10 }} tickLine={false} />
+          <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} />
+          <Tooltip
+            cursor={{ fill: "rgba(148, 163, 184, 0.15)" }}
+            formatter={(value) => [value.toLocaleString(), "Count"]}
+          />
+          <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={40}>
+            {data.map((d) => (
+              <Cell key={d.label} fill={d.hex} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import {
     createCrop,
+    createFarmerOwnedCrop,
     updateCrop,
     deleteCrop,
     getCrops,
@@ -12,6 +13,15 @@ export const createCropHandler = asyncHandler(async (req, res) => {
 
     return res.status(201).json({
         message: "Crop created successfully",
+        crop,
+    });
+});
+
+export const createFarmerOwnedCropHandler = asyncHandler(async (req, res) => {
+    const crop = await createFarmerOwnedCrop(req.body, req.user?._id);
+
+    return res.status(201).json({
+        message: "Farmer-owned crop created successfully",
         crop,
     });
 });

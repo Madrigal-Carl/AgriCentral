@@ -9,6 +9,17 @@ import logoAsset from "@/assets/logo.png";
 import farmAsset from "@/assets/images/farm.jpg";
 import { registerSchema, loginSchema } from "@/schemas/auth.schema";
 import useAuth from "@/hooks/useAuth";
+import { ForgotPasswordFlow } from "@/components/auth/ForgotPasswordFlow";
+import {
+  inputClass,
+  labelClass,
+  primaryButtonClass,
+  noticeClass,
+  successClass,
+  eyebrowClass,
+  titleClass,
+  descriptionClass,
+} from "@/components/auth/authStyles";
 
 /* Palette: brand #00A36C · forest #0F3D2E · harvest gold #E0A526 · mint #F1F8F3 */
 
@@ -59,14 +70,10 @@ function WheatStalk({ className = "" }) {
   );
 }
 
-const inputClass =
-  "rounded-[5px] border border-[#cfe0d5] bg-white px-3 py-2.5 text-[14px] text-[#0F3D2E] outline-none transition-colors placeholder:text-[#8a9a92] focus:border-[#00A36C] focus:ring-2 focus:ring-[#00A36C]/20";
-const labelClass =
-  "font-mono text-[10.5px] tracking-[0.16em] text-[#4c5a54] uppercase";
-
 export function AuthPage() {
   const [mode, setMode] = useState("signin");
   const [info, setInfo] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const { login, register: registerUser } = useAuth();
 
@@ -75,25 +82,33 @@ export function AuthPage() {
     handleSubmit,
     formState: { errors, isSubmitting },
     reset,
+    getValues,
   } = useForm({
     resolver: zodResolver(mode === "signup" ? registerSchema : loginSchema),
-    defaultValues: { fullname: "", email: "", password: "" },
+    defaultValues: { fullname: "", email: "", password: "", rememberMe: false },
   });
 
   function switchMode(nextMode) {
     setMode(nextMode);
     setInfo(null);
+    setSuccess(null);
     setShowPassword(false);
     reset();
   }
 
+  function handleResetComplete(message) {
+    switchMode("signin");
+    setSuccess(message || "Password updated. You can now sign in.");
+  }
+
   async function onSubmit(values) {
     setInfo(null);
+    setSuccess(null);
     try {
       if (mode === "signup") {
         await registerUser(values);
-        setInfo("Account created. You can now sign in.");
         switchMode("signin");
+        setInfo("Account created. You can now sign in.");
       } else {
         await login(values);
       }
@@ -141,16 +156,24 @@ export function AuthPage() {
         </div>
 
         <div className="rounded-xl bg-white p-7 shadow-xl">
-          <div className="inline-flex items-center gap-2.5 font-mono text-[11px] uppercase tracking-[0.16em] text-[#4c5a54]">
+          {mode === "forgot" ? (
+            <ForgotPasswordFlow
+              initialEmail={getValues("email")}
+              onCancel={() => switchMode("signin")}
+              onComplete={handleResetComplete}
+            />
+          ) : (
+          <>
+          <div className={eyebrowClass}>
             <span className="h-[3px] w-6 rounded-full bg-[#E0A526]" />
             {mode === "signin" ? "Account Access" : "Create Account"}
           </div>
-          <h1 className="mt-3 text-[1.5rem] font-medium leading-[1.15] tracking-[-0.02em] text-[#0F3D2E]">
+          <h1 className={titleClass}>
             {mode === "signin"
               ? "Sign in to AgriCentral"
               : "Create your account"}
           </h1>
-          <p className="mt-2 text-[0.92rem] leading-relaxed text-[#3F4B46]">
+          <p className={descriptionClass}>
             {mode === "signin"
               ? "Access your operational dashboard and field data."
               : "Get started managing farms, livestock, and resources."}
@@ -234,10 +257,39 @@ export function AuthPage() {
                   {errors.password.message}
                 </p>
               )}
+              {mode === "signin" && (
+                <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-[13px]">
+                  <label className="inline-flex cursor-pointer items-center gap-2 text-[#3F4B46]">
+                    <input
+                      type="checkbox"
+                      {...register("rememberMe")}
+                      className="h-4 w-4 rounded-[3px] border-[#cfe0d5] accent-[#00A36C]"
+                    />
+                    Remember me
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInfo(null);
+                      setSuccess(null);
+                      setMode("forgot");
+                    }}
+                    className="font-medium text-[#00A36C] hover:underline"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+              )}
             </div>
 
+            {success && (
+              <div role="status" className={successClass}>
+                {success}
+              </div>
+            )}
+
             {info && (
-              <div className="rounded-[5px] border border-[#ecd9a8] bg-[#FBF6E8] px-3 py-2 text-[12.5px] text-[#7a5600]">
+              <div role="alert" className={noticeClass}>
                 {info}
               </div>
             )}
@@ -245,7 +297,7 @@ export function AuthPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="mt-1 inline-flex items-center justify-center gap-1.5 rounded-[5px] bg-[#00A36C] px-3.5 py-2.5 text-[13.5px] font-medium text-white transition-colors hover:bg-[#008a5b] disabled:opacity-60"
+              className={primaryButtonClass}
             >
               {isSubmitting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -283,6 +335,8 @@ export function AuthPage() {
               </>
             )}
           </div>
+          </>
+          )}
         </div>
 
         <div className="mt-5 text-center">

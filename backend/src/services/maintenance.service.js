@@ -22,9 +22,10 @@ export async function getMaintenanceUsage(type, id) {
     return { total: counts.reduce((sum, item) => sum + item.count, 0), collections: counts };
 }
 
-export async function getMaintenance(type, { search, municipality, animalType, includeArchived = false, page = 1, limit = 10 }) {
+export async function getMaintenance(type, { id, search, municipality, animalType, includeArchived = false, page = 1, limit = 10 }) {
     const Model = maintenanceModels[type];
     const filter = includeArchived ? {} : { deletedAt: null };
+    if (id) filter._id = id;
     if (search) filter.name = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
     const parent = parents[type]?.[0];
     if (parent && (municipality || animalType)) filter[parent] = municipality || animalType;

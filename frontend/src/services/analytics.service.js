@@ -5,6 +5,12 @@ export async function getAnalytics(params) {
     return response.data;
 }
 
+// Farmer filter options ({ _id, fullName, association }); params.association optional.
+export async function getAnalyticsFarmers(params) {
+    const response = await api.get("/analytics/farmers", { params });
+    return response.data;
+}
+
 export async function getOverview(params) {
     const response = await api.get("/analytics/overview", { params });
     return response.data;

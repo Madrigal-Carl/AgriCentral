@@ -1,6 +1,7 @@
 import express from "express";
 import {
     getAnalyticsHandler,
+    getAnalyticsFarmersHandler,
     getOverviewHandler,
     exportAnalyticsPdfHandler,
     exportAnalyticsExcelHandler,
@@ -9,12 +10,14 @@ import {
     validateGetAnalyticsQuery,
     validateExportAnalyticsPdfQuery,
     validateExportAnalyticsExcelQuery,
+    validateGetAnalyticsFarmersQuery,
 } from "../validators/analytics.validator.js";
 import { authenticated, allowRoles, scopeByAssociationId } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
 router.get("/", authenticated, allowRoles("coordinator", "governor", "head"), validateGetAnalyticsQuery, getAnalyticsHandler);
+router.get("/farmers", authenticated, allowRoles("coordinator", "governor", "head"), validateGetAnalyticsFarmersQuery, getAnalyticsFarmersHandler);
 router.get("/overview", authenticated, allowRoles("far", "aew", "coordinator", "governor", "head", "admin"), scopeByAssociationId, getOverviewHandler);
 router.get("/export-pdf", authenticated, allowRoles("coordinator", "governor", "head"), validateExportAnalyticsPdfQuery, exportAnalyticsPdfHandler);
 router.get("/export-excel", authenticated, allowRoles("coordinator", "governor", "head"), validateExportAnalyticsExcelQuery, exportAnalyticsExcelHandler);

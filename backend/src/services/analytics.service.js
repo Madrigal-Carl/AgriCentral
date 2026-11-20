@@ -6,11 +6,12 @@ import Farm from "../models/farm.model.js";
 import Harvest from "../models/harvest.model.js";
 import Association from "../models/association.model.js";
 import Log from "../models/log.model.js";
-import { getDateRange } from "../utils/dateRange.util.js";
+import { entityScopeMatch, farmScopeMatch, harvestScopeMatch, resolveAnalyticsScope } from "./analyticsReportData.service.js";
+import { CROP_STAGES, CROP_STAGE_LABELS, STORED_STAGE_KEYS, newlyPlantedQuantity } from "../utils/cropStages.js";
 
 const EQUIPMENT_CONDITIONS = ["good", "excellent", "damaged", "maintenance", "unusable"];
 const LIVESTOCK_CONDITIONS = ["healthy", "pregnant", "sick", "injured", "deceased"];
-const CROP_QUANTITY_KEYS = ["planted", "growing", "withered", "harvested", "damaged"];
+const CROP_QUANTITY_KEYS = CROP_STAGES;
 
 const TOP_FARMS_LIMIT = 6;
 const RECENT_ACTIVITIES_LIMIT = 6;
@@ -29,31 +30,34 @@ const fillCategories = (rows, allKeys) => {
 // (FM-001) and an address — so every per-farm chart label combines them.
 const FARM_LABEL_EXPR = { $concat: ["$farmDoc.tag", " - ", "$farmDoc.address"] };
 
-export const getAnalytics = async ({ association, period }) => {
-    const associationId = association
-        ? new mongoose.Types.ObjectId(association)
-        : null;
-
-    const { start, end } = getDateRange(period);
-    const now = new Date();
-    const yearStart = new Date(now.getFullYear(), 0, 1);
-    const yearEnd = new Date(now.getFullYear() + 1, 0, 1);
+// Every query honours the selected year (period ranges and the monthly
+// chart) and, when given, the association and/or farmer.
+export const getAnalytics = async ({ association, farmer, period, year }) => {
+    const scope = await resolveAnalyticsScope({ association, farmer, period, year });
+    const { associationId, farmerCropIds, start, end, yearStart, yearEnd } = scope;
 
     const baseMatch = {
         deletedAt: null,
         ...(associationId && { association: associationId }),
     };
 
+    const createdInPeriod = { createdAt: { $gte: start, $lte: end } };
+    // Equipment and livestock: association and/or assigned farmer.
     const periodMatch = {
-        ...baseMatch,
-        createdAt: { $gte: start, $lte: end },
+        deletedAt: null,
+        ...entityScopeMatch(scope),
+        ...createdInPeriod,
+    };
+    // Farms: association and/or one of the farm's assigned farmers.
+    const farmPeriodMatch = {
+        deletedAt: null,
+        ...farmScopeMatch(scope),
+        ...createdInPeriod,
     };
 
     // Harvest is an append-only log — no deletedAt, and it carries its own
-    // association snapshot, so it doesn't need a join to filter by it.
-    const harvestBaseMatch = {
-        ...(associationId && { association: associationId }),
-    };
+    // association snapshot; a farmer limits it to that farmer's crops.
+    const harvestBaseMatch = harvestScopeMatch(scope);
 
     const harvestPeriodMatch = {
         ...harvestBaseMatch,
@@ -73,7 +77,7 @@ export const getAnalytics = async ({ association, period }) => {
     ] = await Promise.all([
         Equipment.countDocuments(periodMatch),
         Livestock.countDocuments(periodMatch),
-        Farm.countDocuments(periodMatch),
+        Farm.countDocuments(farmPeriodMatch),
 
         Equipment.aggregate([
             { $match: periodMatch },
@@ -111,21 +115,25 @@ export const getAnalytics = async ({ association, period }) => {
             { $sort: { farm: 1 } },
         ]),
 
-        // Crop lifecycle breakdown (planted/growing/withered/damaged) is
+        // Crop stage breakdown (newly planted is derived from planted) is
         // still approximated off the farm's live crop entries filtered by
         // updatedAt — there's no per-event log for these statuses yet,
         // only "harvested" has one (Harvest), used below instead.
         Farm.aggregate([
             { $match: baseMatch },
             { $unwind: "$crops" },
-            { $match: { "crops.updatedAt": { $gte: start, $lte: end } } },
+            {
+                $match: {
+                    "crops.updatedAt": { $gte: start, $lte: end },
+                    // With a farmer: only crops assigned to that farmer.
+                    ...(farmerCropIds && { "crops.crop": { $in: farmerCropIds } }),
+                },
+            },
             {
                 $group: {
                     _id: null,
                     planted: { $sum: "$crops.quantities.planted" },
-                    growing: { $sum: "$crops.quantities.growing" },
-                    withered: { $sum: "$crops.quantities.withered" },
-                    damaged: { $sum: "$crops.quantities.damaged" },
+                    ...Object.fromEntries(STORED_STAGE_KEYS.map((key) => [key, { $sum: `$crops.quantities.${key}` }])),
                 },
             },
         ]),
@@ -137,8 +145,8 @@ export const getAnalytics = async ({ association, period }) => {
             { $group: { _id: null, harvested: { $sum: "$quantity" } } },
         ]),
 
-        // Full current year, association-filterable only — reads real
-        // harvestedAt dates instead of proxying off crops.updatedAt.
+        // The full selected year (association and farmer scoped) — reads
+        // real harvestedAt dates instead of proxying off crops.updatedAt.
         Harvest.aggregate([
             {
                 $match: {
@@ -175,14 +183,21 @@ export const getAnalytics = async ({ association, period }) => {
 
     const harvestedTotal = harvestedInPeriod[0]?.harvested ?? 0;
 
+    const stageTotals = cropQuantityRows[0] ?? {};
     const cropStatus = CROP_QUANTITY_KEYS.map((key) => {
+        const name = CROP_STAGE_LABELS[key];
         if (key === "harvested") {
-            return { name: key, value: harvestedTotal };
+            return { key, name, value: harvestedTotal };
         }
-        return { name: key, value: cropQuantityRows[0]?.[key] ?? 0 };
+        if (key === "newly_planted") {
+            return { key, name, value: newlyPlantedQuantity(stageTotals) };
+        }
+        return { key, name, value: stageTotals[key] ?? 0 };
     });
 
     return {
+        // The filters actually applied (period is "year" for a past year).
+        filters: { year: scope.year, period: scope.period },
         kpis: {
             equipment: equipmentCount,
             livestock: livestockCount,
@@ -201,6 +216,23 @@ export const getAnalytics = async ({ association, period }) => {
             monthlyYieldTrend: monthlyYieldRows,
         },
     };
+};
+
+// Farmer filter options for the analytics page: only id, name and
+// association, so the analytics roles (governor and head included, who
+// cannot list farmer records) can pick a farmer.
+export const getAnalyticsFarmers = async ({ association } = {}) => {
+    const farmers = await Farmer.find({
+        deletedAt: null,
+        ...(association && { association: new mongoose.Types.ObjectId(association) }),
+    })
+        .select("firstName lastName association")
+        .sort({ firstName: 1, lastName: 1 });
+    return farmers.map((farmer) => ({
+        _id: farmer._id,
+        fullName: farmer.getFullName(),
+        association: farmer.association ?? null,
+    }));
 };
 
 // Powers the dashboard Overview page — all-time KPIs and chart data,

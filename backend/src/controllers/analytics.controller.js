@@ -1,4 +1,4 @@
-import { getAnalytics, getOverview } from "../services/analytics.service.js";
+import { getAnalytics, getAnalyticsFarmers, getOverview } from "../services/analytics.service.js";
 import { generateAnalyticsPdf } from "../services/pdf.service.js";
 import { generateAnalyticsExcel } from "../services/excel.service.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -9,6 +9,15 @@ export const getAnalyticsHandler = asyncHandler(async (req, res) => {
     return res.status(200).json({
         message: "Analytics fetched successfully",
         data,
+    });
+});
+
+export const getAnalyticsFarmersHandler = asyncHandler(async (req, res) => {
+    const farmers = await getAnalyticsFarmers(req.query);
+
+    return res.status(200).json({
+        message: "Farmers fetched successfully",
+        farmers,
     });
 });
 
@@ -24,9 +33,9 @@ export const getOverviewHandler = asyncHandler(async (req, res) => {
 });
 
 export const exportAnalyticsPdfHandler = asyncHandler(async (req, res) => {
-    const { section, association, period } = req.query;
+    const { section, association, farmer, period, year } = req.query;
 
-    const pdfBuffer = await generateAnalyticsPdf({ section, association, period });
+    const pdfBuffer = await generateAnalyticsPdf({ section, association, farmer, period, year });
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
@@ -37,9 +46,9 @@ export const exportAnalyticsPdfHandler = asyncHandler(async (req, res) => {
 });
 
 export const exportAnalyticsExcelHandler = asyncHandler(async (req, res) => {
-    const { section, association, period } = req.query;
+    const { section, association, farmer, period, year } = req.query;
 
-    const excelBuffer = await generateAnalyticsExcel({ section, association, period });
+    const excelBuffer = await generateAnalyticsExcel({ section, association, farmer, period, year });
 
     res.setHeader(
         "Content-Type",

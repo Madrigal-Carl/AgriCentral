@@ -346,6 +346,7 @@ export const getAvailableLivestocks = async () => {
 };
 
 export const getLivestocks = async ({
+    id,
     condition,
     status,
     search,
@@ -358,6 +359,7 @@ export const getLivestocks = async ({
     const access = await livestockAccessFilter(actingUser);
     const motherPopulate = { ...MOTHER_POPULATE, match: { deletedAt: null, ...access } };
     const filter = includeDeleted ? { ...access } : { deletedAt: null, ...access };
+    if (id) filter._id = id;
     if (condition) filter.condition = condition;
     if (status) filter.$and = [{ association: status === "assigned" ? { $ne: null } : null }];
     if (associationId && actingUser?.role !== "far") filter.association = associationId;

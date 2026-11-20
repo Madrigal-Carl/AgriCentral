@@ -13,6 +13,7 @@ import {
     validateUpdateRequest,
     validateUpdateRequestApproval,
     validateRevertRequestApproval,
+    validateReleaseRequest,
     validateRequestIdParam,
     validateGetRequestsQuery,
 } from "../validators/request.validator.js";
@@ -57,6 +58,7 @@ router.patch(
     authenticated,
     allowRoles("coordinator"),
     validateRequestIdParam,
+    validateReleaseRequest,
     releaseRequestHandler,
 );
 router.delete("/:id", authenticated, allowRoles("far"), validateRequestIdParam, deleteRequestHandler);

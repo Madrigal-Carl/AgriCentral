@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Eye, UserPlus, RefreshCw } from "lucide-react";
+import { Plus } from "lucide-react";
 import {
   PageHeader,
   DataTable,
@@ -15,8 +15,10 @@ import {
   STATUS_OPTIONS,
 } from "@/constants/data";
 import { usePermissions } from "@/constants/permissions";
-import { Button, IconButton } from "@/components/ui";
+import { Button, TextButton } from "@/components/ui";
 import useAuth from "@/hooks/useAuth";
+import { useViewRecord, firstListRow } from "@/hooks/useViewRecord";
+import { getEquipments } from "@/services/equipment.service";
 import {
   useEquipments,
   useUpdateEquipment,
@@ -46,6 +48,8 @@ export function EquipmentsPage() {
   const [statusRow, setStatusRow] = useState(null);
   const [deleteRow, setDeleteRow] = useState(null);
   const [drawer, setDrawer] = useState(null);
+  // Opens the drawer for ?view=<id> (notification links).
+  useViewRecord({ fetchRecord: firstListRow(getEquipments, "equipments"), onOpen: setDrawer });
 
   const [search, setSearch] = useState("");
   const [condition, setCondition] = useState("");
@@ -242,6 +246,16 @@ export function EquipmentsPage() {
               </div>
             ),
           },
+          ...(role !== "far"
+            ? [
+                {
+                  key: "association",
+                  header: "Association",
+                  accessor: (r) => r.association?.name || "",
+                  cell: (r) => r.association?.name || "—",
+                },
+              ]
+            : []),
           {
             key: "farmer",
             header: "Assigned Farmer",
@@ -276,22 +290,13 @@ export function EquipmentsPage() {
                   onDelete={can.delete ? () => openDelete(r) : undefined}
                 />
               ) : (
-                <div className="flex items-center justify-end gap-1">
-                  <IconButton
-                    icon={Eye}
-                    label="View"
-                    onClick={() => setDrawer(r)}
-                  />
+                <div className="flex flex-wrap items-center justify-end gap-1">
+                  <TextButton label="View" onClick={() => setDrawer(r)} />
                   {can.edit && (
-                    <IconButton
-                      icon={UserPlus}
-                      label="Assign"
-                      onClick={() => openAssign(r)}
-                    />
+                    <TextButton label="Assign" onClick={() => openAssign(r)} />
                   )}
                   {can.edit && (
-                    <IconButton
-                      icon={RefreshCw}
+                    <TextButton
                       label="Update Condition"
                       onClick={() => openStatus(r)}
                     />

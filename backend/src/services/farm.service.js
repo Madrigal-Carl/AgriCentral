@@ -7,13 +7,31 @@ import { validateLocation, LOCATION_POPULATE, CROP_TYPE_POPULATE } from "../util
 import HarvestLog from "../models/harvest.model.js";
 import Report from "../models/report.model.js";
 import { APPROVED_FARM_REPORT_FILTER, deriveFarmReportTotals } from "../utils/farmReportTotals.js";
+import {
+    CROP_STAGE_LABELS,
+    FARM_CROP_QUANTITY_KEYS,
+    dominantCropStage,
+    readFarmCropQuantities,
+    stageQuantityTotal,
+} from "../utils/cropStages.js";
 import { createLog, getLogsForEntities, humanize } from "./log.service.js";
+import { plantedTotals, syncCropUnplanted } from "../utils/cropStock.js";
 
 const CROP_POPULATE = { path: "crops.crop", populate: CROP_TYPE_POPULATE };
 const FARMER_POPULATE = { path: "assignedFarmers.farmer", select: "firstName lastName emailAddress" };
 const ASSOCIATION_POPULATE = { path: "association", select: "name" };
 
-const CROP_QUANTITY_STATUSES = ["planted", "growing", "withered", "harvested", "damaged"];
+// Stored quantities with nulls as 0; legacy keys are folded in by the mapper.
+const quantitiesOf = (quantities) => {
+    const read = readFarmCropQuantities(quantities);
+    return Object.fromEntries(FARM_CROP_QUANTITY_KEYS.map((key) => [key, read[key] ?? 0]));
+};
+
+const badRequest = (message) => {
+    const error = new Error(message);
+    error.statusCode = 400;
+    return error;
+};
 
 function toFarmObject(farm) {
     if (!farm) return farm;
@@ -32,14 +50,19 @@ const resolveAssociationId = async (associationId, authenticatedUserId) => {
     return association?._id ?? undefined;
 };
 
-const validateCropQuantities = async (crops, previousPlantedByCropId = new Map()) => {
+// The farm record is the source of planted and stage quantities; crop
+// reports only record what was reported and never change them, and neither
+// moves crop stock. Planted is entered first; stages are recorded against
+// the saved planted quantity and never exceed it.
+// previousEntriesById: the farm's stored entries (by entry id) when editing.
+// assignedFarmerIds: the farm's farmers after this write (undefined = skip
+// the farmer-owned assignment check). farmId: the farm being edited, if any.
+const validateCropQuantities = async (crops, previousEntriesById = new Map(), { assignedFarmerIds, farmId } = {}) => {
     if (!crops?.length) return;
 
     const cropIds = crops.map((c) => c.crop);
-    const cropDocs = await Crop.find({ _id: { $in: cropIds } }).select("name unplanted");
+    const cropDocs = await Crop.find({ _id: { $in: cropIds } }).select("name ownership assignedFarmer");
     const cropById = new Map(cropDocs.map((c) => [c._id.toString(), c]));
-
-    const claimedByCropId = new Map();
 
     for (const entry of crops) {
         const cropId = entry.crop.toString();
@@ -51,57 +74,104 @@ const validateCropQuantities = async (crops, previousPlantedByCropId = new Map()
             throw notFoundError;
         }
 
-        const rawQuantities = entry.quantities ?? {};
-        const planted = rawQuantities.planted ?? 0;
-        const dependentStatuses = [
-            ["growing", rawQuantities.growing ?? 0],
-            ["withered", rawQuantities.withered ?? 0],
-            ["harvested", rawQuantities.harvested ?? 0],
-            ["damaged", rawQuantities.damaged ?? 0],
-        ];
-
-        for (const [statusName, value] of dependentStatuses) {
-            if (value > planted) {
-                const validationError = new Error(
-                    `${humanize(statusName)} quantity for ${cropDoc.name} (${value}) cannot exceed planted quantity (${planted})`
-                );
-                validationError.statusCode = 400;
-                throw validationError;
-            }
+        const quantities = entry.quantities ?? {};
+        const planted = quantities.planted ?? 0;
+        const staged = stageQuantityTotal(quantities);
+        if (staged > planted) {
+            throw badRequest(`Stage quantities for ${cropDoc.name} (${staged}) cannot exceed planted quantity (${planted})`);
         }
 
-        claimedByCropId.set(cropId, (claimedByCropId.get(cropId) ?? 0) + planted);
-    }
+        // Planting comes first: stages can only be recorded against a planted
+        // quantity that is already saved on this entry (a new entry has none).
+        const previous = entry._id ? previousEntriesById.get(String(entry._id)) : undefined;
+        const storedPlanted = previous && String(previous.cropId) === cropId ? previous.quantities.planted : 0;
+        if (staged > 0 && storedPlanted <= 0) {
+            throw badRequest(`Save a planted quantity for ${cropDoc.name} before recording its stages`);
+        }
+        if (staged > storedPlanted) {
+            throw badRequest(`Stage quantities for ${cropDoc.name} (${staged}) cannot exceed its saved planted quantity (${storedPlanted})`);
+        }
 
-    for (const [cropId, totalPlanted] of claimedByCropId) {
-        const cropDoc = cropById.get(cropId);
-        const previouslyPlanted = previousPlantedByCropId.get(cropId) ?? 0;
-        const availableForThisCrop = cropDoc.unplanted + previouslyPlanted;
+        // Planted is a free whole number for every crop.
+        if (!Number.isInteger(planted) || planted < 0) {
+            throw badRequest(`Planted quantity for ${cropDoc.name} must be a whole number`);
+        }
 
-        if (totalPlanted > availableForThisCrop) {
-            const validationError = new Error(
-                `Planted quantity for ${cropDoc.name} (${totalPlanted}) cannot exceed available unplanted stock (${availableForThisCrop})`
-            );
-            validationError.statusCode = 400;
-            throw validationError;
+        if (cropDoc.ownership === "farmer") {
+            if (assignedFarmerIds && !assignedFarmerIds.includes(String(cropDoc.assignedFarmer))) {
+                throw badRequest(`${cropDoc.name} is farmer-owned and its farmer must be assigned to this farm`);
+            }
+            const elsewhere = await Farm.exists({ _id: { $ne: farmId }, deletedAt: null, "crops.crop": cropDoc._id });
+            if (elsewhere) throw badRequest(`${cropDoc.name} is farmer-owned and already belongs to another farm`);
         }
     }
 };
 
-const applyCropPlantingDeltas = async (plantedDeltaByCropId) => {
-    const ops = [];
-    for (const [cropId, delta] of plantedDeltaByCropId) {
-        if (!delta) continue;
-        ops.push({
-            updateOne: {
-                filter: { _id: cropId },
-                update: { $inc: { unplanted: -delta } },
-            },
-        });
+const idOf = (value) => String(value?._id ?? value ?? "");
+
+// Planting a government crop uses the batch given to its farmer: across all
+// active farms, its planted total can never exceed Crop.quantity (given 100,
+// at most 100 planted). Totals come from the farm records, never from the
+// stored Crop.unplanted copy, which is re-synced after every save.
+// Only crops whose planted goes up on this farm are checked, so lowering
+// planted is always allowed. Farmer-owned crops have no given quantity.
+const assertWithinGivenQuantity = async (nextCrops, previousEntries, farmId) => {
+    const next = new Map();
+    for (const c of nextCrops ?? []) {
+        const cropId = String(c.crop);
+        next.set(cropId, (next.get(cropId) ?? 0) + (c.quantities?.planted ?? 0));
     }
-    if (ops.length) {
-        await Crop.bulkWrite(ops);
+    const before = new Map();
+    for (const e of previousEntries) before.set(e.cropId, (before.get(e.cropId) ?? 0) + (e.quantities.planted ?? 0));
+    const raised = [...next].filter(([cropId, planted]) => planted > (before.get(cropId) ?? 0)).map(([cropId]) => cropId);
+    if (!raised.length) return;
+
+    const crops = await Crop.find({ _id: { $in: raised }, ownership: { $ne: "farmer" } }).select("name quantity").lean();
+    const elsewhere = await plantedTotals(crops.map((c) => c._id), { excludeFarmId: farmId });
+    for (const crop of crops) {
+        const cropId = String(crop._id);
+        const given = crop.quantity ?? 0;
+        const otherFarms = elsewhere.get(cropId) ?? 0;
+        const allowed = Math.max(0, given - otherFarms);
+        if (next.get(cropId) > allowed) {
+            throw badRequest(
+                `${crop.name} only has ${given} given to the farmer`
+                + (otherFarms ? ` (${otherFarms} already planted on other farms)` : "")
+                + `, so this farm can plant at most ${allowed}.`,
+            );
+        }
     }
+};
+
+// Fully approved crop report totals for these farms (one report query and one
+// crop query, never per farm). Reports only count for their own association.
+const loadFarmReportTotals = async (farms) => {
+    if (!farms.length) return { reportTotals: new Map(), crops: [] };
+    const reports = await Report.find({
+        ...APPROVED_FARM_REPORT_FILTER,
+        parentId: { $in: farms.map((farm) => farm._id) },
+    }).select("parentId association entityType condition itemIds cropEntries reportedAt createdAt approvalStatus deletedAt").lean();
+    const farmAssociations = new Map(farms.map((farm) => [idOf(farm), idOf(farm.association)]));
+    const scopedReports = reports.filter((report) => String(report.association) === farmAssociations.get(String(report.parentId)));
+    const cropIds = [...new Set([
+        ...scopedReports.flatMap((report) => report.itemIds.map(String)),
+        ...farms.flatMap((farm) => (farm.crops ?? []).map((entry) => idOf(entry.crop))),
+    ])];
+    const crops = cropIds.length
+        ? await Crop.find({ _id: { $in: cropIds } }).select("name cropType ownership").populate(CROP_TYPE_POPULATE).lean()
+        : [];
+    return { reportTotals: deriveFarmReportTotals(scopedReports, crops), crops };
+};
+
+// Per farm: cropReportTotals[cropId] = { stage, plantedQuantity, latestAreaHa, yieldKg }.
+const attachCropReportTotals = async (farms) => {
+    const { reportTotals } = await loadFarmReportTotals(farms);
+    return farms.map((farm) => ({
+        ...farm,
+        cropReportTotals: Object.fromEntries(
+            [...(reportTotals.get(idOf(farm)) ?? new Map())].map(([cropId, { stage, plantedQuantity, latestAreaHa, yieldKg }]) => [cropId, { stage, plantedQuantity, latestAreaHa, yieldKg }]),
+        ),
+    }));
 };
 
 const attachFarmHistory = async (farms, associationId) => {
@@ -124,7 +194,9 @@ const attachFarmHistory = async (farms, associationId) => {
 //   { farmerId, type: "added", toClassification }
 //   { farmerId, type: "removed" }
 //   { farmerId, type: "classification", fromClassification, toClassification }
-const logFarmerAssignmentChanges = async ({ farm, changes }) => {
+// Only the farm-level log of each change notifies (the farmer log mirrors
+// it); notify: false silences both when a parent log covers the action.
+const logFarmerAssignmentChanges = async ({ farm, changes, notify = true }) => {
     if (!changes.length) return;
 
     const farmerIds = changes.map((c) => c.farmerId);
@@ -141,12 +213,14 @@ const logFarmerAssignmentChanges = async ({ farm, changes }) => {
                 entityType: "farmer",
                 entityId: change.farmerId,
                 association: farm.association,
+                notify: false,
                 message: `${farmerName} was assigned to farm ${farm.tag} as ${classificationLabel}.`,
             });
             await createLog({
                 entityType: "farm",
                 entityId: farm._id,
                 association: farm.association,
+                notify,
                 message: `${farmerName} was assigned to this farm as ${classificationLabel}.`,
             });
         } else if (change.type === "removed") {
@@ -154,12 +228,14 @@ const logFarmerAssignmentChanges = async ({ farm, changes }) => {
                 entityType: "farmer",
                 entityId: change.farmerId,
                 association: farm.association,
+                notify: false,
                 message: `${farmerName} was removed from farm ${farm.tag}.`,
             });
             await createLog({
                 entityType: "farm",
                 entityId: farm._id,
                 association: farm.association,
+                notify,
                 message: `${farmerName} was removed from this farm.`,
             });
         } else if (change.type === "classification") {
@@ -167,13 +243,15 @@ const logFarmerAssignmentChanges = async ({ farm, changes }) => {
                 entityType: "farm",
                 entityId: farm._id,
                 association: farm.association,
+                notify,
                 message: `${farmerName}'s classification on ${farm.tag} changed from ${humanize(change.fromClassification)} to ${humanize(change.toClassification)}.`,
             });
         }
     }
 };
 
-const logCropQuantityChanges = async ({ farm, changes }) => {
+// Same as above: the crop log mirrors the farm-level log of each change.
+const logCropQuantityChanges = async ({ farm, changes, notify = true }) => {
     if (!changes.length) return;
 
     const cropIds = [...new Set(changes.map((c) => c.cropId))];
@@ -188,12 +266,14 @@ const logCropQuantityChanges = async ({ farm, changes }) => {
                 entityType: "crop",
                 entityId: change.cropId,
                 association: farm.association,
+                notify: false,
                 message: `${change.quantity} unit(s) were planted on farm ${farm.tag}.`,
             });
             await createLog({
                 entityType: "farm",
                 entityId: farm._id,
                 association: farm.association,
+                notify,
                 message: `${change.quantity} unit(s) of ${cropName} were planted on this farm.`,
             });
         } else if (change.type === "quantity") {
@@ -203,12 +283,14 @@ const logCropQuantityChanges = async ({ farm, changes }) => {
                 entityType: "crop",
                 entityId: change.cropId,
                 association: farm.association,
+                notify: false,
                 message: `${statusLabel} quantity on farm ${farm.tag} changed from ${change.from} to ${change.to}.`,
             });
             await createLog({
                 entityType: "farm",
                 entityId: farm._id,
                 association: farm.association,
+                notify,
                 message: `${cropName}'s ${statusLabel} quantity changed from ${change.from} to ${change.to}.`,
             });
         } else if (change.type === "removed") {
@@ -216,12 +298,14 @@ const logCropQuantityChanges = async ({ farm, changes }) => {
                 entityType: "crop",
                 entityId: change.cropId,
                 association: farm.association,
+                notify: false,
                 message: `${change.quantity} unit(s) were removed from farm ${farm.tag} (planting cycle ended).`,
             });
             await createLog({
                 entityType: "farm",
                 entityId: farm._id,
                 association: farm.association,
+                notify,
                 message: `${change.quantity} unit(s) of ${cropName} were removed from this farm (planting cycle ended).`,
             });
         }
@@ -251,7 +335,9 @@ export const createFarm = async (data, authenticatedUserId) => {
     await validateLocation(farmData);
 
     if (farmData.crops?.length) {
-        await validateCropQuantities(farmData.crops);
+        await validateCropQuantities(farmData.crops, new Map(), {
+            assignedFarmerIds: (farmData.assignedFarmers ?? []).map((a) => String(a.farmer)),
+        });
     }
 
     const resolvedAssociationId = await resolveAssociationId(
@@ -259,10 +345,13 @@ export const createFarm = async (data, authenticatedUserId) => {
         authenticatedUserId,
     );
 
+    await assertWithinGivenQuantity(farmData.crops, []);
+
     const farm = await Farm.create({
         ...farmData,
         association: resolvedAssociationId || undefined,
     });
+    await syncCropUnplanted((farmData.crops ?? []).map((c) => c.crop));
 
     await createLog({
         entityType: "farm",
@@ -272,7 +361,6 @@ export const createFarm = async (data, authenticatedUserId) => {
     });
 
     if (farmData.crops?.length) {
-        const plantedDeltaByCropId = new Map();
         const cropChanges = [];
         const harvestEntries = [];
 
@@ -282,7 +370,6 @@ export const createFarm = async (data, authenticatedUserId) => {
             const harvested = c.quantities?.harvested ?? 0;
 
             if (planted) {
-                plantedDeltaByCropId.set(cropId, (plantedDeltaByCropId.get(cropId) ?? 0) + planted);
                 cropChanges.push({ cropId, type: "planted", quantity: planted });
             }
 
@@ -291,12 +378,9 @@ export const createFarm = async (data, authenticatedUserId) => {
             }
         }
 
-        if (plantedDeltaByCropId.size) {
-            await applyCropPlantingDeltas(plantedDeltaByCropId);
-        }
-
         if (cropChanges.length) {
-            await logCropQuantityChanges({ farm, changes: cropChanges });
+            // "Farm was created" already notifies for this action.
+            await logCropQuantityChanges({ farm, changes: cropChanges, notify: false });
         }
 
         if (harvestEntries.length) {
@@ -307,6 +391,7 @@ export const createFarm = async (data, authenticatedUserId) => {
     if (farmData.assignedFarmers?.length) {
         await logFarmerAssignmentChanges({
             farm,
+            notify: false,
             changes: farmData.assignedFarmers.map((a) => ({
                 farmerId: a.farmer.toString(),
                 type: "added",
@@ -330,40 +415,37 @@ export const updateFarm = async (id, data) => {
     const previousFarm = needsPrevious
         ? await Farm.findOne({ _id: id, deletedAt: null }).select(
             "crops._id crops.crop crops.quantities assignedFarmers tag"
-        )
+        ).lean()
         : null;
 
+    // Lean so quantities stored under legacy keys are still readable here.
     const previousEntries = (previousFarm?.crops ?? []).map((c) => ({
         id: c._id?.toString(),
         cropId: c.crop.toString(),
-        quantities: {
-            planted: c.quantities?.planted ?? 0,
-            growing: c.quantities?.growing ?? 0,
-            withered: c.quantities?.withered ?? 0,
-            harvested: c.quantities?.harvested ?? 0,
-            damaged: c.quantities?.damaged ?? 0,
-        },
+        quantities: quantitiesOf(c.quantities),
     }));
 
-    // Summed per crop (a crop may have multiple existing entries) — used only
-    // for the stock-availability check in validateCropQuantities.
-    const previousPlantedByCropId = new Map();
-    for (const e of previousEntries) {
-        previousPlantedByCropId.set(
-            e.cropId,
-            (previousPlantedByCropId.get(e.cropId) ?? 0) + e.quantities.planted
-        );
-    }
+    const previousEntriesById = new Map(previousEntries.filter((e) => e.id).map((e) => [e.id, e]));
 
     if (farmData.crops?.length) {
-        await validateCropQuantities(farmData.crops, previousPlantedByCropId);
+        const farmers = farmData.assignedFarmers ?? previousFarm?.assignedFarmers ?? [];
+        await validateCropQuantities(farmData.crops, previousEntriesById, {
+            assignedFarmerIds: farmers.map((a) => String(a.farmer)),
+            farmId: id,
+        });
     }
+
+    if (farmData.crops) await assertWithinGivenQuantity(farmData.crops, previousEntries, id);
 
     const farm = await Farm.findOneAndUpdate(
         { _id: id, deletedAt: null },
         { $set: farmData },
         { new: true, runValidators: true }
     ).populate([FARMER_POPULATE, CROP_POPULATE, ASSOCIATION_POPULATE, ...LOCATION_POPULATE]);
+
+    if (farm && farmData.crops) {
+        await syncCropUnplanted([...previousEntries.map((e) => e.cropId), ...farmData.crops.map((c) => c.crop)]);
+    }
 
     if (!farm) {
         const notFoundError = new Error("Farm not found");
@@ -372,33 +454,20 @@ export const updateFarm = async (id, data) => {
     }
 
     if (farmData.crops) {
-        const previousEntryById = new Map(previousEntries.filter((e) => e.id).map((e) => [e.id, e]));
-        const plantedDeltaByCropId = new Map();
         const cropChanges = [];
         const harvestEntries = [];
-        const addDelta = (cropId, delta) => {
-            if (!delta) return;
-            plantedDeltaByCropId.set(cropId, (plantedDeltaByCropId.get(cropId) ?? 0) + delta);
-        };
 
         const matchedPreviousIds = new Set();
         for (const c of farmData.crops) {
             const cropId = c.crop.toString();
-            const newQuantities = {
-                planted: c.quantities?.planted ?? 0,
-                growing: c.quantities?.growing ?? 0,
-                withered: c.quantities?.withered ?? 0,
-                harvested: c.quantities?.harvested ?? 0,
-                damaged: c.quantities?.damaged ?? 0,
-            };
+            const newQuantities = quantitiesOf(c.quantities);
             const entryId = c._id?.toString();
-            const previous = entryId ? previousEntryById.get(entryId) : undefined;
+            const previous = entryId ? previousEntriesById.get(entryId) : undefined;
 
             if (previous) {
                 matchedPreviousIds.add(entryId);
-                addDelta(cropId, newQuantities.planted - previous.quantities.planted);
 
-                for (const status of CROP_QUANTITY_STATUSES) {
+                for (const status of FARM_CROP_QUANTITY_KEYS) {
                     const from = previous.quantities[status];
                     const to = newQuantities[status];
                     if (from !== to) {
@@ -412,8 +481,7 @@ export const updateFarm = async (id, data) => {
             } else {
                 // Brand-new entry: either a genuinely new crop, or a fresh
                 // planting cycle for a crop whose earlier entry already
-                // finished (fully withered/harvested/damaged).
-                addDelta(cropId, newQuantities.planted);
+                // finished (fully harvested/damaged).
                 if (newQuantities.planted) {
                     cropChanges.push({ cropId, type: "planted", quantity: newQuantities.planted });
                 }
@@ -423,21 +491,15 @@ export const updateFarm = async (id, data) => {
             }
         }
 
-        // Any previous entry that didn't come back gives its planted stock
-        // back. Its historical harvested quantity is left untouched in the
-        // harvest log — that harvest genuinely happened, even though the
-        // crop cycle entry itself is now gone from the farm.
+        // Removed entries are logged. Their historical harvested quantity is
+        // left untouched in the harvest log — that harvest genuinely happened,
+        // even though the crop cycle entry itself is now gone from the farm.
         for (const e of previousEntries) {
             if (e.id && !matchedPreviousIds.has(e.id)) {
-                addDelta(e.cropId, -e.quantities.planted);
                 if (e.quantities.planted) {
                     cropChanges.push({ cropId: e.cropId, type: "removed", quantity: e.quantities.planted });
                 }
             }
-        }
-
-        if (plantedDeltaByCropId.size) {
-            await applyCropPlantingDeltas(plantedDeltaByCropId);
         }
 
         if (cropChanges.length) {
@@ -501,22 +563,8 @@ export const deleteFarm = async (id) => {
         throw notFoundError;
     }
 
-    // Crops attached to a deleted farm are orphaned — free their planted
-    // quantity back into each crop's unplanted stock.
-    if (farm.crops?.length) {
-        const plantedDeltaByCropId = new Map();
-        for (const c of farm.crops) {
-            const planted = c.quantities?.planted ?? 0;
-            if (planted) {
-                const cropId = c.crop.toString();
-                plantedDeltaByCropId.set(cropId, (plantedDeltaByCropId.get(cropId) ?? 0) - planted);
-            }
-        }
-        if (plantedDeltaByCropId.size) {
-            await applyCropPlantingDeltas(plantedDeltaByCropId);
-        }
-    }
-
+    // A deleted farm's planting no longer counts against its crops.
+    await syncCropUnplanted((farm.crops ?? []).map((c) => c.crop));
     return farm;
 };
 
@@ -543,6 +591,7 @@ export const restoreFarm = async (id) => {
 
     toRestore.deletedAt = null;
     await toRestore.save();
+    await syncCropUnplanted((toRestore.crops ?? []).map((c) => c.crop));
     return toRestore;
 };
 
@@ -554,30 +603,61 @@ export const getFarmMap = async ({ search, crop, associationId }) => {
         filter.$or = [{ tag: regex }, { address: regex }];
     }
     const farms = await Farm.find(filter)
-        .select("tag address latitude longitude association assignedFarmers")
+        .select("tag address latitude longitude association assignedFarmers crops.crop crops.quantities")
         .sort({ createdAt: -1 })
-        .populate([FARMER_POPULATE, ASSOCIATION_POPULATE]);
+        .populate([FARMER_POPULATE, ASSOCIATION_POPULATE])
+        .then((docs) => docs.map(toFarmObject)); // keeps farmer.fullName virtuals
     if (!farms.length) return { farms: [] };
 
-    // One report query and one crop query for the entire map, never per marker.
-    const reports = await Report.find({
-        ...APPROVED_FARM_REPORT_FILTER,
-        parentId: { $in: farms.map((farm) => farm._id) },
-    }).select("parentId association entityType condition itemIds cropEntries reportedAt createdAt approvalStatus deletedAt").lean();
-    const farmAssociations = new Map(farms.map((farm) => [String(farm._id), String(farm.association?._id ?? farm.association)]));
-    const scopedReports = reports.filter((report) => String(report.association) === farmAssociations.get(String(report.parentId)));
-    const cropIds = [...new Set(scopedReports.flatMap((report) => report.itemIds.map(String)))];
-    const crops = cropIds.length ? await Crop.find({ _id: { $in: cropIds } }).select("name cropType").populate(CROP_TYPE_POPULATE).lean() : [];
-    const totals = deriveFarmReportTotals(scopedReports, crops);
+    const { reportTotals, crops } = await loadFarmReportTotals(farms);
+    const cropById = new Map(crops.map((doc) => [String(doc._id), doc]));
+
     const mapped = farms.map((farm) => {
-        const crops = [...(totals.get(String(farm._id))?.values() ?? [])].sort((a, b) => a.name.localeCompare(b.name));
-        return { ...toFarmObject(farm), crops, yieldKg: crops.reduce((sum, crop) => sum + crop.yieldKg, 0) };
+        const farmId = String(farm._id);
+        const totals = reportTotals.get(farmId) ?? new Map();
+
+        // A crop may have several entries on a farm (replanting cycles).
+        const quantitiesByCropId = new Map();
+        for (const entry of farm.crops ?? []) {
+            const cropId = String(entry.crop);
+            const quantities = quantitiesOf(entry.quantities);
+            const previous = quantitiesByCropId.get(cropId);
+            quantitiesByCropId.set(cropId, previous
+                ? Object.fromEntries(FARM_CROP_QUANTITY_KEYS.map((key) => [key, previous[key] + quantities[key]]))
+                : quantities);
+        }
+
+        const lines = [...new Set([...quantitiesByCropId.keys(), ...totals.keys()])]
+            .filter((cropId) => cropById.get(cropId)?.cropType)
+            .map((cropId) => {
+                const doc = cropById.get(cropId);
+                const quantities = quantitiesByCropId.get(cropId);
+                const total = totals.get(cropId);
+                // Latest fully approved report, else the largest stored stage, else newly planted.
+                const stage = total?.stage ?? (quantities && dominantCropStage(quantities)) ?? "newly_planted";
+                return {
+                    crop: cropId,
+                    cropType: String(doc.cropType._id ?? doc.cropType),
+                    name: doc.name ?? doc.cropType.name ?? "Unknown crop",
+                    ownership: doc.ownership ?? "government",
+                    stage,
+                    stageLabel: CROP_STAGE_LABELS[stage] ?? stage,
+                    planted: quantities?.planted ?? 0,
+                    plantedQuantity: total?.plantedQuantity ?? 0,
+                    latestAreaHa: total?.latestAreaHa ?? null,
+                    yieldKg: total?.yieldKg ?? 0,
+                };
+            })
+            .sort((a, b) => b.yieldKg - a.yieldKg || b.planted - a.planted || a.name.localeCompare(b.name));
+
+        return { ...farm, crops: lines, yieldKg: [...totals.values()].reduce((sum, total) => sum + total.yieldKg, 0) };
     });
     return { farms: crop ? mapped.filter((farm) => farm.crops.some((entry) => entry.cropType === crop)) : mapped };
 };
 
-export const getFarms = async ({ search, crop, associationId, all, page, limit, includeDeleted = false }) => {
+export const getFarms = async ({ id, search, crop, associationId, all, page, limit, includeDeleted = false }) => {
     const filter = includeDeleted ? {} : { deletedAt: null };
+    if (id) filter._id = id;
 
     if (associationId) filter.association = associationId;
 
@@ -614,7 +694,7 @@ export const getFarms = async ({ search, crop, associationId, all, page, limit, 
             .populate([FARMER_POPULATE, CROP_POPULATE, ASSOCIATION_POPULATE, ...LOCATION_POPULATE]);
 
         return {
-            farms: await attachFarmHistory(farms.map(toFarmObject), associationId),
+            farms: await attachFarmHistory(await attachCropReportTotals(farms.map(toFarmObject)), associationId),
             pagination: null,
         };
     }
@@ -631,7 +711,7 @@ export const getFarms = async ({ search, crop, associationId, all, page, limit, 
     ]);
 
     return {
-        farms: await attachFarmHistory(farms.map(toFarmObject), associationId),
+        farms: await attachFarmHistory(await attachCropReportTotals(farms.map(toFarmObject)), associationId),
         pagination: {
             page,
             limit,

@@ -1,4 +1,4 @@
-import { X, Info, Package, FileText, Calendar } from "lucide-react";
+import { X, Info, Package, FileText, Calendar, PackageCheck } from "lucide-react";
 import { DefList, Section } from "@/components/drawer";
 import { StatusPill } from "@/components/public";
 import { typeLabel, sevTone, sevLabel } from "@/constants/data";
@@ -22,6 +22,9 @@ export function RequestDrawer({ row, onClose, onApprove, onDeny, onChangeDecisio
   const overallStatus = getOverallStatus(row);
   const entities = row.entities ?? [];
   const history = row.history ?? [];
+  // One entry per release action, newest first, each with its images.
+  const releases = [...(row.releases ?? [])].sort((a, b) => new Date(b.releasedAt) - new Date(a.releasedAt));
+  const fileName = (url) => decodeURIComponent(String(url).split("?")[0].split("/").pop() || url);
 
   return (
     <div className="fixed inset-0 z-50" onClick={onClose}>
@@ -108,6 +111,51 @@ export function RequestDrawer({ row, onClose, onApprove, onDeny, onChangeDecisio
               </div>
             )}
           </Section>
+
+          {(releases.length > 0 || (row.releasedIds?.length ?? 0) > 0) && (
+            <Section icon={PackageCheck} title="Releases">
+              {releases.length ? (
+                <div className="space-y-3">
+                  {releases.map((release, index) => (
+                    <div key={release._id ?? index} className="border border-border p-3 text-sm">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-semibold text-foreground">
+                          {release.itemIds?.length ?? 0} unit(s) released
+                        </span>
+                        <span className="text-xs text-secondary">{fmtLongDate(release.releasedAt)}</span>
+                      </div>
+                      {release.releasedBy?.fullname && (
+                        <p className="mt-1 text-xs text-secondary">By {release.releasedBy.fullname}</p>
+                      )}
+                      {release.items?.length > 0 && (
+                        <p className="mt-1 text-xs text-foreground">
+                          {release.items.map((item) => item.propertyNumber).join(", ")}
+                        </p>
+                      )}
+                      {release.attachments?.length > 0 && (
+                        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                          {release.attachments.map((file) => (
+                            <a
+                              key={file.publicId ?? file.url}
+                              href={file.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="block aspect-[4/3] overflow-hidden border border-border bg-muted"
+                              title={fileName(file.url)}
+                            >
+                              <img src={file.url} alt={fileName(file.url)} loading="lazy" className="h-full w-full object-cover" />
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm text-secondary">Released before release images were recorded.</div>
+              )}
+            </Section>
+          )}
 
           <Section icon={Info} title="Approvals">
             <div className="space-y-3">

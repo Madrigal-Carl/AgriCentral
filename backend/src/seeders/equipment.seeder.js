@@ -1,15 +1,16 @@
 import Equipment from "../models/equipment.model.js";
 import EquipmentType from "../models/equipmentType.model.js";
 
+// dispersedAt: when the item was dispersed (released) to its association.
 const EQUIPMENT_TO_SEED = [
-    { propertyNumber: "EQP-001", name: "Hand Tractor", condition: "good" },
-    { propertyNumber: "EQP-002", name: "Water Pump", condition: "excellent" },
-    { propertyNumber: "EQP-003", name: "Rice Thresher", condition: "maintenance" },
-    { propertyNumber: "EQP-004", name: "Coconut Husker", condition: "good" },
-    { propertyNumber: "EQP-005", name: "Cassava Grater", condition: "good" },
-    { propertyNumber: "EQP-006", name: "Rice Mill", condition: "excellent" },
-    { propertyNumber: "EQP-007", name: "Sprayer", condition: "good" },
-    { propertyNumber: "EQP-008", name: "Grass Cutter", condition: "damaged" },
+    { propertyNumber: "EQP-001", name: "Hand Tractor", condition: "good", dispersedAt: "2023-02-14" },
+    { propertyNumber: "EQP-002", name: "Water Pump", condition: "excellent", dispersedAt: "2023-06-05" },
+    { propertyNumber: "EQP-003", name: "Rice Thresher", condition: "maintenance", dispersedAt: "2022-10-17" },
+    { propertyNumber: "EQP-004", name: "Coconut Husker", condition: "good", dispersedAt: "2024-01-22" },
+    { propertyNumber: "EQP-005", name: "Cassava Grater", condition: "good", dispersedAt: "2024-04-08" },
+    { propertyNumber: "EQP-006", name: "Rice Mill", condition: "excellent", dispersedAt: "2023-09-11" },
+    { propertyNumber: "EQP-007", name: "Sprayer", condition: "good", dispersedAt: "2024-07-29" },
+    { propertyNumber: "EQP-008", name: "Grass Cutter", condition: "damaged", dispersedAt: "2025-02-03" },
 ];
 
 // Deliberately has no association/assignedFarmer — these represent
@@ -62,6 +63,7 @@ export const seedEquipments = async ({ farmers } = {}) => {
             association: null,
             assignedFarmer: null,
             status: "available",
+            dispersedAt: null,
         });
 
         equipments.push(equipment);

@@ -21,25 +21,6 @@ const baseLivestockFormSchema = z.object({
         .trim()
         .min(1, "Release date is required"),
     color: referenceIdSchema,
-    weight: z.preprocess(
-        (val) => (val === "" || val === null || val === undefined ? undefined : val),
-        z.union([z.number(), z.string()]).optional(),
-    ).transform((val, ctx) => {
-        if (val === undefined) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Weight is required" });
-            return z.NEVER;
-        }
-        const num = typeof val === "number" ? val : Number(val);
-        if (Number.isNaN(num)) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Weight must be a number" });
-            return z.NEVER;
-        }
-        if (num < 0) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Weight must be zero or greater" });
-            return z.NEVER;
-        }
-        return num;
-    }),
     associationId: z.union([objectId("Invalid association id"), z.literal("")]).optional(),
     isOffspring: z.boolean().optional().default(false),
     mother: z.union([objectId("Select a valid mother"), z.literal("")]).nullable().optional(),

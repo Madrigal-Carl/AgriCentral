@@ -5,6 +5,7 @@ import { DefList, Section } from "@/components/drawer";
 import { healthTone, statusTone } from "@/constants/data";
 import { useLivestock } from "@/hooks/useLivestocks";
 import { getErrorMessage } from "@/utils/getErrorMessage";
+import { formatDispersalAge } from "@/utils/dispersal";
 import { Link, useLocation } from "react-router-dom";
 
 export function LivestockDrawer({ row: initialRow, onClose }) {
@@ -72,7 +73,9 @@ export function LivestockDrawer({ row: initialRow, onClose }) {
                 ["Mother", row.mother ? <Link to={detailsHref(row.mother._id)} className="text-sm font-medium text-foreground hover:underline">{row.mother.propertyNumber} · {row.mother.animal}</Link> : "—"],
                 ["Release Date", row.birthDate ? fmtDate(row.birthDate) : "—"],
                 ["Color", row.color?.name || "—"],
-                ["Weight", row.weight ? `${row.weight} kg` : "—"],
+                // Both blank until a request release disperses the animal.
+                ["Dispersal Date", row.dispersedAt ? fmtDate(row.dispersedAt) : ""],
+                ["Dispersal Age", row.dispersedAt ? formatDispersalAge(row.birthDate, row.dispersedAt) : ""],
               ]}
             />
           </Section>

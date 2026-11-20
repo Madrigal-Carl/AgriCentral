@@ -62,7 +62,7 @@ export const reportRejectedTemplate = ({
                   ${escapeHtml(remarks || "No specific remarks were provided.")}
                 </p>
               </div>
-              <ul>${items.map((item) => `<li>${escapeHtml(item.label)} (${escapeHtml(item.detail)})${item.condition ? ` — ${escapeHtml(item.condition)} · ${escapeHtml(item.severity)}` : ""}</li>`).join("")}</ul>
+              <ul>${items.map((item) => `<li>${escapeHtml(item.label)} (${escapeHtml(item.detail)})${item.condition ? ` — ${escapeHtml(item.condition)} · Priority: ${escapeHtml(item.priority)}` : ""}</li>`).join("")}</ul>
 
               <p style="font-size:14px;line-height:1.7;color:#6b7280;">
                 If you believe this decision was made in error, or would

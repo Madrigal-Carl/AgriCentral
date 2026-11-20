@@ -1,6 +1,6 @@
 import { Select } from "@/components/ui";
 
-export function FullSelect({ value, onChange, options, defaultValue }) {
+export function FullSelect({ value, onChange, options, defaultValue, placeholder }) {
   return (
     <div className="[&>div]:w-full">
       <Select
@@ -8,6 +8,7 @@ export function FullSelect({ value, onChange, options, defaultValue }) {
         onChange={onChange}
         options={options}
         defaultValue={defaultValue}
+        placeholder={placeholder}
       />
     </div>
   );

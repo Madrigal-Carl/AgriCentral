@@ -7,6 +7,8 @@ import { Button } from "@/components/ui";
 
 import { usePermissions } from "@/constants/permissions";
 import useAuth from "@/hooks/useAuth";
+import { useViewRecord, firstListRow } from "@/hooks/useViewRecord";
+import { getFarms } from "@/services/farm.service";
 import {
   useFarms,
   useCreateFarm,
@@ -15,11 +17,12 @@ import {
 } from "@/hooks/useFarms";
 import { useLookups, lookupOptions } from "@/hooks/useLookups";
 
-const getRemainingQuantity = (quantities) => {
+// In progress until everything planted is harvested or damaged (entries
+// with nothing planted yet, e.g. a new farmer-owned crop, still count).
+const isCropInProgress = (quantities) => {
   const q = quantities ?? {};
   const planted = q.planted ?? 0;
-  const claimed = (q.withered ?? 0) + (q.harvested ?? 0) + (q.damaged ?? 0);
-  return Math.max(planted - claimed, 0);
+  return planted === 0 || planted - (q.harvested ?? 0) - (q.damaged ?? 0) > 0;
 };
 
 const blankForm = {
@@ -123,6 +126,8 @@ export function FarmsPage() {
     });
   };
   const openView = (row) => setDrawer(row);
+  // Opens the drawer for ?view=<id> (notification links).
+  useViewRecord({ fetchRecord: firstListRow(getFarms, "farms"), onOpen: openView });
   const askDelete = (row) => {
     if (!can.delete) return;
     setDeleteError(null);
@@ -241,7 +246,7 @@ export function FarmsPage() {
             header: "Crops",
             cell: (r) =>
               (r.crops || []).filter(
-                (c) => getRemainingQuantity(c.quantities) > 0,
+                (c) => isCropInProgress(c.quantities),
               ).length,
           },
           {

@@ -24,3 +24,8 @@ export async function distributeCrop(id) {
     const response = await api.patch(`/crops/${id}/distribute`);
     return response.data;
 }
+// FAR only: registers a farmer-owned crop (no stock) from the farm modal.
+export async function createFarmerOwnedCrop(data) {
+    const response = await api.post("/crops/farmer-owned", data);
+    return response.data;
+}

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import {
     getAnalytics,
+    getAnalyticsFarmers,
     getOverview,
     exportAnalyticsPdf,
     exportAnalyticsExcel,
@@ -9,7 +10,9 @@ import {
 /* ---------------- Query Keys ---------------- */
 export const analyticsKeys = {
     all: ["analytics"],
+    // filters carries period, year and the optional association and farmer.
     data: (filters) => [...analyticsKeys.all, filters],
+    farmers: (associationId) => [...analyticsKeys.all, "farmers", associationId ?? "all"],
 };
 
 export const overviewKeys = {
@@ -23,6 +26,16 @@ export function useAnalytics(filters = {}, options = {}) {
         queryKey: analyticsKeys.data(filters),
         queryFn: () => getAnalytics(filters),
         keepPreviousData: true,
+        ...options,
+    });
+}
+
+// Farmers for the analytics farmer filter: the association's farmers when
+// one is selected, all farmers otherwise.
+export function useAnalyticsFarmers(associationId, options = {}) {
+    return useQuery({
+        queryKey: analyticsKeys.farmers(associationId),
+        queryFn: () => getAnalyticsFarmers(associationId ? { association: associationId } : {}),
         ...options,
     });
 }
@@ -41,7 +54,7 @@ export async function downloadAnalyticsPdf(filters, section) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `agricentral-${section}-report.pdf`;
+    a.download = `agricentral-${section}-${filters.year ?? ""}-report.pdf`.replace("--", "-");
     a.click();
     URL.revokeObjectURL(url);
 }
@@ -51,7 +64,7 @@ export async function downloadAnalyticsExcel(filters, section) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `agricentral-${section}-report.xlsx`;
+    a.download = `agricentral-${section}-${filters.year ?? ""}-report.xlsx`.replace("--", "-");
     a.click();
     URL.revokeObjectURL(url);
 }

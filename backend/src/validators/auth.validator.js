@@ -1,4 +1,10 @@
-import { registerSchema, loginSchema } from "../schemas/auth.schema.js";
+import {
+    registerSchema,
+    loginSchema,
+    forgotPasswordSchema,
+    verifyOtpSchema,
+    resetPasswordSchema,
+} from "../schemas/auth.schema.js";
 
 const validate = (schema) => (req, res, next) => {
     const result = schema.safeParse(req.body);
@@ -16,3 +22,6 @@ const validate = (schema) => (req, res, next) => {
 
 export const validateRegister = validate(registerSchema);
 export const validateLogin = validate(loginSchema);
+export const validateForgotPassword = validate(forgotPasswordSchema);
+export const validateVerifyOtp = validate(verifyOtpSchema);
+export const validateResetPassword = validate(resetPasswordSchema);

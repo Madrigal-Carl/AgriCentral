@@ -27,33 +27,48 @@ function escapeHtml(s) {
   );
 }
 
+const MAX_POPUP_CROPS = 3;
+const SECTION_LABEL_STYLE =
+  "font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#64748b;margin-bottom:2px;";
+
+// "13.44560, 121.84030" (latitude, longitude, 5 decimals).
+const formatCoordinates = (location) =>
+  `${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}`;
+
+// Stage of the latest approved report, plus its area when reported.
+const cropStageText = (c) =>
+  c.latestAreaHa > 0 ? `${c.stageLabel} · ${c.latestAreaHa.toLocaleString()} ha` : c.stageLabel;
+
+// Crops arrive sorted by yield kg (sum of approved harvested production),
+// then planted quantity (both descending).
 function popupHtml(farm) {
   const farmerNames = farm.farmers;
+  const shown = farm.crops.slice(0, MAX_POPUP_CROPS);
+  const hidden = farm.crops.length - shown.length;
 
-  const crops = farm.crops
+  const crops = shown
     .map(
       (c) => `
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 0;">
-          <span style="font-size:13px;color:#0f172a;font-weight:500;">${escapeHtml(c.name)}</span>
-          <span style="font-size:12px;font-weight:600;color:#64748b;">
-             ${c.count.toLocaleString()} standing · ${c.yieldKg.toLocaleString()} kg yielded
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px 0;">
+          <span style="font-size:12px;color:#0f172a;font-weight:500;">
+            ${escapeHtml(c.name)}${
+              c.ownership === "farmer"
+                ? ' <span style="font-size:10px;font-weight:600;color:#b45309;">Farmer-owned</span>'
+                : ""
+            }
           </span>
+          <span style="font-size:11px;font-weight:600;color:#64748b;white-space:nowrap;">${escapeHtml(cropStageText(c))}</span>
         </div>`,
     )
     .join("");
   return `
-    <div style="min-width:200px;font-family:inherit;">
-      <div style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:2px;">
-        ${escapeHtml(farm.address)}
-      </div>
-      <div style="font-size:11px;color:#64748b;margin-bottom:8px;">
-        ${escapeHtml(farm.tag)}
-      </div>
-      <div style="border-top:1px solid #e2e8f0;padding-top:6px;margin-bottom:6px;">
-        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#64748b;margin-bottom:2px;">
-          ${farmerNames.length > 1 ? "Farmers" : "Farmer"}
-        </div>
-        <div style="font-size:13px;font-weight:600;color:#0f172a;">
+    <div style="min-width:200px;max-width:260px;font-family:inherit;">
+      <div style="font-weight:700;font-size:13px;color:#0f172a;">${escapeHtml(farm.tag)}</div>
+      <div style="font-size:12px;color:#334155;">${escapeHtml(farm.address)}</div>
+      <div style="font-size:11px;color:#64748b;margin-bottom:6px;">${escapeHtml(formatCoordinates(farm.location))}</div>
+      <div style="border-top:1px solid #e2e8f0;padding-top:4px;margin-bottom:4px;">
+        <div style="${SECTION_LABEL_STYLE}">${farmerNames.length > 1 ? "Farmers" : "Farmer"}</div>
+        <div style="font-size:12px;font-weight:600;color:#0f172a;">
           ${
             farmerNames.length
               ? farmerNames.map(escapeHtml).join(", ")
@@ -61,19 +76,14 @@ function popupHtml(farm) {
           }
         </div>
       </div>
-      <div style="border-top:1px solid #e2e8f0;padding-top:6px;margin-bottom:6px;">
-        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#64748b;margin-bottom:2px;">
-           Yielded kg · approved reports
-        </div>
-        <div style="font-size:15px;font-weight:700;color:#0f172a;">
-          ${farm.yieldKg.toLocaleString()} kg
-        </div>
+      <div style="border-top:1px solid #e2e8f0;padding-top:4px;margin-bottom:4px;">
+        <div style="${SECTION_LABEL_STYLE}">Yielded kg · approved reports</div>
+        <div style="font-size:14px;font-weight:700;color:#0f172a;">${escapeHtml(farm.yieldKg.toLocaleString())} kg</div>
       </div>
-      <div style="border-top:1px solid #e2e8f0;padding-top:6px;">
-        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#64748b;margin-bottom:2px;">
-          Crops
-        </div>
-         ${crops || '<div style="font-size:12px;color:#64748b;">No fully approved crop reports</div>'}
+      <div style="border-top:1px solid #e2e8f0;padding-top:4px;">
+        <div style="${SECTION_LABEL_STYLE}">Crops</div>
+        ${crops || '<div style="font-size:12px;color:#64748b;">No crops</div>'}
+        ${hidden > 0 ? `<div style="font-size:11px;color:#64748b;padding-top:2px;">+${escapeHtml(hidden)} more</div>` : ""}
       </div>
     </div>
   `;
@@ -252,7 +262,7 @@ export function FarmMapsPage() {
 
       <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-secondary">
         <Wheat className="h-3.5 w-3.5 text-accent" />
-        <span>Pins show standing crops and cumulative yielded kg from fully approved reports only.</span>
+        <span>Pins show each farm's crops with their current stage, and cumulative yielded kg from fully approved reports only.</span>
       </div>
     </div>
   );

@@ -20,7 +20,6 @@ import { useLivestockAvailability } from "@/hooks/useLivestocks";
 import { useEquipmentAvailability } from "@/hooks/useEquipments";
 import { getRequestLines } from "@/utils/request";
 import { getErrorMessage } from "@/utils/getErrorMessage";
-import { useLookups } from "@/hooks/useLookups";
 
 function toFormShape(request) {
   return {
@@ -35,7 +34,6 @@ function toFormShape(request) {
 export function RequestModal({ mode, initial, onClose, onSave }) {
   const [submitError, setSubmitError] = useState(null);
   const isEdit = mode === "edit";
-  const lookups = useLookups();
   const { data: livestockData, isPending: livestockLoading, error: livestockError } = useLivestockAvailability();
   const { data: equipmentData, isPending: equipmentLoading, error: equipmentError } = useEquipmentAvailability();
 
@@ -88,12 +86,14 @@ export function RequestModal({ mode, initial, onClose, onSave }) {
   const loadingStock = entityType === "equipment" ? equipmentLoading : livestockLoading;
   const stockError = entityType === "equipment" ? equipmentError : livestockError;
   const ItemIcon = entityType === "equipment" ? Wrench : Beef;
-  const itemOptions = (lookups.data?.[entityType === "equipment" ? "equipments" : "animals"] ?? []).map((entry) => {
-    const available = stock.find((item) => item.key === entry._id)?.available ?? 0;
-    return { value: entry._id, label: `${entry.name} — ${available} available`, disabled: available === 0 };
-  });
-  if (isEdit && entityType === initial.entityType) for (const line of initial.lines ?? []) {
-    if (lines.some((item) => item.key === line.key) && !itemOptions.some((item) => item.value === line.key)) itemOptions.push({ value: line.key, label: `${line.name ?? "Saved item"}${line.deletedAt ? " (archived)" : ""}`, disabled: true });
+  // Options come only from the availability response (types with stock).
+  const itemOptions = stock
+    .filter((item) => item.available > 0)
+    .map((item) => ({ value: item.key, label: `${item.name} — ${item.available} available` }));
+  // On edit, a saved line whose type has no stock left stays visible while
+  // it is selected, but is never offered as a new choice.
+  if (isEdit && entityType === initial.entityType) for (const line of getRequestLines(initial)) {
+    if (lines.some((item) => item.key === line.key) && !itemOptions.some((item) => item.value === line.key)) itemOptions.push({ value: line.key, label: `${line.name ?? "Saved item"}${line.deletedAt ? " (archived)" : " — no stock"}`, disabled: true });
   }
   const onLinesChange = (keys) => setValue("lines", keys.map((key) =>
     lines.find((line) => line.key === key) ?? { key, quantity: 1 },
@@ -146,7 +146,7 @@ export function RequestModal({ mode, initial, onClose, onSave }) {
     }
   };
 
-  const busy = isCreating || isUpdating || loadingStock || !!stockError || lookups.isPending || lookups.isError;
+  const busy = isCreating || isUpdating || loadingStock || !!stockError;
 
   return (
     <ModalShell
@@ -214,7 +214,7 @@ export function RequestModal({ mode, initial, onClose, onSave }) {
           <Field
             label={entityType === "equipment" ? "Equipment" : "Livestock"}
             full
-            error={errors.lines?.message || stockError?.message || (lookups.isError ? getErrorMessage(lookups.error) : undefined)}
+            error={errors.lines?.message || (stockError ? getErrorMessage(stockError) : undefined)}
           >
             <Controller
               name="lines"
@@ -224,7 +224,7 @@ export function RequestModal({ mode, initial, onClose, onSave }) {
                   values={lines.map((line) => line.key)}
                   onChange={onLinesChange}
                   options={itemOptions}
-                  placeholder={loadingStock ? "Loading availability…" : `Select ${entityType} names/types…`}
+                  placeholder={loadingStock ? "Loading availability…" : itemOptions.length ? `Select ${entityType} names/types…` : `No ${entityType} in stock`}
                   searchPlaceholder={`Search ${entityType}…`}
                 />
               )}

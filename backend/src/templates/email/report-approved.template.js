@@ -15,7 +15,7 @@ export const reportApprovedTemplate = ({
             ${item.label}
           </td>
           <td style="padding:10px 16px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#6b7280;">
-            ${escapeHtml(item.detail || "—")}${item.condition ? `<br />Condition: ${escapeHtml(item.condition)} · Severity: ${escapeHtml(item.severity)}` : ""}
+            ${escapeHtml(item.detail || "—")}${item.condition ? `<br />Condition: ${escapeHtml(item.condition)} · Priority: ${escapeHtml(item.priority)}` : ""}
           </td>
         </tr>`,
     )

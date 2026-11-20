@@ -24,6 +24,7 @@ const ENTITY_SELECT = {
 };
 
 const ASSOCIATION_POPULATE = { path: "association", select: "name" };
+const RELEASED_BY_POPULATE = { path: "releases.releasedBy", select: "fullname role" };
 
 function fail(message, statusCode = 409) {
     const error = new Error(message);
@@ -117,7 +118,12 @@ async function populateEntities(requests) {
             grouped.set(key, (grouped.get(key) ?? 0) + 1);
         }
         const lines = (r.lines?.length ? r.lines : [...grouped].map(([key, quantity]) => ({ key, quantity }))).map((line) => ({ ...line, key: String(line.key), name: names.get(String(line.key))?.name ?? line.name ?? "Unknown item", deletedAt: names.get(String(line.key))?.deletedAt ?? null }));
-        return { ...r, entities, lines };
+        // Each release lists the units it handed over.
+        const releases = (r.releases ?? []).map((release) => ({
+            ...release,
+            items: (release.itemIds ?? []).map((id) => entityMap.get(String(id))).filter(Boolean),
+        }));
+        return { ...r, entities, lines, releases };
     });
 }
 
@@ -495,7 +501,10 @@ async function reserveRequestItems(request) {
     await assignUnitsForRequest(request);
 }
 
-export const releaseRequest = async (id) => withRequestLock(id, async (request) => {
+// Each release needs proof images from the coordinator and is recorded in
+// request.releases; released items get dispersedAt = the release time.
+export const releaseRequest = async (id, { attachments } = {}, actingUser = null) => withRequestLock(id, async (request) => {
+    if (!attachments?.length) fail("Add at least one image of the released items", 400);
 
     if (request.approvalStatus?.head?.status !== "approved") {
         const error = new Error("Request must be fully approved before it can be released");
@@ -536,12 +545,15 @@ export const releaseRequest = async (id) => withRequestLock(id, async (request) 
         return request;
     }
 
+    const releasedAt = new Date();
     await EntityModel.updateMany(
         { _id: { $in: availableIds }, reservedBy: request._id, association: null, deletedAt: null, condition: { $nin: BLOCKED_CONDITIONS[request.entityType] } },
         {
             $set: {
                 association: request.association,
                 status: request.association ? "assigned" : "available",
+                // Dispersal date: when the item was assigned to the association.
+                ...(request.association ? { dispersedAt: releasedAt } : {}),
             },
             $unset: { reservedBy: "" },
             ...(request.entityType === "livestock" ? { $inc: { __v: 1 } } : {}),
@@ -553,6 +565,14 @@ export const releaseRequest = async (id) => withRequestLock(id, async (request) 
     const actuallyReleasedDocs = availableDocs.filter((doc) => newlyReleased.has(String(doc._id)));
     const releasedSet = new Set([...(request.releasedIds ?? []).map(String), ...releasedDocs.map((doc) => String(doc._id))]);
     request.releasedIds = [...releasedSet];
+    if (releasedDocs.length) {
+        request.releases.push({
+            releasedAt,
+            releasedBy: actingUser?._id ?? null,
+            itemIds: releasedDocs.map((doc) => doc._id),
+            attachments,
+        });
+    }
     const requestedQuantity = request.lines.reduce((total, line) => total + line.quantity, 0);
     request.releaseStatus = releasedSet.size === requestedQuantity ? "released" : releasedSet.size ? "partial" : "pending";
 
@@ -578,6 +598,8 @@ export const releaseRequest = async (id) => withRequestLock(id, async (request) 
             entityId: doc._id,
             association: request.association,
             message: `${itemLabel} has been released from request "${request.title}" and added to ${associationLabel}.`,
+            // The request-level released/partially released log notifies once.
+            notify: false,
         });
     }
 
@@ -592,14 +614,14 @@ export const releaseRequest = async (id) => withRequestLock(id, async (request) 
             entityType: "request",
             entityId: request._id,
             association: request.association,
-            message: `Request "${request.title}" has been fully released. All ${requestedQuantity} item(s) have been added to the association.`,
+            message: `Request "${request.title}" has been fully released. All ${requestedQuantity} item(s) have been added to the association (${attachments.length} release image(s) attached).`,
         });
     } else {
         await createLog({
             entityType: "request",
             entityId: request._id,
             association: request.association,
-            message: `Request "${request.title}" has been partially released. ${releasedSet.size} of ${requestedQuantity} item(s) were added to the association; the remainder are not currently releasable.`,
+            message: `Request "${request.title}" has been partially released. ${releasedSet.size} of ${requestedQuantity} item(s) were added to the association (${attachments.length} release image(s) attached); the remainder are not currently releasable.`,
         });
     }
 
@@ -649,6 +671,7 @@ function buildOverallStatusFilter(status) {
 }
 
 export const getRequests = async ({
+    id,
     status,
     severity,
     search,
@@ -661,6 +684,7 @@ export const getRequests = async ({
 }) => {
     const filter = includeDeleted ? {} : { deletedAt: null };
 
+    if (id) filter._id = id;
     if (severity) filter.severity = severity;
     if (associationId) filter.association = associationId;
     if (search) filter.title = new RegExp(escapeRegex(search), "i");
@@ -673,6 +697,7 @@ export const getRequests = async ({
     if (all) {
         const requests = await Request.find(filter)
             .populate(ASSOCIATION_POPULATE)
+            .populate(RELEASED_BY_POPULATE)
             .sort({ createdAt: -1 })
             .lean();
         const withEntities = await populateEntities(requests);
@@ -687,6 +712,7 @@ export const getRequests = async ({
     const [requests, total] = await Promise.all([
         Request.find(filter)
             .populate(ASSOCIATION_POPULATE)
+            .populate(RELEASED_BY_POPULATE)
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)

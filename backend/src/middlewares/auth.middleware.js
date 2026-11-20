@@ -102,6 +102,9 @@ export const allowRoles = (...allowedRoles) => {
   };
 };
 
+// FAR (association) accounts only.
+export const farOnly = allowRoles("far");
+
 // Admins may act on any user; everyone else may only act on their own
 // record (used for profile updates from the Settings page).
 export const selfOrAdmin = (req, res, next) => {

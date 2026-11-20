@@ -32,12 +32,6 @@ const livestockSchema = new mongoose.Schema(
             required: true,
         },
         color: { type: mongoose.Schema.Types.ObjectId, ref: "Color", required: true },
-        weight: {
-            type: Number,
-            required: true,
-            min: 0,
-            default: 0,
-        },
         condition: {
             type: String,
             enum: [
@@ -50,6 +44,8 @@ const livestockSchema = new mongoose.Schema(
             default: "healthy",
         },
         deceasedAt: { type: Date, default: null },
+        // Set when a request release assigns the item to an association.
+        dispersedAt: { type: Date, default: null },
         status: {
             type: String,
             enum: [
@@ -84,6 +80,10 @@ const livestockSchema = new mongoose.Schema(
 
 livestockSchema.pre("validate", function () {
     this.status = this.association ? "assigned" : "available";
+    // Items outside an association have no dispersal date.
+    if (!this.association) this.dispersedAt = null;
+    // A provided deceasedAt (e.g. a report's date of death) is kept; only a
+    // missing one falls back to now.
     this.deceasedAt = this.condition === "deceased" ? this.deceasedAt ?? new Date() : null;
 });
 

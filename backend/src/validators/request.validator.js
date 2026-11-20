@@ -3,6 +3,7 @@ import {
     updateRequestSchema,
     updateRequestApprovalSchema,
     revertRequestApprovalSchema,
+    releaseRequestSchema,
     requestIdParamSchema,
     getRequestsQuerySchema,
 } from "../schemas/request.schema.js";
@@ -59,5 +60,6 @@ export const validateCreateRequest = validate(createRequestSchema);
 export const validateUpdateRequest = validate(updateRequestSchema);
 export const validateUpdateRequestApproval = validate(updateRequestApprovalSchema);
 export const validateRevertRequestApproval = validate(revertRequestApprovalSchema);
+export const validateReleaseRequest = validate(releaseRequestSchema);
 export const validateRequestIdParam = validateParams(requestIdParamSchema);
 export const validateGetRequestsQuery = validateQuery(getRequestsQuerySchema);

@@ -23,3 +23,21 @@ export async function getMe() {
 
     return response.data;
 }
+
+export async function requestPasswordReset(data) {
+    const response = await api.post("/auth/forgot-password", data);
+
+    return response.data;
+}
+
+export async function verifyPasswordResetOtp(data) {
+    const response = await api.post("/auth/verify-otp", data);
+
+    return response.data;
+}
+
+export async function resetPassword(data) {
+    const response = await api.post("/auth/reset-password", data);
+
+    return response.data;
+}

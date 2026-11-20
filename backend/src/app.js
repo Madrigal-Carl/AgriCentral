@@ -19,6 +19,7 @@ import requestRoutes from "./routes/request.routes.js";
 import cronRoutes from "./routes/cron.routes.js";
 import reportRoutes from "./routes/report.routes.js";
 import analyticRoutes from "./routes/analytics.routes.js";
+import notificationRoutes from "./routes/notification.routes.js";
 import { maintenanceRoutes, lookupRoutes } from "./routes/maintenance.routes.js";
 
 const app = express();
@@ -63,6 +64,7 @@ app.use("/api/requests", requestRoutes);
 app.use("/api/cron", cronRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/analytics", analyticRoutes);
+app.use("/api/notifications", notificationRoutes);
 for (const type of ["municipalities", "barangays", "crops", "equipments", "animals", "breeds", "colors"]) {
   app.use(`/api/maintenance/${type}`, maintenanceRoutes(type));
 }

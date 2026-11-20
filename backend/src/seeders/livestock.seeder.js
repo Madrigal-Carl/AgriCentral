@@ -18,8 +18,8 @@ const LIVESTOCK_TO_SEED = [
         breed: "Native",
         gender: "male",
         birthDate: "2018-03-15",
+        dispersedAt: "2019-02-11",
         color: "Gray",
-        weight: 450,
         condition: "healthy",
     },
     {
@@ -28,8 +28,8 @@ const LIVESTOCK_TO_SEED = [
         breed: "Brahman",
         gender: "female",
         birthDate: "2019-06-10",
+        dispersedAt: "2020-03-02",
         color: "Brown",
-        weight: 320,
         condition: "healthy",
     },
     {
@@ -38,8 +38,8 @@ const LIVESTOCK_TO_SEED = [
         breed: "Boer",
         gender: "female",
         birthDate: "2020-09-01",
+        dispersedAt: "2021-05-17",
         color: "White",
-        weight: 45,
         condition: "pregnant",
     },
     {
@@ -48,8 +48,8 @@ const LIVESTOCK_TO_SEED = [
         breed: "Landrace",
         gender: "male",
         birthDate: "2021-01-22",
+        dispersedAt: "2021-08-09",
         color: "Pink",
-        weight: 80,
         condition: "healthy",
     },
     {
@@ -58,8 +58,8 @@ const LIVESTOCK_TO_SEED = [
         breed: "Native (Free-range)",
         gender: "female",
         birthDate: "2022-02-14",
+        dispersedAt: "2022-06-20",
         color: "Brown",
-        weight: 2,
         condition: "healthy",
     },
     {
@@ -68,8 +68,8 @@ const LIVESTOCK_TO_SEED = [
         breed: "Itik Pateros",
         gender: "female",
         birthDate: "2021-11-30",
+        dispersedAt: "2022-04-04",
         color: "Brown",
-        weight: 1.5,
         condition: "healthy",
     },
     {
@@ -78,8 +78,8 @@ const LIVESTOCK_TO_SEED = [
         breed: "Native",
         gender: "female",
         birthDate: "2017-07-19",
+        dispersedAt: "2018-09-24",
         color: "Gray",
-        weight: 430,
         condition: "healthy",
     },
     {
@@ -88,8 +88,8 @@ const LIVESTOCK_TO_SEED = [
         breed: "Native",
         gender: "male",
         birthDate: "2019-04-05",
+        dispersedAt: "2020-01-13",
         color: "Black",
-        weight: 300,
         condition: "healthy",
     },
     {
@@ -98,8 +98,8 @@ const LIVESTOCK_TO_SEED = [
         breed: "Native",
         gender: "male",
         birthDate: "2020-08-12",
+        dispersedAt: "2021-03-08",
         color: "Brown",
-        weight: 40,
         condition: "healthy",
     },
 ];
@@ -116,7 +116,6 @@ const UNASSIGNED_LIVESTOCK_TO_SEED = [
         gender: "female",
         birthDate: "2023-01-20",
         color: "White",
-        weight: 2,
         condition: "healthy",
     },
     {
@@ -126,7 +125,6 @@ const UNASSIGNED_LIVESTOCK_TO_SEED = [
         gender: "male",
         birthDate: "2022-11-05",
         color: "Black",
-        weight: 60,
         condition: "healthy",
     },
     {
@@ -136,7 +134,6 @@ const UNASSIGNED_LIVESTOCK_TO_SEED = [
         gender: "female",
         birthDate: "2022-06-17",
         color: "Brown",
-        weight: 1.8,
         condition: "healthy",
     },
     {
@@ -146,7 +143,6 @@ const UNASSIGNED_LIVESTOCK_TO_SEED = [
         gender: "female",
         birthDate: "2021-10-09",
         color: "White",
-        weight: 42,
         condition: "healthy",
     },
 ];
@@ -169,6 +165,9 @@ export const seedLivestocks = async ({ farmers } = {}) => {
         const data = LIVESTOCK_TO_SEED[i];
         const farmer = farmers[i % farmers.length];
 
+        if (new Date(data.dispersedAt) <= new Date(data.birthDate)) {
+            throw new Error(`seedLivestocks: ${data.propertyNumber} must be dispersed after its birth date`);
+        }
         const livestock = await Livestock.create({
             ...await linkLivestock(data),
             association: farmer.association,
@@ -186,6 +185,7 @@ export const seedLivestocks = async ({ farmers } = {}) => {
             association: null,
             assignedFarmer: null,
             status: "available",
+            dispersedAt: null,
         });
 
         livestocks.push(livestock);
