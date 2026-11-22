@@ -13,6 +13,7 @@ export function LeafletMap({
   onPick,
   height = "h-56",
   interactive = true,
+  center, // {lat,lng} to fly to without moving the pin (e.g. a geocoded address)
 }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
@@ -204,6 +205,10 @@ export function LeafletMap({
       map.setView(latlng, Math.max(map.getZoom(), 13));
     })();
   }, [location?.lat, location?.lng, ready, interactive]);
+
+  useEffect(() => {
+    if (ready && center && mapRef.current) mapRef.current.flyTo([center.lat, center.lng], center.zoom ?? 16);
+  }, [center, ready]);
 
   return (
     <div

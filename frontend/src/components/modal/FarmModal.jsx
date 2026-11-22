@@ -28,6 +28,7 @@ import { getCropsByFarmerId } from "@/services/farmer.service";
 import { useAssociations } from "@/hooks/useAssociations";
 import useAuth from "@/hooks/useAuth";
 import { getErrorMessage } from "@/utils/getErrorMessage";
+import { geocodeAddress, reverseGeocode, findByName, MUNICIPALITY_CENTERS } from "@/utils/geocode";
 import {
   farmFormSchema,
   farmUpdateSchema,
@@ -534,6 +535,65 @@ export function FarmModal({
     }
     setValue("latitude", next.lat, { shouldValidate: true });
     setValue("longitude", next.lng, { shouldValidate: true });
+    fillAddressFromPin(next);
+  };
+
+  // Address fields <-> map: typing an address zooms the map; dropping a pin prefills the address.
+  const { data: lookups } = useLookups();
+  const [mapCenter, setMapCenter] = useState(null);
+  const [municipality, barangay, street] = watch(["municipality", "barangay", "street"]);
+  const addressKey = (m, b, s) => [m ?? "", b ?? "", (s ?? "").trim()].join("|");
+  // Last address already shown on the map; starts at the saved one so editing doesn't jump away from the pin.
+  const shownAddressRef = useRef(addressKey(normalizedInitial?.municipality, normalizedInitial?.barangay, normalizedInitial?.street));
+  const shownTownRef = useRef(normalizedInitial?.municipality ?? "");
+  const pinRequestRef = useRef(0);
+  const nameOf = (items, id) => items?.find((item) => item._id === id)?.name;
+
+  // Municipality picked: zoom instantly from known town centers, no network needed.
+  useEffect(() => {
+    if (!municipality || !lookups || municipality === shownTownRef.current) return;
+    shownTownRef.current = municipality;
+    const center = MUNICIPALITY_CENTERS[nameOf(lookups.municipalities, municipality)];
+    if (center) setMapCenter({ ...center, zoom: 13 });
+  }, [municipality, lookups]);
+
+  // Barangay picked (immediately) or street typed (debounced): zoom closer via geocoding.
+  useEffect(() => {
+    const key = addressKey(municipality, barangay, street);
+    const brgy = nameOf(lookups?.barangays, barangay);
+    const typed = street?.trim();
+    if (!municipality || !lookups || (!brgy && !typed) || key === shownAddressRef.current) return;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      shownAddressRef.current = key;
+      const town = `${nameOf(lookups.municipalities, municipality)}, Marinduque`;
+      const area = brgy ? `${brgy}, ${town}` : town;
+      // OSM lacks some barangays (e.g. Isok I, Tagwak); then the map just stays on the municipality.
+      for (const query of [typed && `${typed}, ${area}`, brgy && area].filter(Boolean)) {
+        const hit = await geocodeAddress(query).catch((err) => console.warn("Address lookup failed:", err));
+        if (cancelled) return;
+        if (hit) return setMapCenter({ ...hit, zoom: 16 });
+      }
+    }, typed ? 600 : 0);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [municipality, barangay, street, lookups]);
+
+  const fillAddressFromPin = async (point) => {
+    const request = ++pinRequestRef.current;
+    const address = await reverseGeocode(point).catch(() => null);
+    if (!address || !lookups || request !== pinRequestRef.current) return;
+    const town = findByName(lookups.municipalities, address.town, address.city, address.municipality, address.county);
+    if (!town) return; // pin is outside the known municipalities; leave the fields alone
+    const brgy = findByName(
+      lookups.barangays?.filter((item) => item.parent === town._id),
+      address.village, address.quarter, address.suburb, address.neighbourhood, address.hamlet,
+    );
+    const road = address.road || getValues("street") || "";
+    shownTownRef.current = town._id;
+    shownAddressRef.current = addressKey(town._id, brgy?._id, road);
+    setValue("municipality", town._id, { shouldValidate: true });
+    setValue("barangay", brgy?._id ?? "", { shouldValidate: true });
+    setValue("street", road, { shouldValidate: true });
   };
 
   // Crops with nothing left to manage (see editableInitialCrops) are hidden
@@ -920,7 +980,7 @@ export function FarmModal({
           )}
 
           <Field label="Geotag Location" full error={locationError}>
-            <LocationPicker value={location} onChange={onLocationChange} />
+            <LocationPicker value={location} onChange={onLocationChange} center={mapCenter} />
           </Field>
         </div>
       </form>

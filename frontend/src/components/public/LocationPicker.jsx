@@ -3,7 +3,7 @@ import { MapPin, Crosshair, X, AlertTriangle } from "lucide-react";
 import { LeafletMap } from "@/components/ui";
 import { fmtCoord } from "@/utils/format";
 
-export function LocationPicker({ value, onChange }) {
+export function LocationPicker({ value, onChange, center }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -40,7 +40,7 @@ export function LocationPicker({ value, onChange }) {
         </span>
       </div>
 
-      <LeafletMap location={value} onPick={onChange} height="h-64" />
+      <LeafletMap location={value} onPick={onChange} center={center} height="h-64" />
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-sm">
